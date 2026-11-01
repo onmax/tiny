@@ -7,7 +7,7 @@
       "entry": "tinyaml/js-yaml",
       "gzip": {
         "theirs": 14791,
-        "ours": 11980
+        "ours": 11979
       },
       "parse": {
         "theirs": 3,
@@ -24,7 +24,7 @@
       "entry": "tinyaml/js-yaml-v5",
       "gzip": {
         "theirs": 17529,
-        "ours": 16338
+        "ours": 16510
       },
       "parse": {
         "theirs": 3.07,
@@ -41,7 +41,7 @@
       "entry": "tinyaml/yaml",
       "gzip": {
         "theirs": 30643,
-        "ours": 17173
+        "ours": 17163
       },
       "parse": {
         "theirs": 35.89,
@@ -58,7 +58,7 @@
       "entry": "tinyaml/yamljs",
       "gzip": {
         "theirs": 9029,
-        "ours": 8175
+        "ours": 7996
       },
       "parse": {
         "theirs": 11.36,
@@ -75,7 +75,7 @@
       "entry": "tinyaml/std",
       "gzip": {
         "theirs": 11554,
-        "ours": 10910
+        "ours": 10922
       },
       "parse": {
         "theirs": 4.03,
@@ -303,7 +303,7 @@
     "entry": "tinyaml",
     "gzip": {
       "theirs": 30643,
-      "ours": 8020
+      "ours": 8019
     },
     "parse": {
       "theirs": 36.22,

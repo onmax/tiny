@@ -1,14 +1,16 @@
 // The built dist/ that size.ts measures and the dist test runs check: what
-// npm users get. Each entry is the file package.json exports it as.
+// npm users get. Each entry is the file package.json exports it as, or runs
+// as its bin.
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const root = (path: string) => fileURLToPath(new URL(`../${path}`, import.meta.url));
+const { exports, bin } = JSON.parse(readFileSync(root("package.json"), "utf8"));
 
 /** Each entry's name, `index` for the root, to its built file. */
 export const ENTRIES: Record<string, string> = Object.fromEntries(
-  Object.values(JSON.parse(readFileSync(root("package.json"), "utf8")).exports as object)
+  [...Object.values(exports as object), ...Object.values(bin as object)]
     .filter((path: string) => path.endsWith(".mjs"))
     .map((path: string) => [path.slice("./dist/".length, -".mjs".length), root(path)]),
 );

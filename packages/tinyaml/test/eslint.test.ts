@@ -20,4 +20,11 @@ describe("eslint plugin", () => {
   it("reports nothing for clean YAML", () => {
     expect(check('draft: false\ntitle: "no"\n')).toEqual([]);
   });
+
+  it.each(["[? a\n::]\n", "a:,%\nx\n", "key: a:,no\n"])(
+    "lints YAML whose plain scalars hold `:` and flow punctuation: %j",
+    (text) => {
+      expect(check(text)).toEqual([]);
+    },
+  );
 });

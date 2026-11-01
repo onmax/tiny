@@ -182,6 +182,17 @@ describe("parse", () => {
     expect(() => parse("a: [!!str\n,b]")).toThrow(/too little indentation/);
   });
 
+  it("rejects an implicit key whose properties or collection span lines", () => {
+    const tags = { "!k": () => "k" };
+    for (const text of ["[!k\n [a]: b]", "[!k\n {a: c}: b]", "[!k [a,\n b]: c]", "[!k [a]\n: b]"])
+      expect(() => parse(text, { tags }), JSON.stringify(text)).toThrow(/missing comma/);
+    for (const text of ["x: 1\n!k [a,\n b]: c", "x: 1\n!k {a: b\n }: c"])
+      expect(() => parse(text, { tags }), JSON.stringify(text)).toThrow(/on one line/);
+    expect(parse("[!k [a]: b]", { tags })).toEqual([{ k: "b" }]);
+    expect(parse("{!k\n [a]: b}", { tags })).toEqual({ k: "b" });
+    expect(parse("x: 1\n!k [a]: c", { tags })).toEqual({ x: 1, k: "c" });
+  });
+
   it("takes a tab after `:` or `-` before a flow collection", () => {
     expect(parse("a:\t[]\nb:\t{c: 1}\nd:\n-\t[1]")).toEqual({ a: [], b: { c: 1 }, d: [[1]] });
     expect(() => parse("a:\n\t[]")).toThrow(YAMLError);

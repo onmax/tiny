@@ -94,9 +94,11 @@ export interface Engine {
   /**
    * Read only in `yaml` mode: called where each document starts, a `...`
    * that ends none included, which yaml counts as an empty one, and with
-   * `ends` where a document's node ends.
+   * `ends` where a document's node ends. `ends` is false for a document that
+   * directives start, called before they're read. Returns true to read no
+   * further.
    */
-  document?: ((at: number, ends?: boolean) => void) | undefined;
+  document?: ((at: number, ends?: boolean) => unknown) | undefined;
   /**
    * Read only in `yaml` mode: called on each anchor, with the depth
    * and whether its node `starts`. A collection's comes as it starts and
@@ -228,8 +230,11 @@ let anchors = new Map<string, unknown>();
 let plain = false;
 // The current line's indentation contains a tab.
 let tabbed = false;
-// The last scalar spanned more than one line.
-let crossed = false;
+// The last scalar spanned more than one line. In yaml mode, a line ended in
+// the flow node being read, but not right after a collection in it, which
+// yaml leaves out of a key; or 1 where one ended only in the node's own
+// properties, which count in the collections around it but not in it as a key.
+let crossed: boolean | 1 = false;
 // The last implicit key was omitted (`: value`); js-yaml then allows a
 // compact mapping as the value.
 let emptyKey = false;
@@ -284,7 +289,7 @@ function mark(exact?: boolean): Mark {
   // js-yaml 4 reads a copy that ends in a line break, and mostly reports
   // problems at the end of input after that break.
   const buffer = src.endsWith("\n") ? src : `${src}\n`;
-  const at = pos < len || exact || !lenient ? pos : buffer.length;
+  const at = pos < len || exact || !lenient ? pos : lines ? len : buffer.length;
   return {
     buffer,
     position: at,
@@ -303,12 +308,11 @@ export function original(
 ): number {
   // How many characters of `input` the copy dropped so far.
   let dropped = 0;
-  for (let i = 0; i - dropped < position; i++)
-    if (
-      (input[i] === "\r" && input[i + 1] === "\n") ||
-      (!lenient && input[i] === "\uFEFF" && buffer[i - dropped] !== "\uFEFF")
-    )
-      dropped++;
+  // Whether the copy dropped the byte order mark at `i`: the first one, or
+  // one the copy doesn't have there. A position points past those it's at.
+  const bom = (i: number) => input[i] === "\uFEFF" && (!i || buffer[i - dropped] !== "\uFEFF");
+  for (let i = 0; i - dropped < position || (!lenient && bom(i)); i++)
+    if ((input[i] === "\r" && input[i + 1] === "\n") || (!lenient && bom(i))) dropped++;
   return position + dropped;
 }
 
@@ -389,8 +393,7 @@ function leadingSpaces(): number {
 }
 
 // Text that isn't a scalar, from `from` to `to`. The spec rejects a
-// non-printable character anywhere, and not only in plain and block scalars,
-// as yaml does.
+// non-printable character anywhere, where yaml reads any as text.
 function raw(from: number, to: number): void {
   if (spec && !yaml) {
     const at = src.slice(from, to).search(NON_PRINTABLE);
@@ -490,9 +493,14 @@ export function parse(input: string, use: Engine): unknown[] {
         })
         .join("\n");
     } else if (js5 && use.bom && src.includes("\uFEFF")) src = src.replace(use.bom, "");
+    // yaml and yamljs read a null byte as any other character, and std as
+    // the end of the input, where it fails once it has read the documents
+    // before it.
     len = src.length;
-    pos = src.indexOf("\0");
-    if (pos >= 0) fail(E.NULL_BYTE);
+    const nul = !yaml && (!lenient || lines) ? src.indexOf("\0") : -1;
+    if (repeats) {
+      if (nul >= 0) src = src.slice(0, (len = nul));
+    } else if ((!lenient || lines) && (pos = nul) >= 0) fail(E.NULL_BYTE);
     pos = lineStart = 0;
     tabs = src.includes("\t");
     // Where js-yaml 4 starts the next document; -1 for after the lines that
@@ -503,11 +511,19 @@ export function parse(input: string, use: Engine): unknown[] {
       if (lenient && warns && start < 0) start = pos;
       let directives = false;
       let directiveEnd = -1;
-      handles = new Map().set("!!", YAML_TAG).set("!", "!");
+      // yaml keeps a local tag as written where no %TAG declares `!`.
+      handles = new Map().set("!!", YAML_TAG).set("!", yaml ? undefined : "!");
       let version = false;
       // YAML 1.1, where js-yaml 4 warns about line breaks 1.2 reads as text.
       let breaks = lenient && warns && use.legacy;
       const declared = new Set<string>();
+      if (yaml && !col && src.charCodeAt(pos) === 37 /* % */) {
+        // yaml starts a document at its directives, so a second one is
+        // reported before any error in them, where a document follows them.
+        const at =
+          pos + /^(?:(?:%[^\n]*|[ \t]*(?:#[^\n]*)?)(?:\n|$))*/.exec(src.slice(pos))![0].length;
+        if (at < len && engine.document?.(at, false)) break;
+      }
       while (!(js5 ? indented(directiveEnd) : col) && src.charCodeAt(pos) === 37 /* % */) {
         directives = true;
         const end = lineEnd(pos);
@@ -540,12 +556,15 @@ export function parse(input: string, use: Engine): unknown[] {
           if (declared.has(handle!)) fail(E.TAG_REDECLARED, handle);
           if (!yaml && !TAG_PREFIX.test(prefix!)) fail(E.TAG_PREFIX);
           declared.add(handle!);
-          handles.set(handle!, decode(prefix!, E.PREFIX_ENCODING));
+          // yaml takes a prefix as written.
+          handles.set(handle!, yaml ? prefix! : decode(prefix!, E.PREFIX_ENCODING));
         } else warn(E.DIRECTIVE_UNKNOWN, name);
         col = skipLines();
       }
       if (col < 0) {
-        if (directives) fail(E.DIRECTIVES_END);
+        // yaml drops directives after the first document that no document
+        // follows.
+        if (directives && !(yaml && docs.length)) fail(E.DIRECTIVES_END);
         // js-yaml 4 yields an empty document for input holding anything but
         // leading spaces and one line break, such as just a comment.
         if (lenient && !docs.length && !/^\uFEFF? *[\r\n]?$/.test(input)) docs.push(null);
@@ -563,7 +582,7 @@ export function parse(input: string, use: Engine): unknown[] {
           : !(js5 ? indented(directiveEnd) : col)) &&
         (lenient || isBlank(src.charCodeAt(pos + 3))) &&
         src.startsWith("---", pos);
-      if (yaml) engine.document?.(lineStart);
+      if (yaml && !directives && engine.document?.(lineStart)) break;
       if (explicit) pos += 3;
       else if (directives) fail(E.DIRECTIVES_END);
       else if (isDocMarker()) {
@@ -602,6 +621,7 @@ export function parse(input: string, use: Engine): unknown[] {
         if (!lenient) expectLineEnd();
       }
     }
+    if (repeats && nul >= 0) fail(E.NULL_BYTE);
   } catch (error) {
     // Outside yaml, nesting deep enough to overflow the call stack fails
     // where it happens, with the RangeError's message.
@@ -664,7 +684,8 @@ function parseProps(flow = false, split = false, node?: Props, comma?: boolean):
       }
       // The spec, yaml and std deliver a verbatim tag as written.
       props.tag = spec || repeats ? tag : decode(tag, E.TAG_ENCODING);
-      if (spec && /\s/.test(props.tag)) fail(E.TAG_SPACE);
+      // yaml ends one at white space or a line break only.
+      if (spec && (yaml ? /[ \t\n]/ : /\s/).test(props.tag)) fail(E.TAG_SPACE);
       if (spec && !yaml) engine.verbatim!(tag);
       pos = end + 1;
     } else {
@@ -682,13 +703,17 @@ function parseProps(flow = false, split = false, node?: Props, comma?: boolean):
         if (!TAG_HANDLE.test(handle)) fail(E.HANDLE_CHARS);
         if (lines && /[,[\]{}]/.test(name)) fail(E.TAG_FLOW);
         const prefix = handles.get(handle);
-        if (!prefix) fail(E.HANDLE_UNDECLARED, handle);
+        if (!prefix && !(yaml && bang < 0)) fail(E.HANDLE_UNDECLARED, handle);
         // The drop-ins name the suffix, and tinyaml's own wording doesn't.
         if (name && !TAG_SUFFIX.test(suffix)) {
           if (spec) fail(E.SUFFIX_CHARS);
           else fail(E.SUFFIX_CHARS, suffix);
         }
-        props.tag = name ? prefix + (repeats ? suffix : decode(suffix, E.TAG_ENCODING)) : "!";
+        props.tag = name
+          ? yaml && !prefix
+            ? `!${name}`
+            : prefix + (repeats ? suffix : decode(suffix, E.TAG_ENCODING))
+          : "!";
         if (lenient) props.end = pos;
       }
     }
@@ -937,7 +962,7 @@ function parseBlockNode(
   const wasPlain = plain;
   // Only scalars that fold step over a line break, and they say so, but yaml
   // also rejects flow keys that do.
-  const multiline = (!lenient && lineStart !== line) || crossed;
+  const multiline = (!yaml && !lenient && lineStart !== line) || crossed;
   skipSpace();
   ch = src.charCodeAt(pos);
   // In js-yaml, a node that ends on a later line is no key but a value, and
@@ -1244,7 +1269,7 @@ function parseNextKey(allowTab: boolean, indent: number): unknown {
   // js-yaml 4 reads on past the lines after an alias.
   if (lenient && ch === STAR) skipLines();
   skipSpace();
-  const moved = (!spec && lineStart !== line) || crossed;
+  const moved = (!yaml && lineStart !== line) || crossed;
   if (src.charCodeAt(pos) !== COLON || moved) fail(spec || moved ? E.MULTILINE_KEY : E.KEY_COLON);
   if (!separated()) {
     if (!spec) pos++;
@@ -1437,8 +1462,9 @@ function parseQuoted(indent: number): string {
       out += src.slice(start, pos++);
       break;
     }
-    // A quoted scalar may hold any character but a C0 control, as JSON's strings.
-    if (ch < SPACE && ch !== TAB && ch !== LF) {
+    // A quoted scalar may hold any character but a C0 control, as JSON's
+    // strings, except in yaml and yamljs.
+    if (!yaml && (!lenient || lines) && ch < SPACE && ch !== TAB && ch !== LF) {
       // js-yaml 4 checks a run of text when it ends, so it reports there.
       if (lenient) {
         const end = src.slice(pos).search(single ? /['\n]/ : /["\\\n]/);
@@ -1526,7 +1552,8 @@ function parsePlain(indent: number, flow: boolean, multiline: boolean): string |
         const prev = src.charCodeAt(at - 1);
         if (prev === SPACE || prev === TAB) break;
       } else if (flow && isFlowIndicator(ch)) break;
-      else odd ||= ch < SPACE ? ch !== TAB : ch > 126 && (ch < 160 || ch > 0xd7ff);
+      else if (!yaml && (!lenient || lines))
+        odd ||= ch < SPACE ? ch !== TAB : ch > 126 && (ch < 160 || ch > 0xd7ff);
       if (ch !== SPACE && ch !== TAB) end = at + 1;
       ch = src.charCodeAt(++at);
     }
@@ -1576,9 +1603,10 @@ function parsePlain(indent: number, flow: boolean, multiline: boolean): string |
 }
 
 // Comments may hold anything, so only scalars are checked, and plain ones
-// only when their scan saw a character outside printable ASCII.
+// only when their scan saw a character outside printable ASCII. yaml reads
+// any character as text.
 function checkPrintable(text: string, odd: boolean): void {
-  if (odd && NON_PRINTABLE.test(text)) fail(E.NON_PRINTABLE);
+  if (!yaml && (!lenient || lines) && odd && NON_PRINTABLE.test(text)) fail(E.NON_PRINTABLE);
 }
 
 // Skips white space, comments and line breaks inside a flow collection whose
@@ -1595,6 +1623,7 @@ function skipFlowSpace(indent: number): boolean {
     if (src.charCodeAt(pos) !== LF) break;
     lineStart = ++pos;
     ended = true;
+    if (yaml) crossed = true;
   }
   if ((ended || (js5 && tab)) && (!spec || pos < len)) {
     if (ended && isDocMarker()) fail(E.DEFICIENT_INDENT);
@@ -1629,18 +1658,20 @@ function parseFlowCollection(indent: number): unknown {
     const empty = (explicit && (ch === COMMA || ch === close)) || indicator(COLON, true);
     if (empty) plain = true;
     else if (ch === COMMA) fail(E.EMPTY_ENTRY);
+    const was = crossed;
     crossed = false;
     if (!spec) frame(at);
     const node = empty ? finish(null) : parseFlowNode(indent);
-    const multiline = crossed;
     const broken = skipFlowSpace(indent);
+    const multiline = broken || (crossed as boolean | 1) === true;
+    if (yaml) crossed ||= was;
     ch = src.charCodeAt(pos);
     // An entry of a sequence is a key only before a `:`.
     const key = isMap || explicit || ch === COLON ? asKey(node) : node;
     // An implicit key in a flow sequence must end on its own line, and in
     // js-yaml 4 any implicit key on the line it starts.
     if (ch === COLON && !explicit && (lines || !isMap)) {
-      if (js5 || lines ? lineStart !== line : broken || multiline) fail(E.MISSED_COMMA);
+      if (js5 || lines || (spec && !yaml) ? lineStart !== line : multiline) fail(E.MISSED_COMMA);
       checkKey(at);
     }
     let value: unknown;
@@ -1682,6 +1713,7 @@ function parseFlowCollection(indent: number): unknown {
 
 function parseFlowNode(indent: number): unknown {
   const props = parseProps(true);
+  const was = crossed;
   // Properties go on over lines. js-yaml 4 and 5 end them at a repeat, which
   // leaves a missed comma, and read the node as multiline, as tinyaml's own
   // parser does, which reads on as far as skipFlowSpace allows.
@@ -1692,11 +1724,23 @@ function parseFlowNode(indent: number): unknown {
       crossed = true;
       return finish(null, props);
     }
-    if (!yaml) crossed = true;
+    crossed = !yaml || was || 1;
     parseProps(true, false, props, js5 || (lenient && !repeats));
   }
   const ch = src.charCodeAt(pos);
-  if ((ch | 32) === LBRACE) return finish(parseFlowCollection(indent), props);
+  if ((ch | 32) === LBRACE) {
+    const outer = crossed;
+    if (yaml) crossed = false;
+    const node = finish(parseFlowCollection(indent), props);
+    // yaml takes the lines that end right after a collection as part of it,
+    // and not as lines its key spans.
+    if (yaml) {
+      const inner = !!crossed || outer;
+      skipFlowSpace(indent);
+      crossed = inner;
+    }
+    return node;
+  }
   if (ch === STAR) return parseAlias(props);
   let value: string | null = null;
   if (ch === QUOTE || ch === DQUOTE) value = parseQuoted(indent);

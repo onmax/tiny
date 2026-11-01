@@ -1,4 +1,10 @@
+import { parse as std } from "@std/yaml";
+import { execFileSync } from "node:child_process";
+import js4 from "js-yaml";
+import * as js5 from "js-yaml5";
+import { parse as yaml } from "yaml";
 import { describe, expect, it } from "vite-plus/test";
+import { parseAll } from "../src/index.ts";
 import { lint } from "../src/linter.ts";
 
 const at = (text: string) =>
@@ -29,7 +35,10 @@ describe("lint", () => {
       "tinyaml/ambiguous-value 5:9",
     ]);
     expect(lint("- no")[0]?.message).toBe(
-      '`no` loads as the string "no", but YAML 1.1 readers such as PyYAML read it as a boolean.',
+      '`no` loads as the string "no", but PyYAML and yaml\'s YAML 1.1 schema read it as a boolean.',
+    );
+    expect(lint("- y")[0]?.message).toBe(
+      '`y` loads as the string "y", but yaml\'s YAML 1.1 schema reads it as a boolean.',
     );
   });
 
@@ -70,35 +79,157 @@ describe("lint", () => {
     ['a: {"key":no}\n', ["1:11"]],
     ['a: {"it\'s": no}\n', ["1:13"]],
     ['a: ["it\'s fine", yes]\n', ["1:18"]],
-    ['a: ["escaped \\\" yes", no]\n', ["1:23"]],
+    ['a: ["escaped \\" yes", no]\n', ["1:23"]],
     ["a: ['it''s yes', no]\n", ["1:18"]],
     ["- a: |\n    text\n  b: yes\n", ["3:6"]],
     ["- a: >2-\n    no\n  b: yes\n", ["3:6"]],
     ["a: &x yes\nb: *x\n", ["1:7"]],
     ["a: &x\n  no\nb: *x\n", ["2:3"]],
     ["a: !!str no\nb: no\n", ["2:4"]],
-    ["a: _\nb: __\nc: +_\nd: 0x_\ne: 0b_\n", []],
+    ["a: _\nb: __\nc: +_\n", []],
     ['a: 1\nb: !!str 1\nc: "1"\n', []],
     ["1: value\n", []],
     ["a: .5\nb: -.5\nc: +.5\n", []],
-    ["a: yes\u00a0\n", []],
-    ["a: \u00a0yes\n", []],
-    ["a: yes\u2003\n", []],
-    ["a: \u2003yes\n", []],
-    ["a: yes\u00a0#word\n", []],
+    ["a: yes \n", []],
+    ["a:  yes\n", []],
+    ["a: yes \n", []],
+    ["a:  yes\n", []],
+    ["a: yes #word\n", []],
     ["a: yes \t# comment\n", ["1:4"]],
     ["? key\n: yes\n  indeed\n", []],
     ["? key\n: |2\n  no\n", []],
     ["- ? key\n  : yes\n    indeed\n", []],
     ["- ? key\n  : |2\n    no\n  next: yes\n", ["4:9"]],
-    ["a: 2026-1-1\nb: 2026-01-1\nc: 2026-1-01\n", []],
     ["a: 2026-1-1 12:00:00\nb: 2026-01-01\n", ["1:4", "2:4"]],
     ["duration: 12:60:00\n", []],
+    // In block context, `:` before flow punctuation doesn't end a scalar.
+    ["key: a:,no\n", []],
+    ["a:,no\n", []],
+    // A tag on an empty node is that node's alone.
+    ["[!!str\n, yes]\n", ["2:3"]],
+    ["[!!str , yes]\n", ["1:10"]],
+    ["{!!str : yes}\n", ["1:10"]],
+    ["{!!str , yes: no}\n", ["1:10", "1:15"]],
+    ["- !!str\n- yes\n", ["2:3"]],
+    ["﻿a: yes\n", ["1:4"]],
+    ["a: yes\n...\n﻿b: no\n", ["1:4", "3:4"]],
+    ["%YAML 1.2\n---\nyes\n", ["3:1"]],
   ])("recognizes plain scalar nodes in %j", (text, positions) => {
     expect(lint(text).map(({ line, column }) => `${line}:${column}`)).toEqual(positions);
   });
 
   it("returns nothing for empty input", () => {
     expect(lint("")).toEqual([]);
+  });
+
+  it.each(["[? a\n::]", "a:,%\nx", "- a\n\n\n  b\nc: d", "[a\n, b, ? c : d]\n"])(
+    "never throws, and reports what parseAll throws on, for every prefix of %j",
+    (text) => {
+      for (let end = 0; end <= text.length; end++) {
+        const prefix = text.slice(0, end);
+        let throws = false;
+        try {
+          parseAll(prefix);
+        } catch {
+          throws = true;
+        }
+        expect(lint(prefix).some(({ rule }) => rule === "tinyaml/invalid-yaml")).toBe(throws);
+      }
+    },
+  );
+
+  it("takes time linear in the blank lines in a scalar", () => {
+    const best = (n: number) => {
+      const text = `a${"\n".repeat(n)} b`;
+      let fastest = Infinity;
+      for (let run = 0; run < 3; run++) {
+        const begin = performance.now();
+        expect(lint(text)).toEqual([]);
+        fastest = Math.min(fastest, performance.now() - begin);
+      }
+      return fastest;
+    };
+    // Four times the lines take about four times as long, not sixteen.
+    expect(best(40_000) / best(10_000)).toBeLessThan(10);
+  });
+});
+
+// The readers each message names are those that don't read the value as a
+// string, PyYAML included where Python has it.
+describe("ambiguous-value readers", () => {
+  const values = [
+    ..."y Y n N yes Yes YES no No NO on On ON off OFF oN yEs _ __ +_ hello e3 E5 e+1 .e3 -e3".split(
+      " ",
+    ),
+    ..."0o 0x 0b 0b2 0o1_7 -0o1_7 1e3_0 0b10 -0b10 +0b1 0b1_0 0b_ -0x10 +0x1F 0x1_F 0x_1 0x_".split(
+      " ",
+    ),
+    ..."-0o17 +0o7 0_ 0_1 00_7 08_1 1_ 1__0 1_000 -1_000 +1_0 1_0.5 1_0e3 1_e3 1_0.5e+3".split(" "),
+    ..."0.1_ .1_0 ._5 -.1_0 +._5 -._5 . -. 1:20 -1:20 0:20 12:30:00 12:60:00 190:20:30".split(" "),
+    ..."1_000:20 1:20.5 1:2_0 2026-11-01 2026-1-1 2026-01-1 2026-13-01 2026-01-01T12:00:00Z".split(
+      " ",
+    ),
+    "2026-01-01 12:00:00",
+    "2026-1-1 1:2:3",
+    "2026-1-1 12:00:00",
+    "2026-01-01t12:00:00.5 +01:00",
+    "2026-01-01 12:00",
+  ];
+  const kind = (value: unknown) =>
+    value instanceof Date ? "date" : typeof value === "string" ? "" : typeof value;
+  // PyYAML's type for each value, "error" where it fails.
+  const python = (() => {
+    const script = `import sys, json, yaml
+out = []
+for t in json.load(sys.stdin):
+    try:
+        out.append(type(yaml.safe_load(t)).__name__)
+    except Exception:
+        out.append("error")
+print(json.dumps(out))`;
+    try {
+      const types: string[] = JSON.parse(
+        execFileSync("python3", ["-I", "-c", script], {
+          input: JSON.stringify(values),
+          encoding: "utf8",
+          stdio: ["pipe", "pipe", "ignore"],
+        }),
+      );
+      return new Map(values.map((value, i) => [value, types[i]!]));
+    } catch {
+      return undefined;
+    }
+  })();
+  const PYTHON: Record<string, string> = {
+    str: "",
+    bool: "boolean",
+    int: "number",
+    float: "number",
+    error: "error",
+  };
+  const readers: [string, ((value: string) => string) | undefined][] = [
+    ["js-yaml 4", (value) => kind(js4.load(value))],
+    ["@std/yaml", (value) => kind(std(value))],
+    // PyYAML fails on some values it reads as a number or a date.
+    ["PyYAML", python && ((value) => PYTHON[python.get(value)!] ?? "date")],
+    ["yaml's YAML 1.1 schema", (value) => kind(yaml(value, { version: "1.1" }))],
+  ];
+
+  it.each(values)("names the readers that don't read %j as a string", (value) => {
+    expect(parseAll(value)).toEqual([value]);
+    expect(js5.load(value)).toBe(value);
+    expect(yaml(value)).toBe(value);
+    const message = lint(`- ${value}\n`)[0]?.message;
+    const differ = readers.flatMap(([name, read]) => {
+      const reads = read?.(value);
+      return reads ? [{ name, reads }] : [];
+    });
+    expect(
+      readers.filter(([name, read]) => read && message?.includes(name)).map(([name]) => name),
+    ).toEqual(differ.map(({ name }) => name));
+    if (!differ.length) return;
+    const kinds = new Set(differ.map(({ reads }) => reads).filter((reads) => reads !== "error"));
+    expect([...kinds]).toHaveLength(1);
+    expect(message).toMatch(` it as a ${[...kinds][0]}.`);
   });
 });

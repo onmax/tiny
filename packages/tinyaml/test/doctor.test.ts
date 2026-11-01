@@ -28,3 +28,25 @@ describe("Doctor cache", () => {
     }
   });
 });
+
+describe("Doctor rules", () => {
+  it("lint YAML whose plain scalars hold `:` and flow punctuation", async () => {
+    const fixture = createProjectFixture({ framework: "vite" });
+    try {
+      const { diagnostics } = await fixture.run({
+        files: {
+          "a.yaml": "[? a\n::]\n",
+          "b.yaml": "a:,%\nx\n",
+          "c.yaml": "key: a:,no\nvalue: .1_0\n",
+        },
+        extensions: [tinyaml()],
+        config: { extends: ["tinyaml/recommended"] },
+      });
+      expect(
+        diagnostics.map(({ code, sources }) => `${code} ${sources?.[0]?.replace(/.*\//, "")}`),
+      ).toEqual(["TINYAML0002 c.yaml:2:8"]);
+    } finally {
+      await fixture.dispose();
+    }
+  });
+});

@@ -222,8 +222,9 @@ function requote(text: string): string {
     const [, anchor = "", value = ""] = /^(&\S+(?: +|$))?(.*?)\s*$/.exec(
       key === undefined ? body : body.slice(entry![0].length),
     )!;
-    // Lines indented deeper than this belong to the value.
-    const indent = key === undefined ? head!.trimEnd().length - 1 : head!.length;
+    // Lines indented deeper than this belong to the value: past the `-` of
+    // a sequence entry, or from the column of a line that's only a value.
+    const indent = key === undefined ? (head!.trimEnd() || head!).length - 1 : head!.length;
     // Like yamljs, skip comment lines, even less indented ones, and stop
     // after the last line that continues the value.
     let end = i + 1;
@@ -235,6 +236,9 @@ function requote(text: string): string {
         end = j + 1;
       }
     const rest = lines.slice(i + 1, end);
+    // Outside a sequence entry, yamljs reads a line that's only a value, such
+    // as text or a directive, only when it's all its block holds.
+    if (key === undefined && !head!.includes("-") && rest.length) return text;
     let fixed = value;
     if (!/^(?:[#'[{*!]|[|>][-+\d]*(?: +#.*)?$)/.test(fixed)) {
       fixed = requoteScalar(fixed, true);

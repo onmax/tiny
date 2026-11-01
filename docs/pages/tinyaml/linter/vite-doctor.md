@@ -7,7 +7,7 @@ description: Add the tinyaml linter rules to a Vite Doctor run with tinyaml/doct
 
 ## Setup
 
-Install both packages. It needs `vite-doctor` 0.1.1 or later.
+Install both packages. It needs `vite-doctor` 0.1.1 or later. In TypeScript, it needs `moduleResolution` set to `node16`, `nodenext`, or `bundler`, as Vite Doctor does: `vite-doctor` declares `vite-doctor/config` and `vite-doctor/extension` only in its `exports`, which the legacy `node` resolution doesn't read.
 
 ```sh
 pnpm add -D tinyaml vite-doctor

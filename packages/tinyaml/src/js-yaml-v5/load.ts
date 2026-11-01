@@ -7,7 +7,7 @@
 // When a schema has such mapping tags, keys are stored under placeholder
 // names, so carriers like Set and Map still see the original keys in order.
 import * as E from "../core/codes.ts";
-import { fail, original, parse, type Engine, type Mark } from "../core/parse.ts";
+import { at, fail, original, parse, where, type Engine, type Mark } from "../core/parse.ts";
 import { exceptionAt, YAMLException } from "./error.ts";
 import { MESSAGES } from "./messages.ts";
 import { CORE_SCHEMA, type Schema } from "./schema.ts";
@@ -104,8 +104,12 @@ function parseError(
   return error;
 }
 
+// js-yaml 5 compares a limit of null as 0, and writes it as null.
+const limit = (value?: number) =>
+  value === null ? ({ valueOf: () => 0, toString: () => "null" } as unknown as number) : value;
+
 function engine(input: string, options: LoadOptions) {
-  const schema = options.schema ?? CORE_SCHEMA;
+  const schema = options.schema === undefined ? CORE_SCHEMA : options.schema;
   const defaultSeq = schema.lookupSequenceTag(`${Y}seq`);
   const defaultMap = schema.lookupMappingTag(`${Y}map`);
   // Carriers need the original keys when a mapping can get a tag other than
@@ -127,7 +131,10 @@ function engine(input: string, options: LoadOptions) {
   // The tag that built each mapping, which a merge reads it with.
   const mappings = new WeakMap<object, MappingTagDefinition>();
   const replaced = new Map<object, unknown>();
-  const aliasNames = new WeakMap<object, string>();
+  // The first alias of each value, and where its name starts in `buffer`,
+  // the parser's copy of the input.
+  const aliases = new Map<unknown, [string, number]>();
+  let buffer = "";
   // What adds the rest to each node built before it ended.
   const later = new Map<object, () => void>();
   let building = false;
@@ -151,6 +158,10 @@ function engine(input: string, options: LoadOptions) {
     throw error;
   }
 
+  // Rejects at `at` in `buffer`.
+  const rejectAt = (reason: string, at: number) =>
+    reject(reason, undefined, original(input, { buffer, position: at }));
+
   const mark = (value: unknown) => {
     if (typeof value === "object" && value !== null) built.add(value);
     return value;
@@ -158,24 +169,33 @@ function engine(input: string, options: LoadOptions) {
 
   const decode = (name: string) => (keys.has(name) ? keys.get(name) : name);
 
+  // js-yaml 5 rejects an alias of a node that hasn't ended yet, at the alias,
+  // when the node's tag finalizes it.
+  function unsupported(raw: object, tag: Collection): never {
+    const [alias, at] = aliases.get(raw)!;
+    return rejectAt(
+      `recursive alias "${alias}" is not supported for tag ${tag.tagName} because it uses finalize()`,
+      at,
+    );
+  }
+
   // Builds a node the parser made into the value `tag` makes of it. Its
-  // children are converted first, as js-yaml 5 builds bottom-up.
-  function build(tag: Collection, name: string, raw: object): unknown {
+  // children are converted first, as js-yaml 5 builds bottom-up. A node that
+  // `ended` just now had every alias of it inside it.
+  function build(tag: Collection, name: string, raw: object, ended?: boolean): unknown {
     const finalized = !tag.carrierIsResult;
-    const unsupported = () =>
-      reject(
-        `recursive alias "${aliasNames.get(raw)}" is not supported for tag ${name} because it uses finalize()`,
-        name,
-      );
     if (finalized) {
       const seen = new Set<unknown>();
-      const recursive = (value: unknown): boolean => {
-        if (value === raw) return true;
-        if (!value || typeof value !== "object" || seen.has(value)) return false;
-        seen.add(value);
-        return Object.values(value).some(recursive);
-      };
-      if (Object.values(raw).some(recursive)) unsupported();
+      // Whether a key or value in `value` reaches the node.
+      const reaches = (value: object): boolean =>
+        Object.keys(value).some((name) =>
+          [decode(name), (value as Record<string, unknown>)[name]].some(
+            (item) =>
+              item === raw ||
+              (item instanceof Object && !seen.has(item) && !!seen.add(item) && reaches(item)),
+          ),
+        );
+      if (aliases.has(raw) && (ended || reaches(raw))) unsupported(raw, tag);
     }
     const carrier = tag.create(name);
     // A recursive alias inside the node points at the raw node.
@@ -208,8 +228,11 @@ function engine(input: string, options: LoadOptions) {
     fill();
     // An alias can reach a node before it ends. js-yaml 5 fills its carrier
     // as it parses, and rejects the alias if the tag finalizes it.
-    if (parsing && aliasNames.has(raw))
-      later.set(raw, finalized ? () => Object.keys(raw).length > done && unsupported() : fill);
+    if (parsing && aliases.has(raw))
+      later.set(
+        raw,
+        finalized ? () => Object.keys(raw).length > done && unsupported(raw, tag) : fill,
+      );
     let result: unknown = carrier;
     if (finalized)
       try {
@@ -240,7 +263,7 @@ function engine(input: string, options: LoadOptions) {
         if (typed || !isObjectMap(defaultMap)) return build(defaultMap, `${Y}map`, value);
         built.add(value);
         mappings.set(value, defaultMap);
-        if (parsing && aliasNames.has(value))
+        if (parsing && aliases.has(value))
           later.set(value, () => replaced.delete(value) && convert(value));
       } else return value;
     }
@@ -266,8 +289,8 @@ function engine(input: string, options: LoadOptions) {
     messages: MESSAGES,
     bom: BOM,
     json: options.json,
-    maxDepth: options.maxDepth,
-    maxMergeKeys: options.maxTotalMergeKeys,
+    maxDepth: limit(options.maxDepth),
+    maxMergeKeys: limit(options.maxTotalMergeKeys),
     implicit(text) {
       const { value, tag } = schema.resolveImplicitScalarTag(text ?? "");
       self.tag = tag.tagName;
@@ -294,7 +317,7 @@ function engine(input: string, options: LoadOptions) {
       if (!tag) reject(`unknown ${kind} tag !<${name}>`, name);
       // The parser already made what these make, unless keys are typed.
       if (!walk && (tag === seqTag || tag === defaultMap)) return value;
-      return build(tag, name, value as object);
+      return build(tag, name, value as object, true);
     },
     key(key) {
       if (typed) {
@@ -330,19 +353,26 @@ function engine(input: string, options: LoadOptions) {
     },
     // Then the parser keeps their order too.
     allKeys: typed,
-    // Each document has its own anchors.
+    // Each document has its own anchors. js-yaml 5 points at an alias's name.
     alias(name, anchors) {
       const target = anchors.get(name);
-      if (typeof target === "object" && target !== null) aliasNames.set(target, name);
+      const start = at() - name.length;
+      if (!aliases.has(target)) {
+        buffer ||= where()!.buffer;
+        aliases.set(target, [name, start]);
+      }
       if (anchors !== aliasDocument) aliasCount = 0;
       aliasDocument = anchors;
-      const max = options.maxAliases ?? -1;
-      if (max !== -1 && ++aliasCount > max) reject(`aliases exceeded maxAliases (${max})`);
+      // A limit of undefined is none, and of null is 0.
+      const max = options.maxAliases!;
+      if (max !== -1 && ++aliasCount > max) rejectAt(`aliases exceeded maxAliases (${max})`, start);
     },
     // js-yaml 5 merges any mapping, through its tag, and nothing else. The
     // parser rejects what isn't an object, and arrays.
-    merge(source) {
+    merge(source, _anchors, map) {
       let sourceKeys: Iterable<unknown>;
+      // A mapping that merges itself is one that hasn't ended.
+      if (source === map && defaultMap && !defaultMap.carrierIsResult) unsupported(map, defaultMap);
       // js-yaml 5 has built the mapping by now, with keys its tag may change.
       later.get(source as object)?.();
       if (typed && isPlainObject(source) && !isObjectMap(defaultMap)) source = convert(source);
@@ -388,7 +418,7 @@ function probe(input: string, options: LoadOptions): Engine {
     messages: MESSAGES,
     bom: BOM,
     json: true,
-    maxDepth: options.maxDepth,
+    maxDepth: limit(options.maxDepth),
     maxMergeKeys: -1,
     implicit: () => ({}),
     explicit: (value, _tag, kind) => (kind === "sequence" || kind === "mapping" ? value : {}),
@@ -401,7 +431,14 @@ function loadDocuments(input: string, options?: LoadOptions): unknown[] {
   // js-yaml 5 spreads the options over its defaults once, so null works too.
   options = { ...options };
   const source = String(input);
-  const use = engine(source, options);
+  let use;
+  try {
+    use = engine(source, options);
+  } catch (error) {
+    // js-yaml 5 reads the schema at the first node, once the stream parses.
+    if (parse(source, probe(source, options)).length) throw error;
+    return [];
+  }
   let docs;
   try {
     docs = parse(source, use);

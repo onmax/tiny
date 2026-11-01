@@ -3,7 +3,7 @@ title: Linter
 description: Check YAML the way tinyaml loads it, from the command line, as a library, in ESLint or in Vite Doctor.
 ---
 
-The linter checks YAML files the way tinyaml loads them. It reports YAML tinyaml can't load, with the line and column, and plain values that load as strings here but that other YAML readers take for a boolean, null, a number, or a date.
+The linter checks YAML files the way tinyaml loads them. It reports YAML tinyaml can't load, with the line and column, and plain values that load as strings here but that other YAML readers take for a boolean, a number, or a date.
 
 It runs from the command line, as a library, as an [ESLint](/tinyaml/linter/eslint/) plugin, or as a [Vite Doctor](/tinyaml/linter/vite-doctor/) extension. It all ships with tinyaml. The command line and the library need nothing else, and the ESLint plugin and the Vite Doctor extension need ESLint or Vite Doctor installed.
 
@@ -17,7 +17,7 @@ pnpm tinyaml-lint "**/*.{yaml,yml}"
 It prints one line per problem and exits with 1 if there are any:
 
 ```txt
-config.yaml:1:8 tinyaml/ambiguous-value `no` loads as the string "no", but YAML 1.1 readers such as PyYAML read it as a boolean. Quote it to keep the string, or write `true` or `false`.
+config.yaml:1:8 tinyaml/ambiguous-value `no` loads as the string "no", but PyYAML and yaml's YAML 1.1 schema read it as a boolean. Quote it to keep the string, or write `true` or `false`.
 site.yaml:3:13 tinyaml/invalid-yaml tinyaml can't load this YAML: duplicated mapping key. Fix the YAML at this position.
 ```
 
@@ -58,7 +58,18 @@ title: Hello
 
 ### `tinyaml/ambiguous-value`
 
-tinyaml reads YAML with the YAML 1.2 core schema. Other readers turn more plain values into something else: js-yaml's default schema reads `0b10`, `1_000`, and `2026-11-01` as numbers and dates, and YAML 1.1 readers such as PyYAML read `yes`, `no`, `on`, and `off` as booleans. The same file gives different data depending on who reads it. Values tinyaml already parses as booleans, null, or numbers, such as `True`, `~`, `0x10`, and `.inf`, are not reported.
+tinyaml reads YAML with the YAML 1.2 core schema, as js-yaml 5 and the `yaml` package do by default. Other readers turn more plain values into something else, so the same file gives different data depending on who reads it:
+
+| Values                              | Read as   | By                                                   |
+| ----------------------------------- | --------- | ---------------------------------------------------- |
+| `yes`, `no`, `on`, `off`            | a boolean | PyYAML, yaml's YAML 1.1 schema                       |
+| `y`, `n`                            | a boolean | yaml's YAML 1.1 schema                               |
+| `0b10`, `-0x10`                     | a number  | js-yaml 4, @std/yaml, PyYAML, yaml's YAML 1.1 schema |
+| `1_000`, `.1_0`                     | a number  | @std/yaml, PyYAML, yaml's YAML 1.1 schema            |
+| `12:30:00`                          | a number  | PyYAML, yaml's YAML 1.1 schema                       |
+| `2026-11-01`, `2026-11-01 12:00:00` | a date    | js-yaml 4, @std/yaml, PyYAML, yaml's YAML 1.1 schema |
+
+Each warning names the readers that read its value otherwise. yaml's YAML 1.1 schema is the `yaml` package with `version: "1.1"`. Values tinyaml already parses as booleans, null, or numbers, such as `True`, `~`, `0x10`, and `.inf`, are not reported.
 
 ```yaml
 # ❌ a string here, a boolean in PyYAML

@@ -30,7 +30,7 @@ pnpm eslint .
 
 ```txt
 config.yaml
-  1:8  warning  `no` loads as the string "no", but YAML 1.1 readers such as PyYAML read it as a boolean. Quote it to keep the string, or write `true` or `false`  tinyaml/ambiguous-value
+  1:8  warning  `no` loads as the string "no", but PyYAML and yaml's YAML 1.1 schema read it as a boolean. Quote it to keep the string, or write `true` or `false`  tinyaml/ambiguous-value
 
 site.yaml
   2:10  error  tinyaml can't load this YAML: mapping keys must be strings, numbers, booleans or null. Fix the YAML at this position  tinyaml/invalid-yaml

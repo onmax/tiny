@@ -3,13 +3,23 @@
 // option sets: the same value, or both throwing the same kind of error, a
 // YAMLParseError with the same code. The differences are listed below,
 // exactly; a new one, or a listed one that's gone, fails the run. Each
-// side's outcome on them is recorded in scripts/baselines/yaml-suite.json
-// (see baseline.ts), per option set, and one that changes fails the run too.
+// side's outcome on them, and on every case both reject with errors whose
+// position or message differ, is recorded in scripts/baselines/yaml-suite.json
+// (see baseline.ts), per option set, each error with its name, code,
+// position and message, and one that changes fails the run too.
 // Usage: node --no-warnings scripts/yaml-suite.ts [-v] [--update]
 import * as yaml from "yaml";
 import { parse, YAMLError, type ParseOptions } from "../src/yaml/index.ts";
-import { Baseline, describe, describeError } from "./baseline.ts";
-import { equal, expectList, suiteCases, yamlOnPurpose } from "./support.ts";
+import { Baseline, describe } from "./baseline.ts";
+import {
+  equal,
+  errorDifference,
+  expectList,
+  suiteCases,
+  YAML_ERROR_GROUPS,
+  yamlError,
+  yamlOnPurpose,
+} from "./support.ts";
 
 const optionSets: Record<string, ParseOptions> = {
   default: {},
@@ -82,21 +92,21 @@ const UNIQUE_KEYS = ["X38W: different value"];
 
 type Outcome =
   | { ok: true; value: unknown }
-  | { ok: false; error: string; message: string; crash: boolean };
+  | { ok: false; error: string; fields: Record<string, unknown>; crash: boolean };
 function outcome(f: () => unknown, type: typeof YAMLError | typeof yaml.YAMLError): Outcome {
   try {
     return { ok: true, value: f() };
   } catch (e) {
-    const { name, code, message } = e as { name?: string; code?: string; message?: string };
+    const { name, code } = e as { name?: string; code?: string };
     return {
       ok: false,
       error: `${name} ${code ?? ""}`,
-      message: `${name} ${code ?? ""}: ${message ?? String(e)}`,
+      fields: yamlError(e),
       crash: !yamlOnPurpose(e, type),
     };
   }
 }
-const record = (o: Outcome) => (o.ok ? describe(o.value) : describeError(o.message));
+const record = (o: Outcome) => (o.ok ? describe(o.value) : `! ${describe(o.fields)}`);
 
 const show = (o: Outcome) =>
   o.ok
@@ -110,6 +120,8 @@ let total = 0;
 let same = 0;
 for (const [label, options] of Object.entries(optionSets)) {
   const cats: Record<string, number> = {};
+  // Cases both reject, by how the errors differ.
+  const errors = new Map<string, number>();
   const found: string[] = [];
   const baseline = new Baseline("yaml-suite", label, cases.length);
   for (const [i, { id, input }] of cases.entries()) {
@@ -127,20 +139,34 @@ for (const [label, options] of Object.entries(optionSets)) {
               ? "same"
               : "other error code"
             : `only ${expected.ok ? "tinyaml" : "yaml"} throws`;
+    const differs =
+      !expected.ok && !actual.ok
+        ? errorDifference(YAML_ERROR_GROUPS, expected.fields, actual.fields)
+        : undefined;
     cats[k] = (cats[k] ?? 0) + 1;
     total++;
-    if (k === "same") {
+    if (differs) errors.set(differs.kind, (errors.get(differs.kind) ?? 0) + 1);
+    if (k === "same" && !differs) {
       same++;
       continue;
     }
-    found.push(`${id}: ${k}`);
-    baseline.add(i, `${id} ${k}`, input, undefined, {
-      yaml: record(expected),
-      tinyaml: record(actual),
-    });
+    if (k !== "same") found.push(`${id}: ${k}`);
+    baseline.add(
+      i,
+      `${id} ${differs?.kind ?? k}`,
+      input,
+      undefined,
+      differs
+        ? { yaml: describe(differs.sides[0]), tinyaml: describe(differs.sides[1]) }
+        : { yaml: record(expected), tinyaml: record(actual) },
+    );
     if (process.argv[2] === "-v") console.log(label, id, show(expected), "|", show(actual));
   }
-  console.log(label.padEnd(18), JSON.stringify(cats));
+  console.log(
+    label.padEnd(18),
+    JSON.stringify(cats),
+    `errors that differ: ${[...errors].map(([kind, n]) => `${n} in ${kind}`).join(", ") || "none"}`,
+  );
   const known =
     label === "json"
       ? JSON_KNOWN
@@ -153,4 +179,4 @@ for (const [label, options] of Object.entries(optionSets)) {
   expectList(`${label}: cases that differ from yaml`, found, known);
   baseline.finish();
 }
-console.log(`${same}/${total} agree`);
+console.log(`${same}/${total} agree, errors and all`);

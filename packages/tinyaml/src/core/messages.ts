@@ -1,19 +1,19 @@
 // The shared parser's errors in plain English, for tinyaml's own API and
 // tinyaml/yamljs; see codes.ts. A line one of them never raises is empty in
-// its mode's build: yamljs has no depth or merged keys limit and allows
-// duplicate keys, and neither takes warnings. In source, the mode flags are
-// all false when this runs, so every line is there.
+// its mode's build: yamljs has no depth or merged keys limit, allows
+// duplicate keys and null bytes, and neither takes warnings. In source, the
+// mode flags are all false when this runs, so every line is there.
 import { lenient, spec } from "./mode.ts";
 
 export const MESSAGES = `${lenient ? "" : "nesting exceeds maxDepth (%s)"}
 ${lenient ? "" : "a comment needs white space before it"}
 ${lenient ? "" : "expected the end of the line"}
-null byte in input
+${lenient ? "" : "null byte in input"}
 ${spec ? "" : "empty directive name"}
 repeated %YAML directive
 %YAML takes one argument
 bad %YAML version
-
+${spec ? "" : "unsupported %YAML version"}
 
 %TAG takes two arguments
 bad %TAG handle

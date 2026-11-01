@@ -1,3 +1,5 @@
+import { MESSAGES } from "./core/messages.ts";
+import { at as position, parse, where } from "./core/parse.ts";
 import { parseAll } from "./index.ts";
 
 export type Rule = "tinyaml/invalid-yaml" | "tinyaml/ambiguous-value";
@@ -30,179 +32,105 @@ export const rules: Record<Rule, RuleInfo> = {
   },
 };
 
-// Plain scalars that load as strings here but as something else in js-yaml's default
-// schema or in YAML 1.1 readers such as PyYAML, with what those readers make of them and the fix.
-const AMBIGUOUS: [RegExp, string, string][] = [
+const DATE =
+  /^\d{4}-\d\d-\d\d$|^\d{4}-\d\d?-\d\d?(?:[Tt]|[ \t]+)\d\d?:\d\d:\d\d(?:\.\d*)?(?:[ \t]*(?:Z|[-+]\d\d?(?::\d\d)?))?$/;
+
+// What other readers make of a plain scalar: each one's patterns, from its
+// source, for what it reads as a boolean, a number or a date. PyYAML then
+// fails on some, such as `0x_` and `2026-13-01`. Of the values tinyaml reads
+// as strings, js-yaml 5 and yaml's default YAML 1.2 schema read every one as
+// a string too.
+const READERS: [string, (RegExp | undefined)[]][] = [
+  ["js-yaml 4", [undefined, /^[-+]?0b[01]+$|^[-+]0(?:x[\da-fA-F]+|o[0-7]+)$/, DATE]],
   [
-    /^(?:y|Y|yes|Yes|YES|n|N|no|No|NO|on|On|ON|off|Off|OFF)$/,
-    "YAML 1.1 readers such as PyYAML read it as a boolean",
-    "Quote it to keep the string, or write `true` or `false`.",
+    "@std/yaml",
+    [
+      undefined,
+      /^[-+]?0(?:b[01_]*[01]|x[\da-fA-F_]*[\da-fA-F]|[0-7_]*[0-7])$|^(?:[-+]?(?:0|[1-9][\d_]*)(?:\.[\d_]*)?(?:[eE][-+]?\d+)?|\.[\d_]+(?:[eE][-+]?\d+)?)$(?<!_)/,
+      DATE,
+    ],
   ],
   [
-    /^(?:[-+]?(?:0x[\da-fA-F][\da-fA-F_]*|0o[0-7][0-7_]*|0b[01][01_]*|\.(?:inf|Inf|INF)|\d[\d_]*(?:\.[\d_]*)?(?:[eE][-+]?\d+)?)|\.(?:nan|NaN|NAN))$/,
-    "js-yaml's default schema reads it as a number",
-    "Quote it to keep the string, or write it as a JSON number.",
+    "PyYAML",
+    [
+      /^(?:yes|Yes|YES|no|No|NO|on|On|ON|off|Off|OFF)$/,
+      /^[-+]?(?:\d[\d_]*(?::[0-5]?\d)*\.[\d_]*(?:[eE][-+]\d+)?|0b[01_]+|0[0-7_]+|0|[1-9][\d_]*(?::[0-5]?\d)*|0x[\da-fA-F_]+)$|^\.\d[\d_]*(?:[eE][-+]\d+)?$/,
+      DATE,
+    ],
   ],
   [
-    /^[-+]?\d[\d_]*(?::[0-5]?\d)+(?:\.[\d_]*)?$/,
-    "js-yaml's YAML 1.1 schema reads it as a sexagesimal number",
-    "Quote it to keep the string, or write it as a JSON number.",
-  ],
-  [
-    /^(?:\d{4}-\d\d-\d\d|\d{4}-\d\d?-\d\d?(?:[Tt]|[ \t]+)\d\d?:\d\d:\d\d(?:\.\d*)?(?:[ \t]*(?:Z|[-+]\d\d?(?::\d\d)?))?)$/,
-    "js-yaml's default schema reads it as a date",
-    "Quote it so every reader gets the same string.",
+    "yaml's YAML 1.1 schema",
+    [
+      /^(?:[yYnN]|[Yy]es|YES|[Nn]o|NO|[Oo]n|ON|[Oo]ff|OFF)$/,
+      /^[-+]?(?:0b[01_]+|0x[\da-fA-F_]+|\d[\d_]*(?::[0-5]?\d)*(?:\.[\d_]*)?|(?:\d[\d_]*)?(?:\.[\d_]*)?[eE][-+]?\d+|\.[\d_]*)$/,
+      /^\d{4}-\d\d?-\d\d?(?:(?:[Tt]|[ \t]+)\d\d?:\d\d?:\d\d?(?:\.\d+)?(?:[ \t]*(?:Z|[-+][012]?\d(?::\d\d)?))?)?$/,
+    ],
   ],
 ];
+// Each kind of value in READERS' patterns, with the fix.
+const KINDS: [string, string][] = [
+  ["boolean", "Quote it to keep the string, or write `true` or `false`."],
+  ["number", "Quote it to keep the string, or write it as a JSON number."],
+  ["date", "Quote it so every reader gets the same string."],
+];
+const names = new Intl.ListFormat("en");
 
-// Walk complete nodes, rather than matching words inside comments or scalars. The
-// parser validates the stream first; this scan only needs lexical boundaries.
-function* plainScalars(text: string) {
-  const source = text.replace(/\r\n?/g, "\n");
-  let at = source.startsWith("\uFEFF") ? 1 : 0;
-  let line = 1;
-  let start = at;
-  let flow = 0;
-  let parentIndent = -1;
-  let nodeColumn = 0;
-  let tagged = false;
-  let quoted = false;
-  const advance = () => {
-    if (source[at++] === "\n") {
-      line++;
-      start = at;
-    }
-  };
-  const lineEnd = (offset: number) => {
-    const end = source.indexOf("\n", offset);
-    return end < 0 ? source.length : end;
-  };
-  const separated = (offset: number) =>
-    offset >= source.length || /[ \t\n,[\]{}]/.test(source[offset]!);
-  const marker = (offset: number) =>
-    /^(?:---|\.\.\.)(?:[ \t\n]|$)/.test(source.slice(offset, offset + 4));
+const blank = (ch: string | undefined) => ch === " " || ch === "\t" || ch === "\n";
 
-  while (at < source.length) {
-    const ch = source[at]!;
-    if (/[ \t\n]/.test(ch)) {
-      advance();
-      continue;
-    }
-    if (ch === "#" || (at === start && ch === "%")) {
-      at = lineEnd(at);
-      continue;
-    }
-    if (at === start && marker(at)) {
-      at += 3;
-      parentIndent = -1;
-      tagged = false;
-      continue;
-    }
-    if (ch === "&" || ch === "!" || ch === "*") {
-      if (ch === "!") tagged = true;
-      if (source.startsWith("!<", at)) at = source.indexOf(">", at) + 1;
-      else while (at < source.length && !separated(at)) at++;
-      if (ch === "*") tagged = false;
-      continue;
-    }
-    if (ch === "[" || ch === "{") {
-      flow++;
-      at++;
-      tagged = false;
-      quoted = false;
-      continue;
-    }
-    if (ch === "]" || ch === "}" || ch === ",") {
-      if (ch !== ",") flow--;
-      quoted = ch !== ",";
-      at++;
-      parentIndent = -1;
-      continue;
-    }
-    if ((ch === "-" || ch === "?") && separated(at + 1)) {
-      parentIndent = at - start;
-      at++;
-      continue;
-    }
-    if (ch === ":" && (quoted || separated(at + 1))) {
-      // An explicit value on its own line is indented with the mapping,
-      // independently of the key after `?` on the preceding line.
-      parentIndent = /^[ \t]*$/.test(source.slice(start, at)) ? at - start : nodeColumn;
-      quoted = false;
-      at++;
-      continue;
-    }
-    nodeColumn = at - start;
-    quoted = ch === '"' || ch === "'";
-    if (ch === '"' || ch === "'") {
-      at++;
-      while (at < source.length) {
-        if (source[at] === ch) {
-          at++;
-          if (ch !== "'" || source[at] !== "'") break;
-        } else if (ch === '"' && source[at] === "\\") advance();
-        advance();
-      }
-    } else if (ch === "|" || ch === ">") {
-      const header = source.slice(at, lineEnd(at));
-      const explicit = /[1-9]/.exec(header.split("#")[0]!);
-      let contentIndent = explicit ? Math.max(0, parentIndent) + Number(explicit[0]) : undefined;
-      at = lineEnd(at);
-      if (at < source.length) advance();
-      while (at < source.length) {
-        const end = lineEnd(at);
-        const content = source.slice(at, end);
-        if (/[^ \t]/.test(content)) {
-          const indent = /^ */.exec(content)![0].length;
-          if (marker(at) || indent <= parentIndent || indent < (contentIndent ?? indent)) break;
-          contentIndent ??= indent;
-        }
-        at = end;
-        if (at < source.length) advance();
-      }
-    } else {
-      const from = at;
-      const scalarLine = line;
-      const column = at - start + 1;
-      while (at < source.length) {
-        const next = source[at]!;
-        if (
-          (flow && /[[\]{},]/.test(next)) ||
-          (next === ":" && separated(at + 1)) ||
-          (next === "#" && /[ \t]/.test(source[at - 1]!))
-        )
-          break;
-        if (next === "\n") {
-          let following = at + 1;
-          while (
-            following < source.length &&
-            /^[ \t]*$/.test(source.slice(following, lineEnd(following)))
-          )
-            following = lineEnd(following) + 1;
-          const indent = /^ */.exec(source.slice(following))![0].length;
-          const first = source[following + indent];
-          if (
-            !first ||
-            first === "#" ||
-            marker(following) ||
-            (flow ? /[\]{} ,]/.test(first) : indent <= parentIndent)
-          )
-            break;
-        }
-        advance();
-      }
-      if (!tagged) {
-        const raw = source.slice(from, at).replace(/[ \t\n]+$/, "");
-        // Let the parser fold complete multiline plain scalars while keeping
-        // the original start position for the diagnostic.
-        const token = raw.includes("\n") ? parseAll(raw)[0] : raw;
-        if (typeof token === "string") yield { token, line: scalarLine, column };
-      }
-    }
-    parentIndent = -1;
-    tagged = false;
+// The readers that read `token` as something else, what as, and the fix.
+function reading(token: string) {
+  // What each pattern starts with.
+  if (!/^[-+.\deEnoyNOY]/.test(token)) return;
+  for (const [kind, [name, fix]] of KINDS.entries()) {
+    const readers = READERS.filter(([, patterns]) => patterns[kind]?.test(token));
+    if (readers.length) return { name, fix, readers: readers.map(([reader]) => reader) };
   }
 }
+
+// Each plain scalar without a tag that some reader reads as something else,
+// as the parser reads it, with where it starts.
+function plainScalars(text: string) {
+  const found: { token: string; line: number; column: number; read: Reading }[] = [];
+  let source = "";
+  let line = 1;
+  let lineStart = 0;
+  const implicit = (token: string | null) => {
+    const read = token && reading(token);
+    if (!read) return token;
+    // Where the parser reads, in its copy of the input.
+    source ||= where()!.buffer;
+    // The parser is past the scalar, and maybe the blanks after it. The
+    // scalar is the source's text with only the blanks inside it folded.
+    let from = position();
+    while (blank(source[from - 1])) from--;
+    for (let i = token.length; i;)
+      if (!blank(token[i - 1])) {
+        if (token[--i] !== source[--from]) return token;
+      } else {
+        while (blank(token[i - 1])) i--;
+        while (blank(source[from - 1])) from--;
+      }
+    for (let end; (end = source.indexOf("\n", lineStart)) >= 0 && end < from; line++)
+      lineStart = end + 1;
+    found.push({ token, line, column: from - lineStart + 1, read });
+    return token;
+  };
+  try {
+    parse(text, {
+      tag: "",
+      messages: MESSAGES,
+      spec: true,
+      json: true,
+      implicit,
+      explicit: (value) => value,
+      key: String,
+      verbatim() {},
+      error: (reason) => new Error(reason),
+    });
+  } catch {}
+  return found;
+}
+type Reading = NonNullable<ReturnType<typeof reading>>;
 
 /** Lints one YAML stream. Never throws. */
 export function lint(text: string): Diagnostic[] {
@@ -223,20 +151,22 @@ export function lint(text: string): Diagnostic[] {
     ];
   }
 
-  const found: Diagnostic[] = [];
-  for (const { token, line, column } of plainScalars(text)) {
-    const reading = AMBIGUOUS.find(([pattern]) => pattern.test(token));
-    if (!reading || typeof parseAll(token)[0] !== "string") continue;
-    found.push({
+  const found = plainScalars(text);
+  // The patterns match some values tinyaml reads as numbers too. It reads
+  // them all at once, as a sequence.
+  const values = found.length
+    ? (parseAll(found.map(({ token }) => `- ${token}`).join("\n"))[0] as unknown[])
+    : [];
+  return found
+    .filter((_, i) => typeof values[i] === "string")
+    .map(({ token, line, column, read: { name, fix, readers } }) => ({
       rule: "tinyaml/ambiguous-value",
       severity: "warn",
       line,
       column,
-      message: `\`${token}\` loads as the string "${token}", but ${reading[1]}.`,
-      fix: reading[2],
-    });
-  }
-  return found;
+      message: `\`${token}\` loads as the string "${token}", but ${names.format(readers)} read${readers.length > 1 ? "" : "s"} it as a ${name}.`,
+      fix,
+    }));
 }
 
 export interface LintedFile {

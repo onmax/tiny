@@ -213,6 +213,23 @@ export const YAML_EXCEPTION_GROUPS = {
 };
 
 /**
+ * What an error the `yaml` package or tinyaml/yaml throws says, field by
+ * field: a YAMLError's name, code, position, line positions and message, of
+ * which other errors have the name and message.
+ */
+export function yamlError(error: unknown): Record<string, unknown> {
+  const { name, code, pos, linePos, message } = Object(error);
+  return { name, code, pos, linePos, message };
+}
+
+/** The groups errorDifference compares yamlError's fields in. */
+export const YAML_ERROR_GROUPS = {
+  code: ["name", "code"],
+  position: ["pos", "linePos"],
+  message: ["message"],
+};
+
+/**
  * How two errors that both sides threw differ, as records of the fields
  * their library exposes: `groups` names sets of fields, such as
  * `{ message: ["reason"], position: ["position", "line", "column"] }`.

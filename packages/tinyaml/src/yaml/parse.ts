@@ -90,13 +90,13 @@ let anchored: Use[] = [];
 type Later = [error: Error, at: number, aliases: number, map?: object];
 let later: Later[] = [];
 // How many documents yaml has seen start, where the second one starts, in
-// the parser's copy of the input, and how many warnings came before the
-// first one ended. Unlike
+// the parser's copy of the input, and whether directives start it, and how
+// many warnings came before the first one ended. Unlike
 // the shared parser, yaml counts an empty one for each `...` with no
 // document open. -Infinity where it reports no second document: when it's
 // to be silent, or once it has.
 let opened = 0;
-let second: Pos = { buffer: "", position: 0 };
+let second: Pos & { directives?: boolean } = { buffer: "", position: 0 };
 let kept = 0;
 const STR = `${Y}str`;
 // The engine's tag after a plain scalar that a tag would read only as a key.
@@ -396,7 +396,7 @@ function merger(
   ];
 }
 
-function engine(options: ParseOptions, version: unknown, directive?: string): Engine {
+function engine(options: ParseOptions, version: unknown): Engine {
   const [tags, compat, resolveKnownTags] = schemaOf(options, version);
   const knownTags = resolveKnownTags ? known : [];
   const max = options.maxAliasCount;
@@ -515,7 +515,7 @@ function engine(options: ParseOptions, version: unknown, directive?: string): En
   excess = check;
   anchored = uses;
   later = [];
-  opened = options.logLevel === "silent" ? -Infinity : 0;
+  opened = 0;
   const self: Engine = {
     tag: "",
     messages: MESSAGES,
@@ -555,10 +555,13 @@ function engine(options: ParseOptions, version: unknown, directive?: string): En
       return merge(source, anchors, map, value);
     },
     // yaml reads on to the end of the second document, and then rejects
-    // the source.
+    // the source. To be silent, it converts the first and reads none after.
     document(position, ends) {
       if (!ends) {
-        if (opened++ === 1) second = { buffer: where()!.buffer, position };
+        if (opened++ === 1) {
+          if (options.logLevel === "silent") return (opened = -Infinity);
+          second = { buffer: where()!.buffer, position, directives: ends === false };
+        }
       } else if (opened < 2) kept = warnings.length;
       else if (opened < 3 && !LONE.test(source)) throw multiple();
     },
@@ -693,11 +696,11 @@ function engine(options: ParseOptions, version: unknown, directive?: string): En
       if (code === E.ANCHOR_COLON) return colon("Anchor", mark);
       const { buffer, position } = mark;
       const version = code === E.YAML_UNSUPPORTED;
-      const message = version
-        ? `Unsupported YAML version ${directive}`
-        : `Unknown directive %${reason}`;
       const start = buffer.lastIndexOf("\n", position - 2) + 1;
       const end = start + /^[^\n]*?(?=[ \t]*(?:[ \t]#|\n))/.exec(buffer.slice(start))![0].length;
+      const message = version
+        ? `Unsupported YAML version ${buffer.slice(start + 5, end).trim()}`
+        : `Unknown directive %${reason}`;
       const at = { buffer, position: start + (version ? 6 : 0) };
       report(true, "BAD_DIRECTIVE", message, at, end);
     },
@@ -767,14 +770,17 @@ export function parse(src: string, reviver?: Reviver | ParseOptions, options?: P
           : directive
             ? options.version || "1.2"
             : options.version;
-      const use = engine(options, version, directive);
+      const use = engine(options, version);
       try {
         docs = parseDocs(src, use);
       } catch (error) {
         // yaml reports no error from the second document on, but where a
-        // `]` or `}` starts it, which it gives the first.
+        // `]` or `}` starts it without directives, which it gives the first.
         if (opened > 1 && !LONE.test(src)) {
-          if (/^(?:---)?(?:\s|[!&]\S*|#.*)*[\]}]/.test(second.buffer.slice(second.position)))
+          if (
+            !second.directives &&
+            /^(?:---)?(?:\s|[!&]\S*|#.*)*[\]}]/.test(second.buffer.slice(second.position))
+          )
             warnings.length = kept;
           else throw multiple();
         }

@@ -6,7 +6,8 @@
 // purpose is a crash; so are the warnings each side emits during its call.
 // Each input where they differ, another value, an error from one side only,
 // an error that differs (the kind names the fields), or other warnings, is
-// recorded with its options and both outcomes in
+// recorded with its options and both outcomes, each error with all those
+// fields, in
 // scripts/baselines/yaml-fuzz.json (see baseline.ts). Warnings are compared
 // on every input: where something else differs too, the record's kind says
 // so and it holds both sides' warnings. An unrecorded difference, a recorded
@@ -29,6 +30,8 @@ import {
   seedArg,
   suiteCases,
   withBreaks,
+  YAML_ERROR_GROUPS,
+  yamlError,
   yamlOnPurpose,
 } from "./support.ts";
 
@@ -91,17 +94,12 @@ const optionSets: ParseOptions[] = [
 // string when it turns a collection key into a string; tinyaml can only
 // approximate the key in it, since it never sees the key's source, so only
 // the text before the key counts.
-function fields(error: unknown): Record<string, unknown> {
-  if (typeof error === "string") return { warning: error.split(":")[0] };
-  const { name, code, pos, linePos, message } = error as YAMLError;
-  return { name, code, pos, linePos, message };
-}
-const GROUPS = { code: ["name", "code"], position: ["pos", "linePos"], message: ["message"] };
+const fields = (error: unknown): Record<string, unknown> =>
+  typeof error === "string" ? { warning: error.split(":")[0] } : yamlError(error);
 
 type Result = {
   ok: boolean;
   value?: unknown;
-  error?: string;
   fields?: Record<string, unknown>;
   crash?: boolean;
   warnings: Record<string, unknown>[];
@@ -119,9 +117,8 @@ function attempt(
   try {
     return { ok: true, value: parse(input, options as never), warnings };
   } catch (error) {
-    const { name, code } = error as { name?: string; code?: string };
     const crash = !yamlOnPurpose(error, type);
-    return { ok: false, error: `${name} ${code ?? ""}`, fields: fields(error), crash, warnings };
+    return { ok: false, fields: fields(error), crash, warnings };
   } finally {
     Object.defineProperty(process, "emitWarning", emit);
   }
@@ -152,7 +149,8 @@ const labels: Record<keyof typeof counts, string> = {
 // Inputs both reject, by how the errors differ.
 const errors = new Map<string, number>();
 const tried = new Set<string>();
-const show = (r: Result) => (r.ok ? describe(r.value) : `! ${r.crash ? "CRASH " : ""}${r.error}`);
+const show = (r: Result) =>
+  r.ok ? describe(r.value) : `! ${r.crash ? "CRASH " : ""}${describe(r.fields)}`;
 expectAliases(
   ALIASED,
   (text) => yaml.parse(text),
@@ -204,7 +202,7 @@ for (let i = 0; i < iterations; i++) {
   if (actual.crash) kind = "crash";
   else if (expected.ok && actual.ok) kind = equal(expected.value, actual.value) ? "same" : "value";
   else if (!expected.ok && !actual.ok) {
-    differs = errorDifference(GROUPS, expected.fields!, actual.fields!);
+    differs = errorDifference(YAML_ERROR_GROUPS, expected.fields!, actual.fields!);
     if (!differs) kind = "sameError";
     else errors.set(differs.kind, (errors.get(differs.kind) ?? 0) + 1);
   } else kind = expected.ok ? "tinyamlThrows" : "yamlThrows";

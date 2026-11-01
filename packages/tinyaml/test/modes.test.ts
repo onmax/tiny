@@ -117,6 +117,7 @@ const DROP_INS: [string, Read, Read, Record<string, Case[]>][] = [
       "maxAliasCount 100 by default": [aliases(99), aliases(100)],
       "warnings (warns)": ["%FOO\n--- a"],
       "keys that may end on a later line (lines)": ["{a\n: b}"],
+      "decoded tags (repeats)": ["!!%69nt 1", "%TAG !e! tag:e,2000:\n--- !e!a%21 x"],
       "no duplicate keys (first)": ["a: 1\na: 2"],
     },
   ],

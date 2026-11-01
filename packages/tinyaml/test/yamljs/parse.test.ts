@@ -112,6 +112,31 @@ describe("parse", () => {
     same("a: 1\n---\nb: 2", "---\na: 1\n...\n", "%YAML 1.2\na: 1", "--- %YAML:1.0\nfoo: 1");
   });
 
+  it("fails on a line that's only a value in a block of several, a directive too", () => {
+    for (const text of [
+      "%YAML  1.2\n---\na: 1",
+      "%YAML\t2.0\na: 1",
+      "%TAG ! x\n- a",
+      "%FOO bar\na: 1",
+      "foo\na: 1",
+      "a:\n  %x\n  b: 1",
+    ]) {
+      expect(() => yamljs.parse(text), text).toThrow("Unable to parse.");
+      expect(() => parse(text), text).toThrow(ParseException);
+    }
+    same("%YAML  2.0", "%YAML\t2.0\n", "a:\n  @foo\nb: 1");
+  });
+
+  it("reads null bytes and other control characters as text", () => {
+    same(
+      "foo\0bar",
+      "a\0b: [c\0, {d: e\0}]",
+      "- 'a\0b'\n- \"a\0\x01\"\n- \0",
+      "a: |\n  x\0y\nb: >\n  \x01\n",
+      "a: 1 # c\0\n# \0\n",
+    );
+  });
+
   it("gives null for empty documents", () => {
     expect(parse("")).toBeNull();
     expect(parse("# just a comment\n")).toBeNull();

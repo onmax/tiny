@@ -112,6 +112,16 @@ describe("parse", () => {
       "a\n---\n- x\n- y\nz\n",
       "...\n%YAML 1.2\n?",
       "a\n...\n%FOO\n---\n!x b\n",
+      // Errors in the directives of a second document, or after them.
+      "a\n...\n%YAML bad\n---\nb",
+      "a\n...\n%YAML bad\n%FOO\n---\nb",
+      "a\n...\n%TAG ! x\n%TAG ! y\n#c\n\n---\nb",
+      "a\n...\n%YAML 1.2\n---\n]",
+      "a\n...\n%FOO\n--- !x ]",
+      // Directives no document follows.
+      "a\n...\n%FOO\n",
+      "a\n...\n%YAML 1.3 # c\n",
+      "...\n%FOO\n#c",
     ])
       for (const options of [{}, { prettyErrors: false }])
         expect(outcome(parse, input, options), JSON.stringify(input)).toEqual(
@@ -128,11 +138,30 @@ describe("parse", () => {
       expect(outcome(parse, input, { schema: "json" }), JSON.stringify(input)).toEqual(
         outcome(yaml.parse, input, { schema: "json" }),
       );
-    // Where it's to be silent, yaml returns the first.
-    for (const input of ["a\n---\nb", "...\n...\n", "...\nfoo", "a\n--- # c\n"])
-      expect(parse(input, { logLevel: "silent" })).toEqual(
-        yaml.parse(input, { logLevel: "silent" }),
-      );
+    // Where it's to be silent, yaml returns the first, and converts no other.
+    for (const input of [
+      "a\n---\nb",
+      "...\n...\n",
+      "...\nfoo",
+      "a\n--- # c\n",
+      "a\n---\n[&x a, *x]",
+      "a\n---\n]",
+      "a\n---\n{x: 1, x: 2}",
+      "a: 1\n---\n<<: 2",
+      "a\n...\n%YAML bad\n---\nb",
+    ]) {
+      const options = { logLevel: "silent" as const, maxAliasCount: 1, merge: true };
+      expect(parse(input, options), JSON.stringify(input)).toEqual(yaml.parse(input, options));
+    }
+    const anchors = (fn: Parse) => {
+      const seen: unknown[] = [];
+      fn("&a [x]\n---\n&b [y, *b]", {
+        logLevel: "silent",
+        onAnchor: (value: unknown, count: number) => seen.push([value, count]),
+      });
+      return seen;
+    };
+    expect(anchors(parse)).toEqual(anchors(yaml.parse));
   });
 
   it("throws YAMLParseErrors with yaml's codes, positions and excerpts", () => {
@@ -242,6 +271,29 @@ describe("parse", () => {
       ]),
     );
     expect(() => parse("!!set {a: 1}")).toThrow(/Set items must all have null values/);
+  });
+
+  it("decodes a tag's suffix after a declared prefix only, as yaml does", () => {
+    const read = (parse: (text: string) => unknown, text: string) => {
+      vi.restoreAllMocks();
+      const warned = warnings();
+      try {
+        return { value: parse(text), warnings: warned().map((w) => (w as Error).message) };
+      } catch (e) {
+        return { error: (e as Error).message, warnings: warned().map((w) => (w as Error).message) };
+      }
+    };
+    for (const text of [
+      "!a%21 x",
+      "!a%ff x",
+      "- !a%2C [x]",
+      "!!%69nt 1",
+      "%TAG ! tag:x,2000:\n--- !a%21 x",
+      "%TAG ! !\n--- !a%21 x",
+      "%TAG !e! tag:x%21/\n--- !e!a%21 x",
+      "%TAG !e! %ff\n--- !e!a x",
+    ])
+      expect(read(parse, text), text).toEqual(read(yaml.parse, text));
   });
 
   it("doesn't warn with logLevel error or silent", () => {
@@ -472,7 +524,13 @@ describe("parse", () => {
         return (e as YAMLParseError).pos;
       }
     };
-    for (const text of ["\uFEFFa: 1\na: 2", "\uFEFFa: 1\r\na: 2", "%FOO\r\n---\r\na: 1\r\na: 2"])
+    for (const text of [
+      "\uFEFFa: 1\na: 2",
+      "\uFEFFa: 1\r\na: 2",
+      "%FOO\r\n---\r\na: 1\r\na: 2",
+      "\uFEFF]",
+      "a\n...\n\uFEFF]",
+    ])
       expect(at(text), JSON.stringify(text)).toEqual(yaml.parseDocument(text).errors[0]?.pos);
     expect(at("\uFEFFa: [1")).toEqual([6, 7]);
     // yaml points at the key's start and spans to the `:`, with \n too.
@@ -539,6 +597,62 @@ describe("parse", () => {
       "&a \n&b c",
     ])
       expect(outcome(parse, text), text).toEqual(outcome(yaml.parse, text));
+  });
+
+  it("finds the lines a flow sequence's implicit key spans as yaml does", () => {
+    vi.spyOn(process, "emitWarning").mockImplementation(() => {});
+    const outcome = (fn: Parse, text: string) => {
+      try {
+        return fn(text, {});
+      } catch {
+        return "throws";
+      }
+    };
+    for (const text of [
+      // Lines its properties end count only in a collection around it.
+      "[!k\n [a]: b]",
+      "[!k\n a: b]",
+      "[[!k\n a]: b]",
+      "[[a: !k\n b]: c]",
+      "[[!k\n a: b]]",
+      // Lines in a collection count, but not those right after one in it.
+      "[[a,\n b]: c]",
+      "[[a\n]: c]",
+      "[{a: b\n}: c]",
+      '[[a, "x\n y"]: c]',
+      "[[[a,\n b]]: c]",
+      "[[a, [b]\n]: c]",
+      "[[[[b]\n]]: d]",
+      "[{a: [b]\n}: d]",
+      "[[a]\n : b]",
+      "[!k [a]\n: b]",
+      '["a"\n: c]',
+      // And so in a block key.
+      "x: 1\n[a,\n b]: c",
+      "x: 1\n[[a]\n]: c",
+      "[[a]\n]: c",
+      "[!k\n a]: b",
+    ])
+      expect(outcome(parse, text), JSON.stringify(text)).toEqual(outcome(yaml.parse, text));
+  });
+
+  it("reads any character as text, as yaml does", () => {
+    vi.spyOn(process, "emitWarning").mockImplementation(() => {});
+    const contexts = [
+      (x: string) => `a${x}b: c${x}`,
+      (x: string) => `[a${x}b, {c${x}: d}]`,
+      (x: string) => `- '${x}'\n- "${x}\n  ${x}"`,
+      (x: string) => `|\n a${x}b\n`,
+      (x: string) => `# ${x}\n&a${x} a # ${x}`,
+      (x: string) => `%FOO ${x}\n--- !<a${x}b> c`,
+    ];
+    for (let code = 0; code < 0xa0; code++) {
+      if (code === 9 || code === 10 || code === 13 || (code > 31 && code < 127)) continue;
+      for (const context of contexts) {
+        const text = context(String.fromCharCode(code));
+        expect(parse(text), JSON.stringify(text)).toEqual(yaml.parse(text));
+      }
+    }
   });
 
   it("warns about scalars the compat schema reads as another type", () => {

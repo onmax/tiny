@@ -4,12 +4,16 @@
 // consumer, under both `moduleResolution: nodenext` and `bundler`. Code that
 // compiles against the original must compile against tinyaml, and against
 // the declarations it ships. The packed checks count errors in those
-// declarations too. Last, it typechecks an import of every entry and of
-// tinyaml/package.json under TypeScript 5's legacy `moduleResolution: node`,
-// which ignores `exports` and reads `typesVersions` instead (TypeScript 7
-// dropped it). test/types/two-way.ts, where an original's types and
-// tinyaml's must each be assignable to the other, goes through the source
-// and packed checks too. This builds dist/ first if it's stale.
+// declarations too. Last, it typechecks an import of every entry but
+// tinyaml/doctor, and of tinyaml/package.json, under TypeScript 5's legacy
+// `moduleResolution: node`, which ignores `exports` and reads `typesVersions`
+// instead (TypeScript 7 dropped it). tinyaml/doctor's types come from
+// vite-doctor/extension, which vite-doctor declares in `exports` alone, so no
+// code that uses Vite Doctor compiles there. test/types/two-way.ts, where an
+// original's types and tinyaml's must each be assignable to the other, and
+// test/types/tools.ts, which uses the linter, ESLint and Vite Doctor entries,
+// go through the source and packed checks too. This builds dist/ first if
+// it's stale.
 // Usage: node scripts/types-compat.ts
 import { execFile, execFileSync } from "node:child_process";
 import {
@@ -96,6 +100,12 @@ const twoWayImports: [string, string][] = [
   ["../../src/js-yaml-v5/index.ts", "tinyaml/js-yaml-v5"],
 ];
 const twoWay = check(TWO_WAY, "");
+const TOOLS = "tools";
+const toolImports: [string, string][] = ["linter", "eslint", "doctor"].map((entry) => [
+  `../../src/${entry}.ts`,
+  `tinyaml/${entry}`,
+]);
+const tools = check(TOOLS, "");
 
 const results = await Promise.all(
   pairs.map(async ([lib, specifier, subpath]) => ({
@@ -166,6 +176,7 @@ const packedResults = await Promise.all(
       [[specifier, `tinyaml/${lib}`]],
     ]),
     [TWO_WAY, twoWayImports] as [string, [string, string][]],
+    [TOOLS, toolImports] as [string, [string, string][]],
   ].flatMap(([lib, imports]) =>
     (Object.keys(resolutions) as (keyof typeof resolutions)[]).map(async (resolution) => ({
       lib,
@@ -186,6 +197,8 @@ import { load as load5, type ScalarStyle } from "tinyaml/js-yaml-v5";
 import { parse as yamlParse, YAMLParseError } from "tinyaml/yaml";
 import yamljs from "tinyaml/yamljs";
 import { parse as stdParse, YamlSyntaxError } from "tinyaml/std";
+import { lint, type Diagnostic } from "tinyaml/linter";
+import plugin from "tinyaml/eslint";
 
 const name: string = metadata.name;
 const version: string = metadata.version;
@@ -193,7 +206,9 @@ const values: unknown[] = [parse("a: 1"), load("a"), load5("a"), yamlParse("a"),
 const errors: Error[] = [new YAMLError("x", 1, 1), new YAMLException("x")];
 const classes = [YAMLParseError, YamlSyntaxError];
 const style: ScalarStyle | undefined = undefined;
-export { name, version, values, errors, classes, style };
+const diagnostics: Diagnostic[] = lint("a: no");
+const recommended: object = plugin.configs.recommended;
+export { name, version, values, errors, classes, style, diagnostics, recommended };
 `,
   );
   writeFileSync(
@@ -242,6 +257,10 @@ console.log(
 );
 for (const line of twoWayErrors) console.log(`  ${line}`);
 failed ||= twoWayErrors.length > 0;
+const { errors: toolErrors } = await tools;
+console.log(`${TOOLS.padEnd(10)} tinyaml/linter, eslint, doctor ${status({ errors: toolErrors })}`);
+for (const line of toolErrors) console.log(`  ${line}`);
+failed ||= toolErrors.length > 0;
 for (const { lib, resolution, errors, ignored } of packedResults) {
   console.log(
     `packed tinyaml/${lib.padEnd(10)} ${resolution.padEnd(8)} ${status({ errors })}${ignored ? ` (${ignored} outside tinyaml's declarations not counted)` : ""}`,
@@ -250,7 +269,7 @@ for (const { lib, resolution, errors, ignored } of packedResults) {
   failed ||= errors.length > 0;
 }
 console.log(
-  `packed tinyaml, every entry and tinyaml/package.json, TypeScript 5 moduleResolution node: ${consumerErrors.length ? `${consumerErrors.length} error(s)` : "ok"}`,
+  `packed tinyaml, every entry but tinyaml/doctor and tinyaml/package.json, TypeScript 5 moduleResolution node: ${consumerErrors.length ? `${consumerErrors.length} error(s)` : "ok"}`,
 );
 for (const line of consumerErrors) console.log(`  ${line}`);
 failed ||= consumerErrors.length > 0;

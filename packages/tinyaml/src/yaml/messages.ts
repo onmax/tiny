@@ -31,8 +31,8 @@ TAG_RESOLVE_FAILED named tag handle cannot contain such characters
 TAG_RESOLVE_FAILED undeclared tag handle "%s"
 MISSING_CHAR tag suffix cannot contain such characters
 MISSING_CHAR a whitespace character is expected after a node property
-TAG_RESOLVE_FAILED tag prefix is malformed: %s
-TAG_RESOLVE_FAILED tag name is malformed: %s
+
+TAG_RESOLVE_FAILED URIError: URI malformed
 TAG_RESOLVE_FAILED unacceptable node kind for !<?> tag; it should be "scalar", not "%s"
 BAD_INDENT bad indentation of a mapping entry
 MULTILINE_IMPLICIT_KEY Implicit keys need to be on a single line

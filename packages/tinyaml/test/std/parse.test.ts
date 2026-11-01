@@ -151,6 +151,20 @@ describe("parse", () => {
       same(input);
   });
 
+  it("ends the input at a null byte, and fails there after the documents, as std does", () => {
+    for (const input of [
+      "[a\0",
+      "{a: \0}",
+      "'a\0b'",
+      'a: "x\0"\n',
+      "a\0",
+      "a: |\n  \0\n",
+      "!x \0",
+      "\0",
+    ])
+      same(input);
+  });
+
   it("reads a flow node's properties across lines, as std does", () => {
     for (const input of [
       "[!!str \n &c c]",

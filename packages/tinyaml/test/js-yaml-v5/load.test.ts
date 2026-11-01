@@ -241,6 +241,11 @@ describe("load", () => {
       "\uFEFFa: 1\r\nb: 2\r\nb: 3",
       "a: 1\r\n\uFEFF---\r\nb: 1\r\nb: 2\r\n",
       "a: 1\r\n...\r\n\uFEFFb: 1\r\nb: 2",
+      // Past those it points at, the first character's included.
+      "\uFEFF\0",
+      "\uFEFF]",
+      "\uFEFF\uFEFF\0",
+      "a\n...\n\uFEFF]",
     ]) {
       const ours = error(() => loadAll(input));
       const theirs = error(() => real.loadAll(input));
@@ -556,6 +561,84 @@ describe("load", () => {
     loadAll("a\n---\nb", (doc) => docs.push(doc), null as never);
     expect(docs).toEqual(["a", "b"]);
     expect(() => load("a: [\n", null as never)).toThrow(YAMLException);
+  });
+
+  // What a load returns, or the error it throws: a YAMLException's message,
+  // which ends with the position, or another error's class.
+  const outcome = (run: () => unknown) => {
+    try {
+      return { value: run() };
+    } catch (e) {
+      return e instanceof Error && e.name === "YAMLException"
+        ? { error: e.message }
+        : { error: (e as Error).constructor.name };
+    }
+  };
+
+  it("takes any value for its limits and schema, as js-yaml 5 does", () => {
+    const values = [undefined, null, 0, 1, 2, -1, -2, NaN, Infinity, -Infinity]
+      .concat(["1", "-1", "abc", "", true, false, {}, [], [1], 1n] as never[])
+      .map((value) => [value]);
+    const cases = {
+      maxDepth: ["x", "[x]", "[[x]]", "a: [b: {c: d}]"],
+      maxAliases: ["[&a x, *a]", "[&a x, *a, *a]", "[x]"],
+      maxTotalMergeKeys: ["{<<: {a: 1}}", "{<<: {a: 1, b: 2}}", "{<<: [{a: 1}, {b: 2}]}"],
+      schema: ["x", "[x]", "{a: 1}", "", "# c", "[", "!!str x", "&a [*a]"],
+    };
+    for (const [option, inputs] of Object.entries(cases))
+      for (const [value] of values)
+        for (const input of inputs) {
+          const options = (lib: typeof real) =>
+            option === "schema"
+              ? { schema: value }
+              : { [option]: value, schema: lib.CORE_SCHEMA.withTags(lib.mergeTag) };
+          expect(
+            outcome(() => loadAll(input, options(lib as never) as never)),
+            `${option}: ${String(value)} ${JSON.stringify(input)}`,
+          ).toStrictEqual(outcome(() => real.loadAll(input, options(real) as never)));
+        }
+  });
+
+  it("rejects an alias of a node a finalizing tag hasn't ended, at the alias, as js-yaml 5 does", () => {
+    const schemas = (lib: typeof real) => {
+      const map = lib.defineMappingTag("tag:yaml.org,2002:map", {
+        ...lib.realMapTag,
+        finalize: (carrier) => new Map(carrier),
+      });
+      const seq = lib.defineSequenceTag("!frozen", {
+        ...lib.seqTag,
+        finalize: (carrier) => Object.freeze([...carrier]),
+      });
+      return [
+        lib.CORE_SCHEMA.withTags(map, lib.mergeTag),
+        lib.CORE_SCHEMA.withTags(lib.realMapTag, seq, lib.mergeTag),
+        lib.YAML11_SCHEMA.withTags(lib.realMapTag),
+      ];
+    };
+    const ours = schemas(lib as never) as never[];
+    schemas(real).forEach((schema, i) => {
+      for (const input of [
+        "&a {<<: *a}",
+        "&a {x: 1, <<: *a, y: 2}",
+        "x: 1\ny: &a\n  z: 2\n  <<: *a\n",
+        "&a {x: *a}",
+        "a: &a\n  b: 1\n  c: *a\n",
+        "a: &a\r\n  b: 1\r\n  c: *a\r\n",
+        "&a {*a : x}",
+        "&a {x: {<<: *a}, y: 1}",
+        "&a !frozen [*a, x]",
+        "&a !frozen [{<<: *a}]",
+        "&a !frozen [[x, *a]]",
+        "&a !!omap [{x: *a}]",
+        "- &a [x]\n- &b !frozen [*a, *b]\n",
+        "&a {x: &b !frozen [*b], y: *a}",
+        "[&a x, *a, &b {c: *b}]",
+      ])
+        expect(
+          outcome(() => load(input, { schema: ours[i] })),
+          `${i} ${input}`,
+        ).toStrictEqual(outcome(() => real.load(input, { schema })));
+    });
   });
 
   it("rejects what a merge can't take at the `<<`, as js-yaml 5 does", () => {

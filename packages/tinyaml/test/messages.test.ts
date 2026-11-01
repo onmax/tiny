@@ -43,8 +43,6 @@ const OWN: Record<string, number[]> = {
   std: [codes.TAG_HANDLE],
   // yaml words its directive and anchor warnings where they're raised.
   yaml: [codes.YAML_UNSUPPORTED, codes.ANCHOR_COLON],
-  // yamljs drops a %YAML line or quotes it as text, so no directive reaches the parser.
-  yamljs: [codes.YAML_VERSION],
 };
 
 // The built dist/, where a mode's constants empty lines of the table: a line
@@ -61,8 +59,9 @@ describe("built entries", () => {
       const table = /\bMESSAGES = `([^`]*)`/.exec(entry)?.[1]?.split("\n");
       expect(chunk && table, name).toBeTruthy();
       const found = raised(readFileSync(join(dirname(file), chunk!), "utf8"));
-      // Every parser rejects a null byte, so the scan still finds its codes.
-      expect(found).toContain(codes.NULL_BYTE);
+      // Every parser rejects a node after a document without a marker
+      // between, so the scan still finds its codes.
+      expect(found).toContain(codes.DOCUMENT_END);
       const unworded = [...found].filter((code) => !table![code] && !OWN[name]?.includes(code));
       const names = Object.keys(codes) as (keyof typeof codes)[];
       expect(unworded.map((code) => names.find((key) => codes[key] === code))).toEqual([]);

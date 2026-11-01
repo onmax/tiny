@@ -36,10 +36,10 @@ const entries: [string, string][] = [
 const BUDGET: Record<string, number> = {
   tinyaml: 8120,
   "tinyaml/js-yaml": 12080,
-  "tinyaml/js-yaml-v5": 16440,
-  "tinyaml/yaml": 17275,
-  "tinyaml/yamljs": 8275,
-  "tinyaml/std": 11010,
+  "tinyaml/js-yaml-v5": 16610,
+  "tinyaml/yaml": 17265,
+  "tinyaml/yamljs": 8100,
+  "tinyaml/std": 11025,
 };
 
 // Code that only some modes' parsers have, as it reads once minified. Each
