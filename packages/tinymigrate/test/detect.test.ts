@@ -128,7 +128,7 @@ importers:
     ]);
   });
 
-  it("lists source files, leaving out node_modules, dist and what git ignores", () => {
+  it("lists source files, leaving out node_modules, dist and what git ignores, but not dot directories", () => {
     const root = project(
       {
         ".gitignore": "node_modules\ngenerated/\n",
@@ -139,11 +139,17 @@ importers:
         "dist/d.js": "",
         "generated/e.js": "",
         "packages/x/node_modules/f/index.js": "",
+        ".storybook/main.ts": "",
       },
       { git: true },
     );
     write(root, { "src/untracked.mjs": "" });
-    expect(scan(root).files).toEqual(["src/a.ts", "src/b.vue", "src/untracked.mjs"]);
+    expect(scan(root).files).toEqual([
+      ".storybook/main.ts",
+      "src/a.ts",
+      "src/b.vue",
+      "src/untracked.mjs",
+    ]);
   });
 
   it("lists source files outside git too", () => {

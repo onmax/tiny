@@ -77,10 +77,10 @@ export function scan(root: string): Project {
   return { root, manifests, files, found };
 }
 
-// Every file git doesn't ignore, or outside git every file, leaving out
-// node_modules, dist and dot directories either way.
+// Every file git doesn't ignore, or outside git every file but those in dot
+// directories, leaving out node_modules and dist either way.
 function listFiles(root: string): string[] {
-  const skip = (path: string) => /(?:^|\/)(?:node_modules|dist|\.[^/]+)\//.test(path);
+  const skip = (path: string) => /(?:^|\/)(?:node_modules|dist)\//.test(path);
   const git = spawnSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], {
     cwd: root,
     encoding: "utf8",
@@ -96,7 +96,7 @@ function listFiles(root: string): string[] {
     for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
       const path = dir ? `${dir}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
-        if (!skip(`${path}/`)) visit(path);
+        if (!entry.name.startsWith(".") && !skip(`${path}/`)) visit(path);
       } else if (entry.isFile()) files.push(path);
     }
   };

@@ -49,9 +49,9 @@ export interface Plan {
  * range each tiny package is added with.
  */
 export function plan(project: Project, names: string[], ranges: Record<Tiny, string>): Plan {
-  const picked = project.found.filter(
-    (found) => found.target && names.includes(found.library.name),
-  );
+  // A declaration with no drop-in still decides which imports are its own.
+  const declared = project.found.filter((found) => names.includes(found.library.name));
+  const picked = declared.filter((found) => found.target);
   const edits: Edit[] = [];
   const skipped: Skipped[] = [];
   // Each dependency, as its package.json and name, with an import that
@@ -65,6 +65,11 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
     const result = findSpecifiers(before, file);
     if ("error" in result) {
       skipped.push({ file, reason: `can't parse it: ${result.error}` });
+      // Any original it may import stays.
+      for (const { library } of picked) {
+        const owner = before.includes(library.name) && ownerOf(declared, library.name, file);
+        if (owner) blocked.add(`${owner.manifest}\0${library.name}`);
+      }
       continue;
     }
     const changes: Change[] = [];
@@ -75,7 +80,7 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
         const match = libraryOf(value);
         if (!match || !names.includes(match.library.name)) return undefined;
         const { library, subpath } = match;
-        const owner = ownerOf(picked, library.name, file);
+        const owner = ownerOf(declared, library.name, file);
         const skip = (reason: string) => {
           skipped.push({ file, line, specifier: value, reason });
           if (owner) blocked.add(`${owner.manifest}\0${library.name}`);
@@ -85,9 +90,10 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
           return skip(
             `the package.json files that depend on ${library.name} pick different drop-ins, and none of them is above this file`,
           );
+        const target = owner.target;
+        if (!target) return skip(`${owner.reason!}, in ${owner.manifest}`);
         if (subpath && !library.subpaths?.includes(subpath))
-          return skip(`${owner.target} has no equivalent of ${value}`);
-        const target = owner.target!;
+          return skip(`${target} has no equivalent of ${value}`);
         const exports = EXPORTS[target]!;
         const missing = read.filter((name) => !exports.includes(name));
         if (missing.length) return skip(`${target} doesn't export ${missing.join(", ")}`);

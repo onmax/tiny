@@ -142,6 +142,31 @@ describe("plan", () => {
     expect(result.skipped).toEqual([
       { file: "a.js", reason: expect.stringMatching(/^can't parse it: .* at line 2$/) },
     ]);
+    expect(JSON.parse(read(root, "package.json"))).toEqual({ dependencies: { ini: "^7.0.0" } });
+  });
+
+  it("leaves imports a nearer package.json owns at a version with no drop-in", () => {
+    const root = project({
+      "package.json": { private: true, dependencies: { "js-yaml": "^4.1.0" } },
+      "packages/legacy/package.json": { dependencies: { "js-yaml": "^3.14.0" } },
+      "packages/legacy/index.js": `import { safeLoad } from "js-yaml";\n`,
+      "index.js": `import { load } from "js-yaml";\n`,
+    });
+    const result = migrate(root, ["js-yaml"]);
+    expect(read(root, "packages/legacy/index.js")).toBe(`import { safeLoad } from "js-yaml";\n`);
+    expect(read(root, "index.js")).toBe(`import { load } from "tinyaml/js-yaml";\n`);
+    expect(result.skipped).toEqual([
+      {
+        file: "packages/legacy/index.js",
+        line: 1,
+        specifier: "js-yaml",
+        reason:
+          "js-yaml ^3.14.0 has no drop-in: tinyaml covers 4 and 5, in packages/legacy/package.json",
+      },
+    ]);
+    expect(JSON.parse(read(root, "packages/legacy/package.json"))).toEqual({
+      dependencies: { "js-yaml": "^3.14.0" },
+    });
   });
 
   it("uses the nearest package.json's version in a workspace", () => {
