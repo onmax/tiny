@@ -83,15 +83,18 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
           decide(specifier, match, ownerOf(declared, match.library.name, file)),
         );
     }
-    // A mock follows the imports it stands in for, so one stays if any of
-    // them does.
-    for (const [specifier, decision] of decisions) {
-      const name = libraryOf(specifier.value)!.library.name;
-      const stays = [...decisions].some(
-        ([other, { reason }]) => reason && libraryOf(other.value)!.library.name === name,
-      );
-      if (specifier.kind === "mock" && decision.target && stays)
-        decisions.set(specifier, { reason: `an import of ${name} in this file stays` });
+    // A mock stands in for every import of its library in the file, so if
+    // one of them stays, the mock and the others stay with it.
+    const nameOf = (specifier: Specifier) => libraryOf(specifier.value)!.library.name;
+    const entries = [...decisions];
+    for (const [specifier, decision] of entries) {
+      const name = nameOf(specifier);
+      const same = entries.filter(([other]) => nameOf(other) === name);
+      const mocked = same.some(([other]) => other.kind === "mock");
+      if (decision.target && mocked && same.some(([, other]) => other.reason))
+        decisions.set(specifier, {
+          reason: `a mock of ${name} in this file stands in for an import of it that stays`,
+        });
     }
     const changes: Change[] = [];
     const after = replaceSpecifiers(before, result.specifiers, (specifier) => {
@@ -207,7 +210,8 @@ function editManifest(
   const removed: string[] = [];
   const kept: string[] = [];
   const needs = new Map<Tiny, Field>();
-  for (const { library, field } of found) {
+  // Only a peer dependency alone has that field, and it has no drop-in.
+  for (const { library, field } of found as (Found & { field: Field })[]) {
     // The tiny package comes in once an import uses it or the original goes.
     if (moved(library.name) || !blocked(library.name)) {
       const best = needs.get(library.tiny);

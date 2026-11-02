@@ -135,15 +135,40 @@ describe("plan", () => {
   it("keeps a mock where an import it stands in for stays", () => {
     const root = project({
       "package.json": { devDependencies: { yaml: "^2.8.0", "js-yaml": "^4.1.0" } },
-      "a.test.ts": `import { parseDocument } from "yaml";\nimport { load } from "js-yaml";\nvi.mock("yaml");\nvi.mock("js-yaml");\n`,
+      "a.test.ts": `import { parse } from "yaml";\nimport { parseDocument } from "yaml";\nimport { load } from "js-yaml";\nvi.mock("yaml");\nvi.mock("js-yaml");\n`,
+      "b.test.ts": `import { parse } from "yaml";\nimport { parseDocument } from "yaml";\n`,
     });
     const result = migrate(root, ["yaml", "js-yaml"]);
     expect(read(root, "a.test.ts")).toBe(
-      `import { parseDocument } from "yaml";\nimport { load } from "tinyaml/js-yaml";\nvi.mock("yaml");\nvi.mock("tinyaml/js-yaml");\n`,
+      `import { parse } from "yaml";\nimport { parseDocument } from "yaml";\nimport { load } from "tinyaml/js-yaml";\nvi.mock("yaml");\nvi.mock("tinyaml/js-yaml");\n`,
     );
-    expect(result.skipped.map(({ line, reason }) => ({ line, reason }))).toEqual([
-      { line: 1, reason: "tinyaml/yaml doesn't export parseDocument" },
-      { line: 3, reason: "an import of yaml in this file stays" },
+    // Without a mock, each import moves on its own.
+    expect(read(root, "b.test.ts")).toBe(
+      `import { parse } from "tinyaml/yaml";\nimport { parseDocument } from "yaml";\n`,
+    );
+    const mocked = "a mock of yaml in this file stands in for an import of it that stays";
+    expect(result.skipped.map(({ file, line, reason }) => ({ file, line, reason }))).toEqual([
+      { file: "a.test.ts", line: 1, reason: mocked },
+      { file: "a.test.ts", line: 2, reason: "tinyaml/yaml doesn't export parseDocument" },
+      { file: "a.test.ts", line: 4, reason: mocked },
+      { file: "b.test.ts", line: 2, reason: "tinyaml/yaml doesn't export parseDocument" },
+    ]);
+  });
+
+  it("leaves imports a nearer package.json has only as a peer dependency", () => {
+    const root = project({
+      "package.json": { private: true, devDependencies: { "js-yaml": "^4.1.0" } },
+      "packages/lib/package.json": { peerDependencies: { "js-yaml": "^4.0.0" } },
+      "packages/lib/index.js": `import { load } from "js-yaml";\n`,
+    });
+    const result = migrate(root, ["js-yaml"]);
+    expect(read(root, "packages/lib/index.js")).toBe(`import { load } from "js-yaml";\n`);
+    expect(result.skipped).toEqual([
+      expect.objectContaining({
+        file: "packages/lib/index.js",
+        reason:
+          "js-yaml is also a peer dependency, which this package's users install, in packages/lib/package.json",
+      }),
     ]);
   });
 

@@ -62,7 +62,7 @@ Some imports are reported and left as they are:
 - A subpath the drop-in has no equivalent for, such as `yaml/util` or `js-yaml/dist/js-yaml.mjs`.
 - A name the drop-in doesn't export, such as `import { parseDocument } from "yaml"` or `import jju from "jju"`. tinymigrate checks the names an `import`, an `export … from`, a destructured `require()` or a `require().name` reads. It can't check what code does with a namespace import or a whole `require()` result, nor type-only imports.
 - A `require()` of a drop-in whose only export is its default, such as strip-json-comments: `require()` of an ES module gives `{ default }`, where the original gave the function.
-- A `vi.mock` or `jest.mock` of a library when another import of it in the same file stays.
+- Every import of a library in a file that mocks it with `vi.mock` or `jest.mock`, when one of those imports has to stay, since the mock stands in for all of them.
 
 The original then stays in package.json too, so those imports still resolve. So does an original whose command a package.json script runs, such as `json5` or `js-yaml`, since the drop-ins have no command-line tools. A file the parser can't read is reported and left as it is, and so are the originals it may import.
 

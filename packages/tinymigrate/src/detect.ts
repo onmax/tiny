@@ -15,7 +15,7 @@ export interface Found {
   library: Library;
   /** The package.json that depends on it, relative to the project. */
   manifest: string;
-  field: Field;
+  field: Field | "peerDependencies";
   range: string;
   /** The installed version, if one was found. */
   version?: string;
@@ -45,10 +45,16 @@ export function scan(root: string): Project {
   for (const manifest of manifests) {
     const json = readJson(join(root, manifest));
     if (!json) continue;
-    for (const field of FIELDS) {
+    // A peer dependency alone stays, but still owns the imports below it.
+    for (const field of [...FIELDS, "peerDependencies" as const]) {
       const deps = json[field];
       if (!deps || typeof deps !== "object") continue;
       for (const [name, range] of Object.entries(deps as Record<string, unknown>)) {
+        if (
+          field === "peerDependencies" &&
+          FIELDS.some((other) => Object.hasOwn(json[other] ?? {}, name))
+        )
+          continue;
         const library = byName.get(name);
         if (!library || typeof range !== "string") continue;
         const dir = join(root, dirname(manifest));
@@ -241,7 +247,6 @@ function fromNpm(text: string, importer: string, name: string): string | undefin
 // version on a line below.
 export function fromYarn(text: string, name: string, range: string): string | undefined {
   const lines = text.split(/\r?\n/);
-  let any: string | undefined;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     if (/^\s|^#/.test(line) || !line.endsWith(":")) continue;
@@ -254,16 +259,13 @@ export function fromYarn(text: string, name: string, range: string): string | un
     const ranges = descriptors
       .filter((descriptor) => descriptor.startsWith(`${name}@`))
       .map((descriptor) => descriptor.slice(name.length + 1).replace(/^npm:/, ""));
-    if (!ranges.length) continue;
-    let version: string | undefined;
+    if (!ranges.includes(range.replace(/^npm:/, ""))) continue;
     for (let j = i + 1; j < lines.length && /^\s/.test(lines[j]!); j++) {
       const match = /^\s+version:?\s+"?([^"\s]+)"?/.exec(lines[j]!);
-      if (match) version = match[1];
+      if (match) return match[1];
     }
-    if (ranges.includes(range.replace(/^npm:/, ""))) return version;
-    any ??= version;
   }
-  return any;
+  return undefined;
 }
 
 // bun.lock is JSON with trailing commas, whose `packages` map each name to

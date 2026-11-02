@@ -32,6 +32,12 @@ describe("detection", () => {
       }),
       expect.objectContaining({
         name: "ini",
+        manifest: "package.json",
+        field: "peerDependencies",
+        target: undefined,
+      }),
+      expect.objectContaining({
+        name: "ini",
         manifest: "packages/a/package.json",
         field: "optionalDependencies",
       }),
@@ -204,6 +210,7 @@ describe("lockfiles", () => {
     const v1 = `# yarn lockfile v1\n\njs-yaml@^3.13.1:\n  version "3.14.1"\n\njs-yaml@^4.0.0, js-yaml@^4.1.0:\n  version "4.1.0"\n`;
     expect(fromYarn(v1, "js-yaml", "^4.1.0")).toBe("4.1.0");
     expect(fromYarn(v1, "js-yaml", "^3.13.1")).toBe("3.14.1");
+    expect(fromYarn(v1, "js-yaml", "^3.14.0")).toBeUndefined();
     const berry = `__metadata:\n  version: 8\n\n"ini@npm:^1.3.8":\n  version: 1.3.8\n  resolution: "ini@npm:1.3.8"\n`;
     expect(fromYarn(berry, "ini", "^1.3.8")).toBe("1.3.8");
     const combined = `"ini@npm:^1.3.0, ini@npm:^1.3.8":\n  version: 1.3.8\n\n"ini@npm:^4.1.0":\n  version: 4.1.3\n`;
