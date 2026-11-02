@@ -6,14 +6,22 @@ tagline: Drop-in replacements for the YAML, JSON5 and INI libraries you already 
 install: pnpm add tinyaml tinyjson5 tinyini
 ---
 
-```diff [config.ts]
-- import yaml from "js-yaml";
-- import JSON5 from "json5";
-- import ini from "ini";
-+ import yaml from "tinyaml/js-yaml";
-+ import JSON5 from "tinyjson5/json5";
-+ import ini from "tinyini/ini";
+::code-group
+```ts [tinyaml] icon=lucide:file-code del={1} ins={2}
+import yaml from "js-yaml";
+import yaml from "tinyaml/js-yaml";
 ```
+
+```ts [tinyjson5] icon=lucide:braces del={1} ins={2}
+import JSON5 from "json5";
+import JSON5 from "tinyjson5/json5";
+```
+
+```ts [tinyini] icon=lucide:settings-2 del={1} ins={2}
+import ini from "ini";
+import ini from "tinyini/ini";
+```
+::
 
 ## One package per format
 
