@@ -1,0 +1,65 @@
+{
+  "name": "tinymigrate",
+  "version": "0.0.0",
+  "description": "Moves a project from js-yaml, yaml, json5, ini and the other libraries tinyaml, tinyjson5 and tinyini replace, by rewriting its imports and package.json",
+  "keywords": [
+    "codemod",
+    "ini",
+    "json5",
+    "migrate",
+    "tinyaml",
+    "tinyini",
+    "tinyjson5",
+    "yaml"
+  ],
+  "homepage": "https://github.com/onmax/tiny/tree/main/packages/tinymigrate#readme",
+  "bugs": "https://github.com/onmax/tiny/issues",
+  "license": "MIT",
+  "author": "onmax",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onmax/tiny.git",
+    "directory": "packages/tinymigrate"
+  },
+  "bin": {
+    "tinymigrate": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "vp pack",
+    "lint": "vp lint",
+    "fmt": "vp fmt",
+    "typecheck": "tsrs --noEmit",
+    "test": "vp test",
+    "check": "vp check && pnpm typecheck",
+    "ready": "vp fmt && pnpm build && pnpm check && pnpm test",
+    "prepare": "vp config"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.8.1",
+    "diff": "^9.0.0",
+    "oxc-parser": "^0.148.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "publint": "^0.3.25",
+    "tsrs": "0.20.1-ts7.1.0-beta",
+    "typescript": "^7.0.2",
+    "vite-plus": "^1.4.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
