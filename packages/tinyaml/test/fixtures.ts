@@ -15,22 +15,23 @@ export const run = (script: string, ...args: string[]): string =>
 
 // How much longer reading the text for 8n takes than for n, after a warm-up
 // run and the best of five: about 8 when the work is linear, 64 when it's
-// quadratic. Tests check it stays under 32, since a busy CI runner can
+// quadratic. Interleave the sizes so JIT warm-up doesn't benefit only the
+// small input. Tests check it stays under 32, since a busy CI runner can
 // slow one side two or three times.
 export function growth(
   text: (n: number) => string,
   read: (text: string) => unknown,
   n: number,
 ): number {
-  const best = (input: string) => {
-    read(input);
-    let fastest = Infinity;
-    for (let run = 0; run < 5; run++) {
+  const inputs = [text(n), text(8 * n)];
+  const fastest = [Infinity, Infinity];
+  for (const input of inputs) read(input);
+  for (let run = 0; run < 5; run++) {
+    for (const [index, input] of inputs.entries()) {
       const start = performance.now();
       read(input);
-      fastest = Math.min(fastest, performance.now() - start);
+      fastest[index] = Math.min(fastest[index]!, performance.now() - start);
     }
-    return fastest;
-  };
-  return best(text(8 * n)) / best(text(n));
+  }
+  return fastest[1]! / fastest[0]!;
 }

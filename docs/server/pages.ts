@@ -257,11 +257,14 @@ const copied = async (button, text) => {
 // ClipboardItem takes the fetch's promise, so Safari still counts the copy as part of the click.
 for (const button of document.querySelectorAll(".copy-page")) button.addEventListener("click", () =>
   copied(button, fetch(button.dataset.markdown).then(r => r.blob()).then(b => new Blob([b], { type: "text/plain" }))));
-document.addEventListener("click", e => { for (const menu of document.querySelectorAll(".page-menu[open]")) if (!menu.contains(e.target)) menu.open = false });
-document.addEventListener("keydown", e => {
-  const menu = e.key === "Escape" && e.target.closest?.(".page-menu[open]");
-  if (menu) { menu.open = false; menu.querySelector("summary").focus() }
-});
+if (!window.comarkPageMenu) {
+  window.comarkPageMenu = true;
+  document.addEventListener("click", e => { for (const menu of document.querySelectorAll(".page-menu[open]")) if (!menu.contains(e.target)) menu.open = false });
+  document.addEventListener("keydown", e => {
+    const menu = e.key === "Escape" && e.target.closest?.(".page-menu[open]");
+    if (menu) { menu.open = false; menu.querySelector("summary").focus() }
+  });
+}
 for (const box of document.querySelectorAll(".installer")) {
   const commands = JSON.parse(box.dataset.commands), field = box.querySelector(".install");
   box.querySelector(".installer-pm").addEventListener("click", e => {
