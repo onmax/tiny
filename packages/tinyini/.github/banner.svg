@@ -1,35 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" role="img" aria-labelledby="t">
-<title id="t">tinyini: a faster drop-in for ini 7.0.0</title>
-<defs>
-<pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#fff" fill-opacity=".06"/></pattern>
-<radialGradient id="glow" cx="1060" cy="420" r="520" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e5484d" stop-opacity=".18"/><stop offset="1" stop-color="#e5484d" stop-opacity="0"/></radialGradient>
+<title id="t">tinyini: faster drop-ins for ini 1 to 7 and @one-ini/wasm</title>
 <clipPath id="frame"><rect width="1280" height="400" rx="24"/></clipPath>
-</defs>
 <g clip-path="url(#frame)">
-<rect width="1280" height="400" fill="#0a0a0a"/>
-<rect width="1280" height="400" fill="url(#dots)"/>
-<rect width="1280" height="400" fill="url(#glow)"/>
-<g transform="translate(80 72) scale(1.25)">
-<rect width="64" height="64" rx="14" fill="#171717" stroke="#262626" stroke-width=".8"/>
-<g fill="#e5484d"><rect x="11" y="14" width="16" height="8" rx="4"/><rect x="11" y="28" width="12" height="8" rx="4"/><rect x="11" y="42" width="8" height="8" rx="4"/></g>
-<g fill="#737373"><rect x="31" y="14" width="22" height="8" rx="4"/><rect x="27" y="28" width="14" height="8" rx="4"/><rect x="23" y="42" width="8" height="8" rx="4"/></g>
-</g>
+<rect width="1280" height="400" fill="#110f0c"/>
+<g transform="translate(1236 58) scale(-11 11)"><path fill="#ffdc5d" d="M33.29 8.628C33.265 8.62 24.499 6 21.499 5c-1.2-.4-21-7-21 16 0 .637 2 11 4 11h11c8.375 0 5.642-10.68 15.92-12.106 1.739-.241 2.621-1.112 2.466-2.566-.165-1.549-1.975-2.059-3.534-2.059-1.146 0-5.754.233-9.026 1.951-.286-1.809-.826-4.013-.826-6.221 5 1 11.092 2.333 11.209 2.372 1.31.434 2.726-.271 3.162-1.582.438-1.309-.27-2.724-1.58-3.161z"/><path fill="#ef9645" d="M19.207 7.293c-.389-.391-1.023-.392-1.414-.001-.391.39-.392 1.023-.001 1.415.017.017 1.704 1.737 1.704 4.293v7.109c0 .852-.501 1.154-.97 1.154-.496 0-1.025-.332-1.025-1.264v-2c0-3.767-.303-7.77-2.553-8.895-.495-.247-1.095-.046-1.342.447-.247.494-.047 1.095.447 1.342.66.33 1.447 1.831 1.447 7.105v.996s-.004 1.001-.004 3.114c0 .852-.501 1.154-.97 1.154-.496 0-1.025-.332-1.025-1.264v-2c0-3.767-.303-7.77-2.553-8.895-.495-.248-1.095-.046-1.342.447-.247.494-.047 1.095.447 1.342.66.33 1.447 1.831 1.447 7.105v2c0 .021.005.039.005.06-.001.017-.01.032-.01.049 0 .852-.501 1.154-.97 1.154-.496.004-1.025-.328-1.025-1.26 0-3.394 0-7.618-2.553-8.895-.495-.248-1.095-.046-1.342.447-.247.494-.047 1.095.447 1.342C7.5 15.618 7.5 19.613 7.5 22c0 2.143 1.522 3.264 3.025 3.264.722 0 1.445-.263 1.999-.769.56.505 1.281.769 2.001.769 1.236 0 2.473-.769 2.846-2.232.368.151.761.232 1.154.232 1.476 0 2.97-1.083 2.97-3.154V13c0-3.375-2.194-5.613-2.288-5.707z"/></g>
 <g font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
-<text x="188" y="140" fill="#fafafa" font-size="80" font-weight="700" letter-spacing="-3">tinyini</text>
-<text x="80" y="214" fill="#a3a3a3" font-size="28">Swap ini for a faster one, at the same size.</text>
-<text x="80" y="306" fill="#fafafa" font-size="56" font-weight="700" letter-spacing="-2">2.1<tspan fill="#e5484d">×</tspan></text>
-<text x="80" y="340" fill="#737373" font-size="20">faster parsing</text>
-<text x="290" y="306" fill="#fafafa" font-size="56" font-weight="700" letter-spacing="-2">2.9<tspan fill="#e5484d">×</tspan></text>
-<text x="290" y="340" fill="#737373" font-size="20">faster stringify</text>
-<text x="500" y="306" fill="#fafafa" font-size="56" font-weight="700" letter-spacing="-2">0</text>
-<text x="500" y="340" fill="#737373" font-size="20">dependencies</text>
-</g>
-<rect x="700" y="92" width="500" height="216" rx="16" fill="#121212" stroke="#262626"/>
-<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20">
-<text x="728" y="138" fill="#525252"># change one import</text>
-<text x="728" y="182" fill="#737373"><tspan fill="#e5484d">-</tspan> import ini from "ini"</text>
-<text x="728" y="226" fill="#fafafa"><tspan fill="#e5484d">+</tspan> import ini from "tinyini"</text>
-<text x="728" y="270" fill="#525252"># same objects, same output</text>
+<text x="76" y="150" fill="#f8f5ec" font-size="96" font-weight="700" letter-spacing="-4">tinyini</text>
+<text x="80" y="206" fill="#b1aa9d" font-size="28">Swap ini for a faster one, at the same size.</text>
+<text x="80" y="306" fill="#f8f5ec" font-size="56" font-weight="700" letter-spacing="-2">1.8<tspan fill="#ffdc5d">×</tspan></text>
+<text x="80" y="342" fill="#868073" font-size="20">faster than ini</text>
+<text x="320" y="306" fill="#f8f5ec" font-size="56" font-weight="700" letter-spacing="-2">2.9<tspan fill="#ffdc5d">×</tspan></text>
+<text x="320" y="342" fill="#868073" font-size="20">faster stringify</text>
+<text x="560" y="306" fill="#f8f5ec" font-size="56" font-weight="700" letter-spacing="-2">0</text>
+<text x="560" y="342" fill="#868073" font-size="20">dependencies</text>
 </g>
 </g>
 </svg>

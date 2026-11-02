@@ -2,7 +2,7 @@
 // (scripts/size.ts), speed (bench/index.ts) and correctness on the
 // yaml-test-suite (scripts/correctness.ts). Each chart is a Markdown table
 // that comark-charts turns into an SVG, written to .github/.
-// Usage: [BENCH=<file>] node --no-warnings scripts/charts.ts
+// Usage: [SIZE=<file>] [BENCH=<file>] node --no-warnings scripts/charts.ts
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { parseMarkdown } from "comark";
@@ -16,6 +16,25 @@ const run = (...args: string[]) =>
 const kib = (bytes: number) => (bytes / 1024).toFixed(1);
 const row = (...cells: (string | number)[]) => `| ${cells.join(" | ")} |`;
 
+// The family's colors (.github/scripts/brand.ts) for comark-charts' first two
+// series: the first in 🤏's amber, with dark labels, the second in gray, with
+// white ones. Each label goes with the bar its baseline sits in.
+const SERIES: Record<string, [bar: string, label: string]> = {
+  "#3b82f6": ["#ef9645", "#110f0c"],
+  "#f97316": ["#747474", "#ffffff"],
+};
+const brand = (svg: string) => {
+  const bars = [...svg.matchAll(/<path d="M0,([\d.]+)L[^"]*" fill="(#[0-9a-f]{6})"/g)].map(
+    ([, top, fill]) => ({ top: Number(top), fill: fill! }),
+  );
+  return svg
+    .replace(/transform="translate\([\d.]+,([\d.]+)\)"[^>]* fill="#ffffff"/g, (text, y) => {
+      const bar = bars.filter((b) => b.top < Number(y)).sort((a, b) => b.top - a.top)[0];
+      return bar && SERIES[bar.fill] ? text.replace("#ffffff", SERIES[bar.fill]![1]) : text;
+    })
+    .replace(/#3b82f6|#f97316/g, (fill) => SERIES[fill]![0]);
+};
+
 async function draw(file: string, chart: string, table: string[]): Promise<void> {
   const { nodes, meta } = await parseMarkdown(`::chart{${chart}}\n${table.join("\n")}\n::\n`, {
     plugins: [charts()],
@@ -23,7 +42,7 @@ async function draw(file: string, chart: string, table: string[]): Promise<void>
   if (meta.issues.length) throw new Error(meta.issues.join("\n"));
   const json = JSON.stringify(nodes);
   const svg = JSON.parse(`"${json.slice(json.indexOf("<svg"), json.indexOf("</svg>") + 6)}"`);
-  writeFileSync(`.github/${file}`, `${svg}\n`);
+  writeFileSync(`.github/${file}`, `${brand(svg)}\n`);
   console.log(`.github/${file}`);
 }
 
@@ -38,7 +57,11 @@ const pairs = [
 // which import the numbers belong to.
 const label = (ours: string, theirs: string) => `${ours} vs ${theirs}`;
 
-const size: Record<string, { gzip: number }> = run("scripts/size.ts");
+// SIZE=<file> reuses a saved `node scripts/size.ts --json` run, as BENCH does
+// below: gzip sizes shift about 1% with the zlib Node is built with.
+const size: Record<string, { gzip: number }> = process.env.SIZE
+  ? JSON.parse(readFileSync(process.env.SIZE, "utf8"))
+  : run("scripts/size.ts");
 await draw("size.svg", 'horizontal labels title="Bundle size, KiB gzip"', [
   row("library", "tinyaml", "original"),
   row("---", "--:", "--:"),

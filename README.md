@@ -92,8 +92,10 @@ pnpm test     # every package's tests
 pnpm fixtures # download what the comparisons and benchmarks run against
 pnpm drop-ins # fetch fixtures, measure every package again into .github/drop-ins.json, then pnpm readme
 pnpm readme   # rewrite the badges and drop-in tables in every README with automd
-pnpm brand    # redraw the logo, favicon and banners from .github/scripts/brand.ts
+pnpm brand    # redraw the logo, favicons and banners from .github/scripts/brand.ts
 ```
+
+The logo is the 🤏 emoji as [Twemoji](https://github.com/jdecked/twemoji) draws it, under CC-BY 4.0.
 
 All packages share one version and release together.
 

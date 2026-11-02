@@ -22,6 +22,7 @@
   "packageManager": "pnpm@12.16.1",
   "devDependencies": {
     "automd": "^0.4.3",
+    "sharp": "^0.35.5",
     "wrangler": "^4.156.0"
   }
 }
