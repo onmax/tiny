@@ -1,4 +1,5 @@
 import config from "./config.json5";
+import emptyArray from "./empty-array.json5";
 import settings from "./settings.jsonc";
 import type { Equal } from "./equal.ts";
 
@@ -15,4 +16,5 @@ export const checks: [
     }
   >,
   Equal<typeof settings, { strict: boolean; paths: string[] }>,
-] = [true, true];
+  Equal<typeof emptyArray, never[]>,
+] = [true, true, true];

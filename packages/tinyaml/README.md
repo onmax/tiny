@@ -70,7 +70,7 @@ tinyaml is also a TypeScript 7.1 [content mapper](https://devblogs.microsoft.com
 
 ```jsonc
 {
-  "contentMappers": [{ "package": "tinyaml", "extensions": [".yaml", ".yml"] }]
+  "contentMappers": [{ "package": "tinyaml", "extensions": [".yaml", ".yml"] }],
 }
 ```
 

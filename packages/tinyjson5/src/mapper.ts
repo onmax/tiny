@@ -47,7 +47,13 @@ function transform(text: string, literal: boolean): { text: string; diagnostics?
     };
     if (lineNumber === undefined) throw error;
     let start = 0;
-    for (let line = 1; line < lineNumber; line++) start = text.indexOf("\n", start) + 1;
+    let line = 1;
+    // JSON5 also ends lines at CR, CRLF, line separator and paragraph separator.
+    for (const match of text.matchAll(/\r\n|[\r\n\u2028\u2029]/g)) {
+      if (line >= lineNumber) break;
+      start = match.index + match[0].length;
+      line++;
+    }
     start = Math.min(start + columnNumber - 1, text.length);
     // TypeScript prints the position, so the message leaves it out.
     const messageText = message.replace(/^JSON5: (.*) at \d+:\d+$/, "$1");
@@ -55,8 +61,13 @@ function transform(text: string, literal: boolean): { text: string; diagnostics?
     return { text: ANY, diagnostics: [{ messageText, start, length, code: SYNTAX }] };
   }
   // Non-finite numbers have no literal type and cannot take a const assertion.
+  // Empty standalone arrays need a type so they don't evolve to any[].
   const end =
-    literal && (typeof value !== "number" || Number.isFinite(value)) ? " as const;\n" : ";\n";
+    literal && (typeof value !== "number" || Number.isFinite(value))
+      ? " as const;\n"
+      : Array.isArray(value) && value.length === 0
+        ? " as never[];\n"
+        : ";\n";
   return { text: `const data = ${print(value)}${end}export default data;\n` };
 }
 

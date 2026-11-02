@@ -39,7 +39,13 @@ function transform(text: string, literal: boolean): { text: string; diagnostics?
   } catch (error) {
     if (!(error instanceof YAMLError)) throw error;
     let start = 0;
-    for (let line = 1; line < error.line; line++) start = text.indexOf("\n", start) + 1;
+    let line = 1;
+    // The parser normalizes CR and CRLF to LF; offsets use the original text.
+    for (const match of text.matchAll(/\r\n|[\r\n]/g)) {
+      if (line >= error.line) break;
+      start = match.index + match[0].length;
+      line++;
+    }
     start = Math.min(start + error.column - 1, text.length);
     // TypeScript prints the position, so the message leaves it out.
     const messageText = error.message.replace(/ \(\d+:\d+\)$/, "");
@@ -47,11 +53,14 @@ function transform(text: string, literal: boolean): { text: string; diagnostics?
     return { text: ANY, diagnostics: [{ messageText, start, length, code: SYNTAX }] };
   }
   // undefined and non-finite numbers already have their only possible type;
-  // their expressions cannot take a const assertion.
+  // their expressions cannot take a const assertion. Empty standalone arrays
+  // need an explicit type so they don't evolve to any[] under strict mode.
   const end = (value: unknown) =>
     literal && value !== undefined && (typeof value !== "number" || Number.isFinite(value))
       ? " as const;\n"
-      : ";\n";
+      : Array.isArray(value) && value.length === 0
+        ? " as never[];\n"
+        : ";\n";
   const refs = findRefs(docs);
   const out: string[] = [];
   const done = new Set<object>();

@@ -85,7 +85,7 @@ tinyjson5 is also a TypeScript 7.1 [content mapper](https://devblogs.microsoft.c
 
 ```jsonc
 {
-  "contentMappers": [{ "package": "tinyjson5", "extensions": [".json5", ".jsonc"] }]
+  "contentMappers": [{ "package": "tinyjson5", "extensions": [".json5", ".jsonc"] }],
 }
 ```
 

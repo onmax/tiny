@@ -32,8 +32,13 @@ describe("content mapper", () => {
   });
 
   it("reports a syntax error where it is", async () => {
-    expect(await check("errors")).toBe(
+    expect((await check("errors")).split("\n").sort()).toEqual([
+      "errors/syntax-cr.json5(2,7): error tinyjson51: invalid character '2'",
+      "errors/syntax-crlf.json5(2,7): error tinyjson51: invalid character '2'",
+      "errors/syntax-eof.json5(3,1): error tinyjson51: invalid end of input",
+      "errors/syntax-ls.json5(2,7): error tinyjson51: invalid character '2'",
+      "errors/syntax-ps.json5(2,7): error tinyjson51: invalid character '2'",
       "errors/syntax.json5(3,9): error tinyjson51: invalid character '2'",
-    );
+    ]);
   });
 });

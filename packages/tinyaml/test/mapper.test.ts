@@ -34,6 +34,8 @@ describe("content mapper", () => {
   it("reports what it can't type where it is", async () => {
     expect((await check("errors")).split("\n").sort()).toEqual([
       "errors/recursive.yaml(1,1): error tinyaml2: a recursive alias can't be typed",
+      "errors/syntax-cr.yaml(3,1): error tinyaml1: missing comma in flow collection",
+      "errors/syntax-crlf.yaml(3,1): error tinyaml1: missing comma in flow collection",
       "errors/syntax.yaml(3,1): error tinyaml1: missing comma in flow collection",
     ]);
   });

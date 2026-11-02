@@ -1,4 +1,5 @@
 import config from "./config.json5";
+import emptyArray from "./empty-array.json5";
 import infinity from "./infinity.json5";
 import nan from "./nan.json5";
 import negativeInfinity from "./negative-infinity.json5";
@@ -10,4 +11,5 @@ export const checks: [
   Equal<typeof infinity, number>,
   Equal<typeof nan, number>,
   Equal<typeof negativeInfinity, number>,
-] = [true, true, true, true, true];
+  Equal<typeof emptyArray, readonly []>,
+] = [true, true, true, true, true, true];

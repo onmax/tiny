@@ -1,5 +1,8 @@
 import config from "./config.yaml";
 import docs from "./docs.yml";
+import emptyArray from "./empty-array.yaml";
+import emptyArrays from "./empty-arrays.yaml";
+import emptyDocs from "./empty-docs.yml";
 import type { Equal } from "./equal.ts";
 
 type Server = { host: string; port: number };
@@ -18,4 +21,7 @@ export const checks: [
     }
   >,
   Equal<typeof docs, readonly [{ name: string }, { name: string; count: number }]>,
-] = [true, true];
+  Equal<typeof emptyArray, never[]>,
+  Equal<typeof emptyArrays, { first: never[]; again: never[] }>,
+  Equal<typeof emptyDocs, readonly [never[], { nested: never[] }]>,
+] = [true, true, true, true, true];
