@@ -74,7 +74,7 @@ The root follows [json5](https://github.com/json5/json5)'s main branch, which ho
 - The reviver walks own keys, as `JSON.parse`'s does, and a property it can't update stays as it is instead of throwing.
 - Error positions count `\r`, `\r\n`, U+2028 and U+2029 as line breaks, and an error on a line break is reported on the line it ends.
 - `{ bigint: true }` returns integers outside the safe range, decimal or hex, as BigInts. A number with a decimal point or an exponent stays a Number.
-- `stringify` throws on a BigInt, takes only `'` or `"` as `quote`, escapes lone surrogates, writes keys with identifier characters above U+FFFF bare, and reads replacer lists, arrays and `toJSON5`/`toJSON` once, as `JSON.stringify` does.
+- `stringify` throws on a BigInt, takes only `'`, `"` or, for the default, `null` as `quote`, escapes lone surrogates, writes keys with identifier characters above U+FFFF bare, and reads replacer lists, arrays and `toJSON5`/`toJSON` once, as `JSON.stringify` does.
 
 `{ jsonc: true }` accepts JSON with `//` and `/* */` comments and nothing more: no single quotes, unquoted keys, hex, `+`, `Infinity`, `NaN`, trailing commas, escapes JSON lacks, or whitespace other than JSON's. Line comments end at `\n` or `\r`, and block comments at `*/`.
 
@@ -237,7 +237,7 @@ Every entry is faster than its original at every operation benchmarked, from 1.0
 
 ### `parse(text, reviver?, options?)`
 
-Parses JSON5 and returns the value. `parse(text, options)` works too. The reviver is the one `JSON.parse` takes.
+Parses JSON5 and returns the value. `parse(text, options)` works too. The reviver is called with each key and value as `JSON.parse` calls it, but without the third `context` argument, holding the value's source text, that `JSON.parse` passes too.
 
 | Option   | Default | What it does                                                                                                                                                                                                              |
 | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -248,11 +248,11 @@ Parses JSON5 and returns the value. `parse(text, options)` works too. The revive
 
 Writes JSON5. The replacer is a function or a list of keys, and `space` works as in `JSON.stringify`, up to 10 characters.
 
-| Option     | Default | What it does                                                                               |
-| ---------- | ------- | ------------------------------------------------------------------------------------------ |
-| `replacer` | none    | A function that changes each value, or a list of the keys to keep.                         |
-| `space`    | none    | Spaces per level (at most 10) or a string (its first 10 characters). Adds trailing commas. |
-| `quote`    | auto    | `'` or `"`. By default `'`, or `"` when the string has more `'` than `"`.                  |
+| Option     | Default | What it does                                                                                                          |
+| ---------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| `replacer` | none    | A function that changes each value, or a list of the keys to keep.                                                    |
+| `space`    | none    | Spaces per level (at most 10) or a string (its first 10 characters). Adds trailing commas.                            |
+| `quote`    | auto    | `'` or `"`. Omitted or `null`: `'`, or `"` when the string has more `'` than `"`. Anything else throws a `TypeError`. |
 
 Keys that are identifiers are written bare. `NaN`, `Infinity` and `-Infinity` are written as such, `-0` as `0`. `toJSON5()` is used before `toJSON()`. A cycle throws `TypeError: Converting circular structure to JSON5`.
 
