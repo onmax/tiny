@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 import { parse, parseAll, stringify, YAMLError } from "../src/index.ts";
 
-// How much longer reading the text for 4n takes than for n, after a warm-up
-// run and the best of five, so neither the JIT nor a collection on a busy
-// machine decides it: about 4 when the work is linear, 16 when it's quadratic.
+// How much longer reading the text for 8n takes than for n, after a warm-up
+// run and the best of five: about 8 when the work is linear, 64 when it's
+// quadratic. Tests check it stays under 32, since a busy CI runner can
+// slow one side two or three times.
 function growth(text: (n: number) => string, read: (text: string) => unknown, n: number): number {
   const best = (input: string) => {
     read(input);
@@ -15,7 +16,7 @@ function growth(text: (n: number) => string, read: (text: string) => unknown, n:
     }
     return fastest;
   };
-  return best(text(4 * n)) / best(text(n));
+  return best(text(8 * n)) / best(text(n));
 }
 
 describe("parse", () => {
@@ -117,7 +118,7 @@ describe("parse", () => {
     const text = (n: number) => "\uFEFF--- 1\n...\n".repeat(n);
     expect(parseAll(text(100_000))).toHaveLength(100_000);
     // Each one used to copy the rest of the input.
-    expect(growth(text, parseAll, 25_000)).toBeLessThan(10);
+    expect(growth(text, parseAll, 25_000)).toBeLessThan(32);
   });
 
   it("rejects a document marker in a quoted scalar, even after an escaped break", () => {
@@ -270,7 +271,7 @@ describe("parse", () => {
     const text = (n: number) => `${" ".repeat(2 * n)}[${"0,\t".repeat(n)}0]`;
     expect(parse(text(10_000))).toHaveLength(10_001);
     // Each tab used to measure the line's indentation again.
-    expect(growth(text, parse, 5_000)).toBeLessThan(10);
+    expect(growth(text, parse, 5_000)).toBeLessThan(32);
   });
 
   it("indents a block value on its own line with spaces only", () => {

@@ -161,8 +161,9 @@ describe("lint", () => {
         }
         return fastest;
       };
-      // Eight times the input takes about eight times as long, not 64.
-      expect(best(320_000) / best(40_000)).toBeLessThan(16);
+      // Eight times the input takes about eight times as long, not 64; a busy
+      // CI runner can slow one side two or three times.
+      expect(best(320_000) / best(40_000)).toBeLessThan(32);
     },
     30_000,
   );

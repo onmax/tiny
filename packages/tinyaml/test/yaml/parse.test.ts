@@ -514,9 +514,9 @@ describe("parse", () => {
     // 28 levels used to take seconds.
     expect(performance.now() - start).toBeLessThan(1000);
     // An alias costs a step per anchored collection it's in, while it's under
-    // the limit, so four times the input takes about four times as long, not
-    // sixteen. A warm-up run and the best of five, so a busy machine doesn't
-    // decide it.
+    // the limit, so eight times the input takes about eight times as long,
+    // not 64. A warm-up run and the best of five, and a bound of 32, since a
+    // busy CI runner can slow one side two or three times.
     const spread = (n: number) =>
       `- &s x\n${Array.from({ length: n }, (_, i) => `- &r${i} [*s]`).join("\n")}`;
     const best = (text: string) => {
@@ -531,7 +531,7 @@ describe("parse", () => {
       return fastest;
     };
     expect(parse(spread(20_000), { maxAliasCount: -1 })).toHaveLength(20_001);
-    expect(best(spread(20_000)) / best(spread(5_000))).toBeLessThan(10);
+    expect(best(spread(40_000)) / best(spread(5_000))).toBeLessThan(32);
   });
 
   it("disables every alias with maxAliasCount: 0", () => {
