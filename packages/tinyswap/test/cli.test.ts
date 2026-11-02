@@ -1,4 +1,4 @@
-// Runs tinymigrate as a user would. Without a terminal it only runs with
+// Runs tinyswap as a user would. Without a terminal it only runs with
 // --yes or --dry-run, which is how these tests drive it.
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -31,11 +31,11 @@ const app = (files: Files = {}) =>
     { git: true },
   );
 
-describe("tinymigrate", () => {
+describe("tinyswap", () => {
   it("prints its usage", () => {
     const { status, output } = run(".", "--help");
     expect(status).toBe(0);
-    expect(output).toMatch(/^Usage: tinymigrate \[dir\] \[options\]/);
+    expect(output).toMatch(/^Usage: tinyswap \[dir\] \[options\]/);
     expect(output).toContain("--dry-run");
   });
 
@@ -114,12 +114,12 @@ describe("tinymigrate", () => {
     const root = app();
     expect(run(root, "--yes", "--only", "lodash")).toEqual({
       status: 1,
-      output: expect.stringContaining("--only: tinymigrate doesn't migrate lodash."),
+      output: expect.stringContaining("--only: tinyswap doesn't migrate lodash."),
     });
     expect(run(root, "--yes", "--only", "json5")).toEqual({
       status: 1,
       output: expect.stringContaining(
-        "--only: json5 isn't a dependency tinymigrate can replace here.",
+        "--only: json5 isn't a dependency tinyswap can replace here.",
       ),
     });
   });

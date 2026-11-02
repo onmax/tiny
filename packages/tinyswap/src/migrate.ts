@@ -66,7 +66,7 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
       ({ library }) => before.includes(library.name) || before.includes("\\"),
     );
     if (!mentioned.length) continue;
-    // An original the file may import without tinymigrate reading it stays,
+    // An original the file may import without tinyswap reading it stays,
     // everywhere if no one package.json owns its imports.
     const keep = ({ library, manifest }: Found) => {
       const owner = ownerOf(declared, library.name, file);
@@ -85,7 +85,7 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
         continue;
       skipped.push({
         file,
-        reason: `it names ${name} outside its <script> blocks, which tinymigrate doesn't rewrite`,
+        reason: `it names ${name} outside its <script> blocks, which tinyswap doesn't rewrite`,
       });
       for (const found of picked) if (found.library.name === name) keep(found);
     }

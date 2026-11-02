@@ -10,7 +10,7 @@ import { gitChanges, packageManager, scan, type Found } from "./detect.ts";
 import { byName, type Tiny } from "./libraries.ts";
 import { apply, plan, type Plan } from "./migrate.ts";
 
-const USAGE = `Usage: tinymigrate [dir] [options]
+const USAGE = `Usage: tinyswap [dir] [options]
 
 Moves a project from js-yaml, yaml, yamljs, @std/yaml, json5,
 strip-json-comments, jsonc-parser, comment-json, jju, ini and @one-ini/wasm
@@ -37,7 +37,7 @@ try {
     },
   });
 } catch (error) {
-  console.error(`tinymigrate: ${(error as Error).message}\n\n${USAGE}`);
+  console.error(`tinyswap: ${(error as Error).message}\n\n${USAGE}`);
   process.exit(2);
 }
 const { values, positionals } = args;
@@ -46,7 +46,7 @@ if (values.help) {
   process.exit(0);
 }
 if (positionals.length > 1) {
-  console.error(`tinymigrate: takes one directory, got ${positionals.length}\n\n${USAGE}`);
+  console.error(`tinyswap: takes one directory, got ${positionals.length}\n\n${USAGE}`);
   process.exit(2);
 }
 
@@ -63,12 +63,12 @@ const fail = (message: string): never => {
   process.exit(1);
 };
 
-p.intro(pc.inverse(" tinymigrate "));
+p.intro(pc.inverse(" tinyswap "));
 
 if (!existsSync(resolve(root, "package.json"))) fail(`${root} has no package.json.`);
 for (const name of only ?? [])
   if (!byName.has(name))
-    fail(`--only: tinymigrate doesn't migrate ${name}. It knows ${[...byName.keys()].join(", ")}.`);
+    fail(`--only: tinyswap doesn't migrate ${name}. It knows ${[...byName.keys()].join(", ")}.`);
 if (!yes && !dryRun && !process.stdin.isTTY)
   fail(
     "No terminal to ask in. Pass --yes to migrate everything found, or --dry-run to see the changes.",
@@ -106,7 +106,7 @@ if (!available.length) {
 }
 for (const name of only ?? [])
   if (!available.includes(name))
-    fail(`--only: ${name} isn't a dependency tinymigrate can replace here.`);
+    fail(`--only: ${name} isn't a dependency tinyswap can replace here.`);
 
 let names = only ?? available;
 if (!yes && !dryRun && !only) {
@@ -243,7 +243,7 @@ function printDiff(file: string, before: string, after: string) {
   );
 }
 
-// The tiny packages release together with tinymigrate, at one version, so
+// The tiny packages release together with tinyswap, at one version, so
 // its own version is theirs. An unreleased checkout asks for the latest.
 function ranges(): Record<Tiny, string> {
   const { version } = JSON.parse(
