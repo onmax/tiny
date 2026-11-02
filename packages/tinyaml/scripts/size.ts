@@ -35,11 +35,11 @@ const entries: [string, string][] = [
 // one on purpose, and say why in the commit.
 const BUDGET: Record<string, number> = {
   tinyaml: 8120,
-  "tinyaml/js-yaml": 12130,
-  "tinyaml/js-yaml-v5": 16700,
-  "tinyaml/yaml": 17450,
-  "tinyaml/yamljs": 8340,
-  "tinyaml/std": 11100,
+  "tinyaml/js-yaml": 12135,
+  "tinyaml/js-yaml-v5": 16695,
+  "tinyaml/yaml": 17560,
+  "tinyaml/yamljs": 8435,
+  "tinyaml/std": 11140,
 };
 
 // Code that only some modes' parsers have, as it reads once minified. Each

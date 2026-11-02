@@ -164,10 +164,10 @@ function engine(input: string, options: LoadOptions) {
     if (typeof value === "object" && value !== null) built.add(value);
     return value;
   };
-  // What a scalar tag resolves to is the tag's own value, never walked.
-  const opaque = new WeakSet<object>();
+  // What a scalar tag resolves to, which `<<` takes as one source.
+  const scalars = new WeakSet<object>();
   const scalar = (value: unknown) => {
-    if (typeof value === "object" && value !== null) opaque.add(value);
+    if (typeof value === "object" && value !== null) scalars.add(value);
     return mark(value);
   };
 
@@ -217,7 +217,8 @@ function engine(input: string, options: LoadOptions) {
           if (error) reject(error);
           continue;
         }
-        const key = convert(decode(name));
+        // A merge's keys are its source's, already built.
+        const key = merged.has(name) ? decode(name) : convert(decode(name));
         if (merged.has(name)) {
           if (tag.has(carrier, key)) continue;
           value = (mappings.get(value as object) ?? defaultMap!).get(value, key);
@@ -245,17 +246,18 @@ function engine(input: string, options: LoadOptions) {
         if (error instanceof YAMLException) throw error;
         reject(error instanceof Error ? error.message : String(error), name);
       }
-    replaced.set(raw, result);
+    // What a tag makes is its own value, never walked.
+    replaced.set(raw, result).set(result as object, result);
     if (tag.nodeKind === "mapping" && typeof result === "object" && result !== null)
       mappings.set(result, tag);
     return mark(result);
   }
 
   // The final value for something the parser returned: raw arrays and
-  // objects become their default tag's value, and the children of built
-  // values are converted in place.
+  // objects become their default tag's value, and objects the object map
+  // keeps have their children converted in place.
   function convert(value: unknown): unknown {
-    if (!walk || typeof value !== "object" || value === null || opaque.has(value)) return value;
+    if (!walk || typeof value !== "object" || value === null || scalars.has(value)) return value;
     if (replaced.has(value)) return replaced.get(value);
     if (!built.has(value)) {
       if (Array.isArray(value)) {
@@ -272,16 +274,8 @@ function engine(input: string, options: LoadOptions) {
       } else return value;
     }
     replaced.set(value, value);
-    if (Array.isArray(value)) value.forEach((item, i) => (value[i] = convert(item)));
-    else if (value instanceof Map || value instanceof Set) {
-      const entries = [...value.entries()];
-      value.clear();
-      for (const [k, v] of entries)
-        if (value instanceof Map) value.set(convert(k), convert(v));
-        else value.add(convert(k));
-    } else if (isPlainObject(value))
-      for (const key of Object.keys(value))
-        (value as Record<string, unknown>)[key] = convert((value as Record<string, unknown>)[key]);
+    for (const key of Object.keys(value))
+      (value as Record<string, unknown>)[key] = convert((value as Record<string, unknown>)[key]);
     return value;
   }
 
@@ -403,7 +397,7 @@ function engine(input: string, options: LoadOptions) {
       }
       return pairs;
     },
-    mapping: (value) => mappings.has(value),
+    mapping: (value) => mappings.has(value) || scalars.has(value),
     convert,
     done() {
       parsing = false;

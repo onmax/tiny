@@ -52,7 +52,8 @@ export const linterHash = {
       // Outside modules, such as Doctor's, have no code here.
       const module = this.getModuleInfo(id);
       if (!module?.code) return;
-      hash.update(`${module.code}\0`);
+      // Line breaks read alike in code, so a CRLF checkout hashes the same.
+      hash.update(`${module.code.replace(/\r\n?/g, "\n")}\0`);
       module.importedIds.forEach(add);
     };
     add(facadeModuleId);

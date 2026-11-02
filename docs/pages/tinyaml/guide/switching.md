@@ -9,9 +9,9 @@ Each subpath exports the functions, options and types of the library it replaces
 | --------------- | ---------------------- | --------------- | ------------------------ |
 | js-yaml 4.3.2   | `"tinyaml/js-yaml"`    | 14.4 → 11.8 KiB | 301 of 304 pass          |
 | js-yaml 5.5.0   | `"tinyaml/js-yaml-v5"` | 17.1 → 16.2 KiB | 1,023 of 1,646 pass      |
-| yaml 2.9.1      | `"tinyaml/yaml"`       | 29.9 → 16.9 KiB | 195 of 220 pass          |
-| yamljs 0.3.0    | `"tinyaml/yamljs"`     | 8.8 → 8.0 KiB   | 103 of 103 pass          |
-| @std/yaml 1.3.0 | `"tinyaml/std"`        | 11.3 → 10.7 KiB | 92 of 95 pass            |
+| yaml 2.9.1      | `"tinyaml/yaml"`       | 29.9 → 17.0 KiB | 195 of 220 pass          |
+| yamljs 0.3.0    | `"tinyaml/yamljs"`     | 8.8 → 8.1 KiB   | 103 of 103 pass          |
+| @std/yaml 1.3.0 | `"tinyaml/std"`        | 11.3 → 10.8 KiB | 92 of 95 pass            |
 
 ```ts
 // before
@@ -22,7 +22,24 @@ import yaml from "tinyaml/js-yaml";
 
 Of js-yaml 5's 1,646 tests, 610 call the events and AST API that tinyaml/js-yaml-v5 leaves out, and js-yaml 5 skips 13 itself. The other 1,023 pass. yaml's five test files that cover `parse` and `stringify` hold 531 tests, and the 220 counted are the ones that call tinyaml. The rest test yaml's Document API.
 
-For yamljs and @std/yaml the swap saves about 0.8 KiB and 0.5 KiB. The bigger change is the parser. On the yaml-test-suite, tinyaml/yamljs loads 130 cases that yamljs throws on, and in 39 where the two disagree only tinyaml/yamljs matches the suite.
+For yamljs and @std/yaml the swap saves about 0.7 KiB and 0.5 KiB. The bigger change is the parser. On the yaml-test-suite, tinyaml/yamljs loads 130 cases that yamljs throws on, and in 39 where the two disagree only tinyaml/yamljs matches the suite.
+
+## Bugs tinyaml doesn't copy
+
+| Library | Bug | tinyaml |
+| --- | --- | --- |
+| js-yaml 4.1.0 and earlier | A `<<` merge of a mapping that has a `__proto__` key replaces the merged object's prototype (CVE-2025-64718). | tinyaml/js-yaml keeps `__proto__` as an ordinary key, as js-yaml 4.1.1 and later do. |
+| js-yaml 4.3.2 | Loads `key: &x\n!!map\n  a: b`, which is invalid YAML (yaml-test-suite H7J7), as `{ key: { a: "b" } }`. | tinyaml/js-yaml throws. |
+| yaml 2.9.1 | A lone carriage return isn't a line break, so `- a\r- b` loads as `["a\r- b"]`. The YAML spec makes it a line break. | tinyaml/yaml gives `["a", "b"]`. |
+| yaml 2.9.1 | Warnings on one long line take quadratic time: 60,000 unknown tags in one flow sequence take about 15 seconds on a Ryzen 7 laptop. | tinyaml/yaml takes about half a second. |
+| yamljs 0.3.0 | Drops keys named like `Object.prototype` members: `constructor: 1` and `__proto__: {x: 1}` load as `null`. | tinyaml/yamljs keeps them. |
+| yamljs 0.3.0 | `- - a` loads as `["- a"]`. | tinyaml/yamljs gives `[["a"]]`. |
+| yamljs 0.3.0 | A plain value over two lines keeps the line break: `a: x\n  y` gives `"x\ny"`. | tinyaml/yamljs gives `"x y"`. |
+| yamljs 0.3.0 | `\u` and `\x` escapes give UTF-8 bytes: `"\u00e9"` gives `"Ã©"`. | tinyaml/yamljs gives `"é"`. |
+| yamljs 0.3.0 | A quoted string that starts with `*` is read as an alias: `["*a"]` gives `[undefined]`. | tinyaml/yamljs gives `["*a"]`. |
+| @std/yaml 1.3.0 | Throws on an anchor before a block mapping key, as in `&a a: b` (yaml-test-suite ZH7C). | tinyaml/std gives `{ a: "b" }`. |
+| @std/yaml 1.3.0 | Keeps a tab that ends a line in a double-quoted scalar: `"a\t\n  b"` gives `"a\t b"` (yaml-test-suite DE56). | tinyaml/std gives `"a b"`. |
+| @std/yaml 1.3.0 | Loads the invalid `[ , a ]` as `[null, "a"]` (yaml-test-suite 9MAG). | tinyaml/std throws. |
 
 Every subpath runs the same parser code as the root. The sections below list each known difference from the original.
 

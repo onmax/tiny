@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { parse, parseAll, stringify, YAMLError } from "../src/index.ts";
-import { growth } from "./fixtures.ts";
+import { LINEAR, slope } from "./fixtures.ts";
 
 describe("parse", () => {
   it("resolves YAML 1.2 core values", () => {
@@ -101,7 +101,7 @@ describe("parse", () => {
     const text = (n: number) => "\uFEFF--- 1\n...\n".repeat(n);
     expect(parseAll(text(100_000))).toHaveLength(100_000);
     // Each one used to copy the rest of the input.
-    expect(growth(text, parseAll, 25_000)).toBeLessThan(32);
+    expect(slope(text, parseAll)).toBeLessThan(LINEAR);
   });
 
   it("reads a line or paragraph separator in a directive's comment as part of it", () => {
@@ -261,7 +261,7 @@ describe("parse", () => {
     const text = (n: number) => `${" ".repeat(2 * n)}[${"0,\t".repeat(n)}0]`;
     expect(parse(text(10_000))).toHaveLength(10_001);
     // Each tab used to measure the line's indentation again.
-    expect(growth(text, parse, 5_000)).toBeLessThan(32);
+    expect(slope(text, parse)).toBeLessThan(LINEAR);
   });
 
   it("indents a block value on its own line with spaces only", () => {

@@ -7,7 +7,7 @@ import { parse as yaml } from "yaml";
 import { describe, expect, it } from "vite-plus/test";
 import { parseAll } from "../src/index.ts";
 import { lint } from "../src/linter.ts";
-import { growth } from "./fixtures.ts";
+import { LINEAR, slope } from "./fixtures.ts";
 
 const at = (text: string) =>
   lint(text).map(({ rule, line, column }) => `${rule} ${line}:${column}`);
@@ -173,9 +173,7 @@ describe("lint", () => {
     (_, make) => {
       const [text, problems] = make(10_000);
       expect(lint(text)).toHaveLength(problems);
-      // Keep the eightfold comparison, with enough values to measure scaling
-      // without creating millions of diagnostics on a busy CI runner.
-      expect(growth((n) => make(n)[0], lint, 10_000)).toBeLessThan(32);
+      expect(slope((n) => make(n)[0], lint)).toBeLessThan(LINEAR);
     },
     30_000,
   );

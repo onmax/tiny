@@ -340,6 +340,14 @@ describe("parse", () => {
       "%YAML 1.01\n---\na",
       "\uFEFF%FOO\n---\na",
       "- &a: x\n- *a:\n",
+      // The excerpt takes the line before, blank or not.
+      "\n!x value",
+      "\r\n!x value",
+      " \n!x value",
+      "\n\n!x value",
+      "a:\n\n  !x value",
+      "\uFEFF\n!x value",
+      "\uFEFF!x value",
     ]) {
       const read = (parse: (src: string) => unknown) => {
         parse(input);
