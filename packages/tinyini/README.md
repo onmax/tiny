@@ -109,7 +109,17 @@ import ini from "tinyini/ini";
 import { parse_to_uint32array } from "tinyini/one-ini";
 ```
 
-Which ini you have decides the subpath, and `npm ls ini` shows it. `rc` pins 1.3.x, which is why 1.3.8 still has the most downloads. [`scripts/versions.ts`](./scripts/versions.ts) fuzzes 15 published ini versions, every one from 1.3.7 on plus 1.3.4 and 1.3.5, each against the next, to find where they behave differently: 1.3.8 differs from 2.0.0 on every input (plain objects against null-prototype ones), 2.0.0 to 4.0.0 behave the same apart from the line endings of array items on Windows, 4.1.0 added options and changed how whitespace-only lines and section headers are read, and 4.1.3 to 7.0.0 behave the same. @one-ini/wasm 0.2.0 reads `key =` as an empty value, where 0.1.x stops parsing there; `editorconfig` 1 uses 0.1.1, and `editorconfig` 3 uses 0.2.1.
+Which ini you have decides the subpath, and `npm ls ini` shows it. `rc` pins 1.3.x, which is why 1.3.8 still has the most downloads. [`scripts/versions.ts`](./scripts/versions.ts) fuzzes 15 published ini versions, every one from 1.3.7 on plus 1.3.4 and 1.3.5, each against the next, to find where they behave differently: 1.3.8 differs from 2.0.0 on every input (plain objects against null-prototype ones), 2.0.0 to 4.0.0 behave the same, 4.1.0 added options and changed how whitespace-only lines and section headers are read, and 4.1.3 to 7.0.0 behave the same. @one-ini/wasm 0.2.0 reads `key =` as an empty value, where 0.1.x stops parsing there; `editorconfig` 1 uses 0.1.1, and `editorconfig` 3 uses 0.2.1.
+
+### Bugs tinyini doesn't copy
+
+| Library               | Bug                                                                                                                                                                          | tinyini                                                            |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| ini 1.3.5 and earlier | A `[__proto__]` section writes its keys onto `Object.prototype`, so every object in the program gets them (CVE-2020-7788).                                                   | The root and the ini subpaths drop `__proto__` sections and keys.  |
+| ini 1.3.8             | A section named after an inherited property writes its keys onto the built-in function: `[constructor]` followed by `keys = 1` replaces `Object.keys` for the whole program. | tinyini/ini-v1 starts a new object for the section, as ini 2 does. |
+| ini 4.1.0 to 4.1.2    | With `bracketedArray: false`, a key that repeats loses its last two characters.                                                                                              | tinyini/ini keeps the key, as ini 4.1.3 does.                      |
+| ini 4.1.0             | Throws where there is no `process`, as in a browser.                                                                                                                         | tinyini/ini checks that `process` exists, as ini 4.1.1 does.       |
+| @one-ini/wasm         | The WASM memory grows on every call and is never freed. At 4 GiB every call throws `RuntimeError: unreachable`; with 0.2.1 that takes 65,504 calls on an 800-byte file.      | Keeps nothing between calls.                                       |
 
 The subpaths share one core, built once per library; the root has its own smaller parser and stringifier. The details below list each known difference from the original.
 
@@ -128,7 +138,7 @@ The subpaths share one core, built once per library; the root has its own smalle
 <details>
 <summary>ini 2: what's different</summary>
 
-- Windows. ini 2.0.0 to 4.0.0 pick the line ending from `process.platform` when they load; tinyini/ini-v2 reads it each time it writes. ini 3.x and 4.0.0 also end array items with CRLF on Windows, where 2.0.0 and tinyini/ini-v2 write `\n`.
+- Windows. ini 2.0.0 to 4.0.0 pick the line ending from `process.platform` when they load; tinyini/ini-v2 reads it each time it writes.
 - Stack depth: on Node 24, ini 2.0.0 writes 6,072 nested objects and tinyini/ini-v2 5,918.
 - Strict mode, replaced built-ins, arguments with their own `split` or `trim`, and packaging, as for ini 7. The types take only `section` and `whitespace`, the options ini 2 reads.
 
