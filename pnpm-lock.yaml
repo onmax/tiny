@@ -274,6 +274,9 @@ importers:
       yaml-eslint-parser:
         specifier: ^2.1.0
         version: 2.1.0
+      yaml3:
+        specifier: npm:yaml@3.0.0-2
+        version: yaml@3.0.0-2
       yamljs:
         specifier: ^0.3.0
         version: 0.3.0
@@ -9888,6 +9891,11 @@ packages:
   yaml@2.9.1:
     resolution: {integrity: sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==}
     engines: {node: '>= 14.6'}
+    hasBin: true
+
+  yaml@3.0.0-2:
+    resolution: {integrity: sha512-dLh334ufQYzH6NPEb8DmieCSdb/CwTlWDDbLkuw4yIgdC3oRPCVfWUYrm0WP0blQ/8sJDecic47mY6Flypyzsw==}
+    engines: {node: ^20.19 || ^22.12 || >=24}
     hasBin: true
 
   yamljs@0.3.0:
@@ -20364,6 +20372,8 @@ snapshots:
       yaml: 2.9.1
 
   yaml@2.9.1: {}
+
+  yaml@3.0.0-2: {}
 
   yamljs@0.3.0:
     dependencies:

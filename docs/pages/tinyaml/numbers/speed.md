@@ -37,3 +37,16 @@ Median time per call over 7 rounds, from [`bench/index.ts`](https://github.com/o
 | yaml 2, root | stringify 268 KiB     | 12.65 ms | 1.01 ms |   12.5x |
 
 tinyaml is faster on every row. The closest is tinyaml/yamljs's `stringify` on the 268 KiB file, 1.28 ms to yamljs's 1.46 ms. It has to write the same bytes as yamljs, so it follows yamljs's dumper closely.
+
+## yaml 3
+
+yaml 3.0.0-2, a prerelease published as `yaml@next`, parses 3 to 4 times faster than yaml 2.9.1 in this benchmark and stringifies 1.3 to 1.4 times faster. These timings come from another machine than the table above, an AMD Ryzen 7 255 shared with other jobs, with Node 24.21, so the two tables don't mix. yaml 2.9.1 was timed in the same runs as yaml 3. Each time is the median of 10, from 5 runs of `bench/index.ts`.
+
+| Operation             | yaml 2.9.1 | yaml 3.0.0-2 | tinyaml/yaml | tinyaml |
+| --------------------- | ---------: | -----------: | -----------: | ------: |
+| parse frontmatter     |    59.7 µs |      19.3 µs |       7.1 µs |  3.7 µs |
+| stringify frontmatter |    30.2 µs |      22.3 µs |       8.8 µs |  2.0 µs |
+| parse 268 KiB         |    70.5 ms |      19.1 ms |       6.6 ms |  4.4 ms |
+| stringify 268 KiB     |    29.2 ms |      23.1 ms |      10.2 ms |  1.7 ms |
+
+Against yaml 3.0.0-2, tinyaml/yaml parses 2.7 to 2.9 times faster and stringifies 2.3 to 2.5 times faster. tinyaml's root API parses 4.4 to 5.2 times faster and stringifies 11 to 13.5 times faster. tinyaml/yaml follows yaml 2, and isn't checked against yaml 3's API or tests, so this compares speed only.
