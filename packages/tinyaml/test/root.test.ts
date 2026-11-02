@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vite-plus/test";
 import { parse, parseAll, stringify, YAMLError } from "../src/index.ts";
 
-// How much longer reading the text for 4n takes than for n, best of three
-// runs each, so a busy machine doesn't decide it: about 4 when the work is
-// linear, 16 when it's quadratic.
+// How much longer reading the text for 4n takes than for n, after a warm-up
+// run and the best of five, so neither the JIT nor a collection on a busy
+// machine decides it: about 4 when the work is linear, 16 when it's quadratic.
 function growth(text: (n: number) => string, read: (text: string) => unknown, n: number): number {
   const best = (input: string) => {
+    read(input);
     let fastest = Infinity;
-    for (let run = 0; run < 3; run++) {
+    for (let run = 0; run < 5; run++) {
       const start = performance.now();
       read(input);
       fastest = Math.min(fastest, performance.now() - start);

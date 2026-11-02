@@ -152,8 +152,9 @@ describe("lint", () => {
     (_, make) => {
       const best = (n: number) => {
         const [text, problems] = make(n);
+        lint(text);
         let fastest = Infinity;
-        for (let run = 0; run < 3; run++) {
+        for (let run = 0; run < 5; run++) {
           const begin = performance.now();
           expect(lint(text)).toHaveLength(problems);
           fastest = Math.min(fastest, performance.now() - begin);

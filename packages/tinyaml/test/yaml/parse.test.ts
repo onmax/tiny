@@ -515,12 +515,14 @@ describe("parse", () => {
     expect(performance.now() - start).toBeLessThan(1000);
     // An alias costs a step per anchored collection it's in, while it's under
     // the limit, so four times the input takes about four times as long, not
-    // sixteen. Best of three runs, so a busy machine doesn't decide it.
+    // sixteen. A warm-up run and the best of five, so a busy machine doesn't
+    // decide it.
     const spread = (n: number) =>
       `- &s x\n${Array.from({ length: n }, (_, i) => `- &r${i} [*s]`).join("\n")}`;
     const best = (text: string) => {
+      parse(text, { maxAliasCount: -1 });
       let fastest = Infinity;
-      for (let run = 0; run < 3; run++) {
+      for (let run = 0; run < 5; run++) {
         const begin = performance.now();
         expect(() => parse(text, { maxAliasCount: 1000 })).toThrow("Excessive alias count");
         parse(text, { maxAliasCount: -1 });
