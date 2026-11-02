@@ -156,6 +156,9 @@ export default {
             (rows.some((r) => r.library.startsWith("@one-ini/wasm"))
               ? " @one-ini/wasm's size adds its .wasm file, gzipped, and its speed is parse_to_uint32array on a 100 KB .editorconfig."
               : "") +
+            (rows.some((r) => r.library.startsWith("strip-json-comments"))
+              ? " strip-json-comments only strips comments, so its time is the time to strip them."
+              : "") +
             ` Measured on ${machines(data, rows)}.`,
         );
         return { contents: lines.join("\n") };

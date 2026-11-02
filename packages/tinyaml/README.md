@@ -5,7 +5,7 @@
 <!-- automd:comark-badges name=tinyaml size=size-and-speed -->
 
 [![release](https://comark-ui.onmax.me/badge.svg?source=npm-version&package=tinyaml&label=release&icon=npm)](https://github.com/onmax/tiny/releases)
-[![size](https://comark-ui.onmax.me/badge.svg?label=size&value=7.8+KiB+gzip)](#size-and-speed)
+[![size](https://comark-ui.onmax.me/badge.svg?label=size&value=7.7+KiB+gzip)](#size-and-speed)
 [![dependencies](https://comark-ui.onmax.me/badge.svg?label=dependencies&value=0)](https://www.npmjs.com/package/tinyaml?activeTab=dependencies)
 [![license: MIT](https://comark-ui.onmax.me/badge.svg?label=license&value=MIT)](./LICENSE)
 [![Release status](https://comark-ui.onmax.me/badge.svg?source=github-actions&repository=onmax%2Ftiny&workflow=release.yaml&icon=github)](https://github.com/onmax/tiny/actions/workflows/release.yaml)
@@ -29,15 +29,15 @@ tinyaml ships drop-in replacements for js-yaml 4 and 5, yaml, yamljs and @std/ya
 
 | You use   | Switch to            |      Size, gzip |       Parses | Stringifies |
 | --------- | -------------------- | --------------: | -----------: | ----------: |
-| js-yaml 4 | `tinyaml/js-yaml`    | 14.4 → 11.8 KiB |  1.5× faster | 1.6× faster |
-| js-yaml 5 | `tinyaml/js-yaml-v5` | 17.1 → 16.2 KiB |  1.5× faster | 1.8× faster |
-| yaml      | `tinyaml/yaml`       | 29.9 → 16.9 KiB | 12.6× faster | 2.8× faster |
-| yamljs    | `tinyaml/yamljs`     |   8.8 → 8.0 KiB |  5.0× faster | 1.1× faster |
-| @std/yaml | `tinyaml/std`        | 11.3 → 10.7 KiB |  2.0× faster | 1.6× faster |
+| js-yaml 4 | `tinyaml/js-yaml`    | 14.4 → 11.6 KiB |  1.6× faster | 1.7× faster |
+| js-yaml 5 | `tinyaml/js-yaml-v5` | 17.0 → 16.1 KiB |  1.5× faster | 1.8× faster |
+| yaml      | `tinyaml/yaml`       | 29.8 → 16.8 KiB | 12.0× faster | 2.8× faster |
+| yamljs    | `tinyaml/yamljs`     |   8.8 → 8.0 KiB |  5.1× faster | 1.1× faster |
+| @std/yaml | `tinyaml/std`        | 11.2 → 10.6 KiB |  2.4× faster | 1.6× faster |
 
-Starting fresh with YAML? The root `tinyaml` API is 7.8 KiB, 1.8× smaller than js-yaml 4 and 3.8× smaller than yaml. It parses 19.3× faster than yaml and stringifies 12.5× faster.
+Starting fresh with YAML? The root `tinyaml` API is 7.7 KiB, 1.9× smaller than js-yaml 4 and 3.9× smaller than yaml. It parses 18.7× faster than yaml and stringifies 12.9× faster.
 
-Size is the minified bundle, gzipped. Speed is the median time to parse and stringify the large benchmark file. Measured on Apple M4, Node 26.13.
+Size is the minified bundle, gzipped. Speed is the median time to parse and stringify the large benchmark file. Measured on Apple M4, Node 26.13.0.
 
 <!-- /automd -->
 

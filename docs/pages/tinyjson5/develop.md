@@ -26,4 +26,5 @@ pnpm fuzz:jju 20000 1
 pnpm unicode                     # identifier characters that differ from json5's tables
 pnpm size                        # bundle sizes next to each original
 pnpm bench                       # speed next to each original
+node scripts/speed-table.ts b.json  # the Speed table, from `node bench/index.ts --json > b.json`
 ```
