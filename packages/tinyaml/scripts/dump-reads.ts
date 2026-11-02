@@ -28,7 +28,7 @@ const chance = (p: number) => rand() < p;
 
 type Op = "grow" | "shrink" | "swap" | "hide" | "none";
 interface Item {
-  key: string;
+  key: string | symbol;
   spec: Spec;
   // A getter, and what its first read does to its own collection or the root one.
   getter?: { op: Op; root: boolean };
@@ -38,7 +38,8 @@ type Spec =
   | { kind: "array" | "object" | "map"; items: Item[]; toJSON?: Spec | undefined };
 
 const SCALARS = ["first", "a b", "", "1", 1, 0, true, null, undefined, () => 1];
-const KEYS = ["a", "b", "c", "x y", "1", "toJSON"];
+// The originals read no symbol keys, so a dumper that does reads differently.
+const KEYS = ["a", "b", "c", "x y", "1", "toJSON", Symbol.for("s")];
 
 function randomSpec(depth: number, shared: Spec[]): Spec {
   if (shared.length && chance(0.05)) return pick(shared);
@@ -96,7 +97,7 @@ function build(root: Spec, log: string[]): unknown {
     top ??= value;
     spec.items.forEach((item, i) => {
       const key = spec.kind === "array" ? i : item.key;
-      const at = `${path}/${key}`;
+      const at = `${path}/${String(key)}`;
       const child = make(item.spec, at);
       const { getter } = item;
       if (!getter) {

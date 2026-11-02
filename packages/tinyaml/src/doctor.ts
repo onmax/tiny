@@ -33,10 +33,13 @@ const diagnostics = defineDoctorDiagnostics(
  */
 export default function tinyaml(options: DoctorOptions = {}) {
   const { include = "**/*.{yaml,yml}", exclude = ["**/node_modules/**", "**/dist/**"] } = options;
+  // Doctor keys the results it keeps between runs by each Rule's meta and
+  // code, not by these options, so the meta's `version` holds them.
+  const files = JSON.stringify([include, exclude]);
 
   // Every Rule reads the same results; the first one to run lints the files.
   const lintProject = async (ctx: RuleContext) => {
-    const key = `tinyaml-lint:${ctx.project.root}`;
+    const key = `tinyaml-lint:${ctx.project.root}:${files}`;
     let results = ctx.cache.get<LintedFile[]>(key);
     if (!results) {
       results = await lintFiles(ctx.fs.glob(include, { exclude }), (file) => ctx.fs.readText(file));
@@ -54,12 +57,14 @@ export default function tinyaml(options: DoctorOptions = {}) {
         category: "correctness",
         severity: rules[id].severity,
         execution: "manifest",
+        version: files,
       },
       create(ctx) {
         return {
           async onProjectEnd() {
             for (const { file, text = "", diagnostics: found } of await lintProject(ctx)) {
-              const starts = [0];
+              // The linter's columns start past a byte order mark.
+              const starts = [text.charCodeAt(0) === 0xfeff ? 1 : 0];
               for (const match of text.matchAll(/\r\n?|\n/g))
                 starts.push(match.index + match[0].length);
               for (const diagnostic of found) {

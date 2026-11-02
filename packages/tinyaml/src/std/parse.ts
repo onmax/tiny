@@ -178,22 +178,30 @@ export function parseAll(content: string, options: ParseOptions = {}): unknown[]
 
 /** The single document in `content`, or null when there is none. */
 export function parse(content: string, options: ParseOptions = {}): unknown {
-  const docs = parseAll(content, options);
-  if (docs.length > 1) {
-    // std stops where the second document starts.
-    content = String(content);
-    const buffer = lines(content);
-    const start = /^(?:[ \t]*(?:[#%].*)?\n)*---(?=\s|$)/.exec(buffer)?.[0].length ?? 0;
-    const end = /^(?:---|(\.\.\.))(?=\s|$)/gm;
-    end.lastIndex = start;
-    const m = end.exec(buffer);
-    let at = m?.index ?? 0;
-    if (m?.[1]) at += 3 + /^(?:[ \t]*(?:#.*)?\n)*[ \t]*/.exec(buffer.slice(at + 3))![0].length;
-    throw syntaxError(
-      "Found more than 1 document in the stream: expected a single document",
-      content,
-      at,
-    );
+  let docs: unknown[] = [];
+  let error: YamlSyntaxError | undefined;
+  try {
+    docs = parseAll(content, options);
+  } catch (e) {
+    error = e as YamlSyntaxError;
   }
-  return docs[0] ?? null;
+  if (!error && docs.length < 2) return docs[0] ?? null;
+  // std stops where the second document starts, before any problem in it,
+  // even a null byte, which ends a marker as white space does.
+  content = String(content);
+  const buffer = lines(content);
+  const start = /^(?:[ \t]*(?:[#%].*)?\n)*---(?=[\s\0]|$)/.exec(buffer)?.[0].length ?? 0;
+  const end = /^(?:---|(\.\.\.))(?=[\s\0]|$)/gm;
+  end.lastIndex = start;
+  const m = end.exec(buffer);
+  let at = m?.index ?? 0;
+  if (m?.[1])
+    at +=
+      3 + /^(?:[ \t]*(?:#[^\0\n]*)?\n)*[ \t]*(?:#[^\0\n]*)?/.exec(buffer.slice(at + 3))![0].length;
+  const more = syntaxError(
+    "Found more than 1 document in the stream: expected a single document",
+    content,
+    at,
+  );
+  throw !error || (m && more.offset < error.offset + +!!m[1]) ? more : error;
 }

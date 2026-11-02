@@ -1,6 +1,7 @@
 // The comparison scripts' shared helpers: a comparator that misses a
 // difference, or a stream reader that splits a value, hides a regression.
 import { describe, expect, it, vi } from "vite-plus/test";
+import { describe as text } from "../scripts/baseline.ts";
 import { equal, expectCount, iterationsArg, jsonStream, seedArg } from "../scripts/support.ts";
 
 // An array of `length` with only the given indexes set; the rest are holes.
@@ -24,6 +25,28 @@ describe("equal", () => {
     expect(equal({ a: 1, b: 2 }, { b: 2, a: 1 })).toBe(false);
     expect(equal({ a: 1, b: 2 }, { b: 2, a: 1 }, { keyOrder: false })).toBe(true);
     expect(equal({ a: undefined }, {})).toBe(false);
+  });
+
+  it("compares enumerable symbol keys too, as describe writes them", () => {
+    const s = Symbol.for("review.regression");
+    const t = Symbol("t");
+    expect(equal({ a: 1, [s]: 1 }, { a: 1 })).toBe(false);
+    expect(equal({ a: 1 }, { a: 1, [s]: 1 }, { keyOrder: false })).toBe(false);
+    expect(equal(Object.assign([1], { [s]: 1 }), [1])).toBe(false);
+    expect(equal({ [s]: 1 }, { [s]: 2 })).toBe(false);
+    expect(equal({ [s]: 1, [t]: 1 }, { [t]: 1, [s]: 1 })).toBe(false);
+    expect(equal({ [s]: 1, [t]: 1 }, { [t]: 1, [s]: 1 }, { keyOrder: false })).toBe(true);
+    const hidden = Object.defineProperty({ a: 1 }, s, { value: 1 });
+    expect(equal(hidden, { a: 1 })).toBe(true);
+    expect(
+      equal({ a: 1, [s]: 1 }, Object.defineProperty({ a: 1, [t]: 1 }, s, { value: 1 }), {
+        keyOrder: false,
+      }),
+    ).toBe(false);
+    expect(text({ a: 1, [s]: 1 })).toBe('{"a":1,Symbol(review.regression):1}');
+    expect(text(Object.assign([1], { [s]: 1 }))).toBe("[1,Symbol(review.regression):1]");
+    const shared = {};
+    expect(text({ [s]: shared, a: shared })).toBe('{"a":&1 {},Symbol(review.regression):*1}');
   });
 
   it("compares numbers as Object.is does", () => {

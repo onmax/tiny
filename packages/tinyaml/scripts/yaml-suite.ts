@@ -33,9 +33,8 @@ const optionSets: Record<string, ParseOptions> = {
 
 // Every option set but json differs on these. yaml turns a collection key
 // into a string from its source; tinyaml, which never sees the source, writes
-// its own (4FJ6, 6BFJ, M2N8), and two such keys collide in X38W. SF5V has
-// two %YAML directives, which yaml lets through. The rest are invalid YAML
-// both reject, with another error code.
+// its own (4FJ6, 6BFJ, M2N8), and two such keys collide in X38W. The rest
+// are invalid YAML both reject, with another error code.
 const KNOWN = [
   "236B: other error code",
   "4FJ6: different value",
@@ -58,7 +57,6 @@ const KNOWN = [
   "M2N8/01: different value",
   "MUS6/01: other error code",
   "RHX7: other error code",
-  "SF5V: only tinyaml throws",
   "SY6V: other error code",
   "T833: other error code",
   "U99R: other error code",
@@ -80,7 +78,6 @@ const JSON_KNOWN = [
   "CXX2: other error code",
   "G5U8: other error code",
   "MUS6/01: other error code",
-  "SF5V: other error code",
   "SY6V: other error code",
   "U99R: other error code",
   "Y79Y/003: other error code",

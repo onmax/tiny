@@ -30,7 +30,7 @@ Each is published on its own, so you install only what you use.
 | --------------------- | ---------------------------------- | --------------: | -----------: | ----------: |
 | js-yaml 4             | `tinyaml/js-yaml`                  | 14.4 → 11.7 KiB |  1.5× faster | 1.6× faster |
 | js-yaml 5             | `tinyaml/js-yaml-v5`               | 17.1 → 16.1 KiB |  1.5× faster | 1.8× faster |
-| yaml                  | `tinyaml/yaml`                     | 29.9 → 16.8 KiB | 12.6× faster | 2.8× faster |
+| yaml                  | `tinyaml/yaml`                     | 29.9 → 16.7 KiB | 12.6× faster | 2.8× faster |
 | yamljs                | `tinyaml/yamljs`                   |   8.8 → 7.8 KiB |  5.0× faster | 1.1× faster |
 | @std/yaml             | `tinyaml/std`                      | 11.3 → 10.7 KiB |  2.0× faster | 1.6× faster |
 | json5 2.2.3           | `tinyjson5/json5`                  |   7.6 → 3.2 KiB |  8.1× faster | 5.6× faster |
@@ -47,7 +47,7 @@ Each is published on its own, so you install only what you use.
 | @one-ini/wasm 0.2.1   | `tinyini/one-ini`                  |  36.2 → 1.7 KiB | 13.1× faster |           — |
 | @one-ini/wasm 0.1.1   | `tinyini/one-ini-v0.1`             |  32.5 → 1.7 KiB | 14.7× faster |           — |
 
-Starting fresh with YAML? The root `tinyaml` API is the smallest of all: 7.8 KiB, 1.8× smaller than js-yaml 4 and 3.8× smaller than yaml. It parses 19.3× faster than yaml and stringifies 12.5× faster.
+Starting fresh with YAML? The root `tinyaml` API is 7.8 KiB, 1.8× smaller than js-yaml 4 and 3.8× smaller than yaml. It parses 19.3× faster than yaml and stringifies 12.5× faster.
 
 Size is the minified bundle, gzipped. Speed is the median time to parse and stringify each package's large benchmark file. @one-ini/wasm's size adds its .wasm file, gzipped, and its speed is parse_to_uint32array on a 100 KB .editorconfig. Measured on Apple M4, Node 26.13 (tinyaml) and AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0 (tinyjson5, tinyini).
 

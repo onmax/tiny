@@ -9,7 +9,7 @@ Each subpath exports the functions, options and types of the library it replaces
 | --------------- | ---------------------- | --------------- | ------------------------ |
 | js-yaml 4.3.2   | `"tinyaml/js-yaml"`    | 14.4 → 11.7 KiB | 301 of 304 pass          |
 | js-yaml 5.5.0   | `"tinyaml/js-yaml-v5"` | 17.1 → 16.1 KiB | 1,023 of 1,646 pass      |
-| yaml 2.9.1      | `"tinyaml/yaml"`       | 29.9 → 16.8 KiB | 195 of 220 pass          |
+| yaml 2.9.1      | `"tinyaml/yaml"`       | 29.9 → 16.7 KiB | 195 of 220 pass          |
 | yamljs 0.3.0    | `"tinyaml/yamljs"`     | 8.8 → 7.8 KiB   | 103 of 103 pass          |
 | @std/yaml 1.3.0 | `"tinyaml/std"`        | 11.3 → 10.7 KiB | 92 of 95 pass            |
 
@@ -55,8 +55,8 @@ Every subpath runs the same parser code as the root. The details below list each
 - A `<<` that merges a `!!set` merges nothing. yaml splits each member into a key and a value, so `{<<: !!set {abc}}` gives `{ a: "b" }`, and throws a TypeError on a member it can't split, like a number.
 - With `compat`, `stringify` quotes what yaml quotes and `parse` warns where yaml warns about plain scalars, but `parse` doesn't warn about a flow collection whose closing bracket is at its parent's indentation.
 - The upstream run covers yaml's tests of `parse` and `stringify`, the `stringify`, `parse`, `errors`, `types` and `anchors` files in `tests/doc/`. Of the 25 that fail, 4 are `logLevel` tests that fail against yaml itself under Vitest, and 13 use the features above. 5 stringify with `indent: 1`, `indent: 4` or `indentSeq: false`, where the output differs. The last 3 are parse cases: a merge key missing its space, which throws another message, carriage returns inside double quotes, and a collection key in an alias expansion test with the limits turned off.
-- Across 7 option sets on the yaml-test-suite, 2,593 of 2,814 runs give the same value or error code as yaml, and 2,071 of them the same error message and position too.
-- 5,000 randomly edited suite inputs: 1,945 give the same value and the same warnings. 21 more throw the same error with other warnings, since tinyaml stops at the first error and yaml warns about what follows it, unknown aliases included. 2,923 throw in both: 353 the same error, 756 another error code, and the rest the same code at another position or with another message, since tinyaml marks one character where yaml marks the whole token, and words most errors as js-yaml 4 does. 36 load to a different value, 20 of those with a collection key. 47 load only in tinyaml and 28 only in yaml. Lone carriage returns, which yaml reads as text, cause most of these: all 16 other values without a collection key, 39 of the 47 and 22 of the 28. 5,000 random values: 4,932 stringify to the same text, 68 throw the same error, none differ.
+- Across 7 option sets on the yaml-test-suite, 2,600 of 2,814 runs give the same value or error code as yaml, and 2,078 of them the same error message and position too.
+- 5,000 randomly edited suite inputs: 1,945 give the same value and the same warnings. 21 more throw the same error with other warnings, since tinyaml stops at the first error and yaml warns about what follows it, unknown aliases included. 2,923 throw in both: 353 the same error, 753 another error code, and the rest the same code at another position or with another message, since tinyaml marks one character where yaml marks the whole token, and words most errors as js-yaml 4 does. 36 load to a different value, 20 of those with a collection key. 47 load only in tinyaml and 28 only in yaml. Lone carriage returns, which yaml reads as text, cause most of these: all 16 other values without a collection key, 39 of the 47 and 22 of the 28. 5,000 random values: 4,932 stringify to the same text, 68 throw the same error, none differ.
 
 ## yamljs: what's different
 
@@ -76,6 +76,7 @@ Every subpath runs the same parser code as the root. The details below list each
 - `<<` merges mappings only. yamljs also merges a sequence by index: after `x: &x [1, 2]`, `<<: *x` copies `0: 1` and `1: 2`, where tinyaml throws.
 - A comment line is never read as a value or key.
 - Errors are `ParseException`s with the root's messages.
+- Without a callback, `load(path)` and `parseFile(path)` read the file only in Node. Elsewhere they throw "yamljs: reading a file without a callback needs Node", where yamljs reads it with a synchronous `XMLHttpRequest`. In the browser, pass a callback: tinyaml/yamljs fetches the file and calls it with the value, or with `null` if the file can't be fetched.
 
 On the yaml-test-suite's 402 cases, 200 give the same result as yamljs, and 130 load where yamljs throws. In 39 the values differ and only tinyaml/yamljs matches the suite. In 33 neither matches or the case is invalid YAML. There is no case where only yamljs is right. 5,000 random values give matching outcomes, including matching errors: 4,994 dump to the same text and 6 throw the same error.
 

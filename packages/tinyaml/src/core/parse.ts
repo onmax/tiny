@@ -95,8 +95,8 @@ export interface Engine {
    * Read only in `yaml` mode: called where each document starts, a `...`
    * that ends none included, which yaml counts as an empty one, and with
    * `ends` where a document's node ends. `ends` is false for a document that
-   * directives start, called before they're read. Returns true to read no
-   * further.
+   * directives start, called before they're read, even where they end the
+   * input. Returns true to read no further.
    */
   document?: ((at: number, ends?: boolean) => unknown) | undefined;
   /**
@@ -364,10 +364,18 @@ function isFlowIndicator(ch: number): boolean {
 }
 
 // Whether the character after `pos` is white space, or in flow context a flow
-// indicator, so the indicator at `pos` stands alone.
+// indicator, so the indicator at `pos` stands alone. yamljs takes any white
+// space JavaScript matches as `\s`. std's input ends in a line break, so where
+// it ends after an indicator, the input was cut at a null byte, which std
+// doesn't take for white space.
 function separated(flow?: boolean): boolean {
   const next = src.charCodeAt(pos + 1);
-  return isBlank(next) || (!!flow && isFlowIndicator(next));
+  return (
+    (first
+      ? isBlank(next) || /\s/.test(src.charAt(pos + 1))
+      : !(repeats && pos + 1 === len) && isBlank(next)) ||
+    (!!flow && isFlowIndicator(next))
+  );
 }
 
 // Whether `ch` is at `pos` and stands alone.
@@ -522,7 +530,7 @@ export function parse(input: string, use: Engine): unknown[] {
         // reported before any error in them, where a document follows them.
         const at =
           pos + /^(?:(?:%[^\n]*|[ \t]*(?:#[^\n]*)?)(?:\n|$))*/.exec(src.slice(pos))![0].length;
-        if (at < len && engine.document?.(at, false)) break;
+        if (engine.document?.(at, false)) break;
       }
       while (!(js5 ? indented(directiveEnd) : col) && src.charCodeAt(pos) === 37 /* % */) {
         directives = true;
@@ -539,7 +547,8 @@ export function parse(input: string, use: Engine): unknown[] {
         // js-yaml 5 reads on to the next line's indentation after a comment.
         directiveEnd = js5 && /[ \t]#/.test(line) ? -1 : pos;
         if (name === "YAML") {
-          if (version) fail(E.YAML_REPEATED);
+          // yaml lets a later %YAML or %TAG directive replace an earlier one.
+          if (!yaml && version) fail(E.YAML_REPEATED);
           if (args.length !== 1) fail(E.YAML_ARGS);
           const match = /^(\d+)\.\d+$/.exec(args[0]!);
           if (!match) fail(E.YAML_ARG);
@@ -553,7 +562,7 @@ export function parse(input: string, use: Engine): unknown[] {
           const [handle, prefix] = args;
           if (args.length !== 2) fail(E.TAG_ARGS);
           if (!TAG_HANDLE.test(handle!)) fail(E.TAG_HANDLE);
-          if (declared.has(handle!)) fail(E.TAG_REDECLARED, handle);
+          if (!yaml && declared.has(handle!)) fail(E.TAG_REDECLARED, handle);
           if (!yaml && !TAG_PREFIX.test(prefix!)) fail(E.TAG_PREFIX);
           declared.add(handle!);
           // yaml takes a prefix as written.

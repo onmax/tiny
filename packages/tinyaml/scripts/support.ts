@@ -198,7 +198,7 @@ export function yamlException(error: unknown): Record<string, unknown> {
     column,
     snippet,
     buffer,
-    keys: mark && Object.keys(mark),
+    keys: mark && ownKeys(mark),
     text: template(message, [reason, where, snippet]),
   };
 }
@@ -252,11 +252,23 @@ export function errorDifference(
 }
 
 /**
+ * An object's own enumerable keys: its string keys in order, then its
+ * symbols, as spreading copies them.
+ */
+export const ownKeys = (value: object): (string | symbol)[] => [
+  ...Object.keys(value),
+  ...Object.getOwnPropertySymbols(value).filter((key) =>
+    Object.prototype.propertyIsEnumerable.call(value, key),
+  ),
+];
+
+/**
  * Deep equality as strict as a drop-in needs: the same prototypes, own
- * enumerable keys in the same order, arrays of the same length with holes in
- * the same places, Dates and boxed primitives by value, RegExps and errors by
- * their text, typed arrays and buffers byte for byte, and Maps and Sets entry
- * by entry in order. NaN equals NaN; -0 and 0 differ. Objects pair up one to
+ * enumerable keys, symbols included, in the same order, arrays of the same
+ * length with holes in the same places, Dates and boxed primitives by value,
+ * RegExps and errors by their text, typed arrays and buffers byte for byte,
+ * and Maps and Sets entry by entry in order. NaN equals NaN; -0 and 0
+ * differ. Objects pair up one to
  * one: where one side has the same object at two places, as an alias gives,
  * so must the other, since a change through one alias shows through the
  * other. A pair already being compared counts as equal, so cycles end.
@@ -308,12 +320,16 @@ export function equal(a: unknown, b: unknown, { keyOrder = true, identity = true
       if (xs.length !== ys.length) return false;
       xs.forEach(([key, value], i) => stack.push([key, ys[i]![0]], [value, ys[i]![1]]));
     }
-    const keys = Object.keys(x);
-    const other = Object.keys(y);
+    const keys = ownKeys(x);
+    const other = ownKeys(y);
     if (keys.length !== other.length) return false;
     for (const [i, key] of keys.entries()) {
-      if (keyOrder ? key !== other[i] : !Object.hasOwn(y, key)) return false;
-      stack.push([(x as Record<string, unknown>)[key], (y as Record<string, unknown>)[key]]);
+      if (keyOrder ? key !== other[i] : !Object.prototype.propertyIsEnumerable.call(y, key))
+        return false;
+      stack.push([
+        (x as Record<PropertyKey, unknown>)[key],
+        (y as Record<PropertyKey, unknown>)[key],
+      ]);
     }
   }
   return true;

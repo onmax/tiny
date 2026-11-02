@@ -164,6 +164,31 @@ describe("parse", () => {
     expect(anchors(parse)).toEqual(anchors(yaml.parse));
   });
 
+  it("reads directives after the first document as yaml does, none where it's to be silent", () => {
+    warnings();
+    for (const input of [
+      "a\n...\n%YAML bad\n",
+      "a\n...\n%YAML bad",
+      "a\n...\n%TAG bad\n# c",
+      "a\n...\n%FOO\n%YAML\n",
+      "a\n... # c\n%YAML 1.2 x # c",
+      "a\n---\nb\n...\n%TAG !x!",
+      "%YAML 1.2\n---\na\n...\n%TAG !x! y z\n\n",
+    ])
+      expect(parse(input, { logLevel: "silent" }), JSON.stringify(input)).toEqual(
+        yaml.parse(input, { logLevel: "silent" }),
+      );
+    // A later %YAML or %TAG directive replaces an earlier one.
+    for (const input of [
+      "a\n...\n%YAML 1.2\n%YAML 1.1\n",
+      "a\n...\n%TAG ! !x\n%TAG ! !y\n",
+      "a\n...\n%YAML 9.9\n%FOO\n",
+      "%YAML 1.1\n%YAML 1.2\n---\nyes",
+      "%TAG ! !x\n%TAG ! !y\n---\n!a b",
+    ])
+      expect(parse(input), JSON.stringify(input)).toEqual(yaml.parse(input));
+  });
+
   it("throws YAMLParseErrors with yaml's codes, positions and excerpts", () => {
     const error = (() => {
       try {

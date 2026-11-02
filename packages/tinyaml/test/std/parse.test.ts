@@ -165,6 +165,63 @@ describe("parse", () => {
       same(input);
   });
 
+  it("takes a null byte after an indicator for no white space, as std does", () => {
+    const outcome = (fn: (input: string) => unknown, input: string) => {
+      try {
+        return { value: fn(input) };
+      } catch (error) {
+        const { name, message, offset } = error as YamlSyntaxError;
+        return { name, message, offset };
+      }
+    };
+    for (const input of [
+      ":\0",
+      "-\0",
+      "?\0",
+      "[\0",
+      "{\0",
+      "!\0",
+      "&\0",
+      "*\0",
+      "|\0",
+      ">\0",
+      "'\0",
+      '"\0',
+      "#\0",
+      "%\0",
+      "a: :\0\n",
+      "a: ?\0",
+      "- :\0\nb",
+      "? :\0",
+      "a:\n  :\0",
+      "[a, -\0]",
+      "a: b :\0",
+      "a\0b: c",
+      "a: b\0c",
+    ])
+      for (const [ours, theirs] of [
+        [parse, std.parse],
+        [parseAll, std.parseAll],
+      ] as const)
+        expect(outcome(ours, input), JSON.stringify(input)).toEqual(outcome(theirs, input));
+  });
+
+  it("stops where a second document starts, before a problem in it, as std does", () => {
+    for (const input of [
+      "a\n---\n[",
+      "a\n...\n'b",
+      "--- a\n--- b\n- c\nd: e",
+      "a\n...\n%bad\n",
+      "a\n---\nb\0",
+      "a\n--- \0",
+      "a\n...\n\0",
+      "...\0",
+      "a\n...\n# c\0",
+      'a: "x\n---\ny"',
+    ])
+      same(input);
+  });
+
   it("reads a flow node's properties across lines, as std does", () => {
     for (const input of [
       "[!!str \n &c c]",

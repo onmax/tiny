@@ -37,9 +37,9 @@ const BUDGET: Record<string, number> = {
   tinyaml: 8120,
   "tinyaml/js-yaml": 12080,
   "tinyaml/js-yaml-v5": 16610,
-  "tinyaml/yaml": 17265,
-  "tinyaml/yamljs": 8100,
-  "tinyaml/std": 11025,
+  "tinyaml/yaml": 17250,
+  "tinyaml/yamljs": 8115,
+  "tinyaml/std": 11080,
 };
 
 // Code that only some modes' parsers have, as it reads once minified. Each

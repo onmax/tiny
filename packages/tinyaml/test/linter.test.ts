@@ -1,5 +1,6 @@
 import { parse as std } from "@std/yaml";
 import { execFileSync } from "node:child_process";
+import { isDeepStrictEqual } from "node:util";
 import js4 from "js-yaml";
 import * as js5 from "js-yaml5";
 import { parse as yaml } from "yaml";
@@ -112,7 +113,11 @@ describe("lint", () => {
     ["{!!str , yes: no}\n", ["1:10", "1:15"]],
     ["- !!str\n- yes\n", ["2:3"]],
     ["﻿a: yes\n", ["1:4"]],
-    ["a: yes\n...\n﻿b: no\n", ["1:4", "3:4"]],
+    ["a: yes\n...\n﻿b: no\n", ["1:4", "3:5"]],
+    // Columns in the input, past a byte order mark that starts it.
+    ["a\n...\n﻿x: no", ["3:5"]],
+    ["﻿a: yes\r\n...\r\n﻿# note\r\nb: [no,\r\n  no]\r\n", ["1:4", "4:5", "5:3"]],
+    ["﻿no\r...\r\r﻿--- no\r", ["1:1", "4:6"]],
     ["%YAML 1.2\n---\nyes\n", ["3:1"]],
   ])("recognizes plain scalar nodes in %j", (text, positions) => {
     expect(lint(text).map(({ line, column }) => `${line}:${column}`)).toEqual(positions);
@@ -138,20 +143,28 @@ describe("lint", () => {
     },
   );
 
-  it("takes time linear in the blank lines in a scalar", () => {
-    const best = (n: number) => {
-      const text = `a${"\n".repeat(n)} b`;
-      let fastest = Infinity;
-      for (let run = 0; run < 3; run++) {
-        const begin = performance.now();
-        expect(lint(text)).toEqual([]);
-        fastest = Math.min(fastest, performance.now() - begin);
-      }
-      return fastest;
-    };
-    // Four times the lines take about four times as long, not sixteen.
-    expect(best(40_000) / best(10_000)).toBeLessThan(10);
-  });
+  it.each([
+    ["the blank lines in a scalar", (n: number) => [`a${"\n".repeat(n)} b`, 0] as const],
+    ["the values on a line", (n: number) => [`[${"no,".repeat(n - 1)}no]`, n] as const],
+    ["the lines", (n: number) => ["- no\n".repeat(n), n] as const],
+  ])(
+    "takes time linear in %s",
+    (_, make) => {
+      const best = (n: number) => {
+        const [text, problems] = make(n);
+        let fastest = Infinity;
+        for (let run = 0; run < 3; run++) {
+          const begin = performance.now();
+          expect(lint(text)).toHaveLength(problems);
+          fastest = Math.min(fastest, performance.now() - begin);
+        }
+        return fastest;
+      };
+      // Eight times the input takes about eight times as long, not 64.
+      expect(best(320_000) / best(40_000)).toBeLessThan(16);
+    },
+    30_000,
+  );
 });
 
 // The readers each message names are those that don't read the value as a
@@ -166,19 +179,53 @@ describe("ambiguous-value readers", () => {
     ),
     ..."-0o17 +0o7 0_ 0_1 00_7 08_1 1_ 1__0 1_000 -1_000 +1_0 1_0.5 1_0e3 1_e3 1_0.5e+3".split(" "),
     ..."0.1_ .1_0 ._5 -.1_0 +._5 -._5 . -. 1:20 -1:20 0:20 12:30:00 12:60:00 190:20:30".split(" "),
-    ..."1_000:20 1:20.5 1:2_0 2026-11-01 2026-1-1 2026-01-1 2026-13-01 2026-01-01T12:00:00Z".split(
-      " ",
-    ),
+    ..."1_000:20 1:20.5 1:2_0 1:20.5e+1 -1:20.E-1 1:20e+1 2026-11-01 2026-1-1 2026-01-1".split(" "),
+    "2026-13-01",
+    "2026-01-01T12:00:00Z",
     "2026-01-01 12:00:00",
     "2026-1-1 1:2:3",
     "2026-1-1 12:00:00",
     "2026-01-01t12:00:00.5 +01:00",
     "2026-01-01 12:00",
   ];
+  // Number-like values tinyaml reads as strings: signs, bases, underscores,
+  // sexagesimal parts, fractions, exponents, .inf and .nan, some with a
+  // character added, dropped or replaced.
+  let seed = 1;
+  const random = (n: number) => (seed = (seed * 48271) % 2147483647) % n;
+  const pick = (choices: string) => {
+    const list = choices.split(" ");
+    return list[random(list.length)]!;
+  };
+  const generated = new Set<string>();
+  for (let n = 0; n < 4000; n++) {
+    let value =
+      pick("  + -") +
+      pick(
+        " 0 1 7 8 00 01 08 1_0 1__0 0_ _ _1 12 190 0b1_0 0b 0b2 0b_ 0x1F 0x_ 0x 0xg 0o17 0o 0o8",
+      ) +
+      pick("    :5 :59 :60 :0_ : :5:30 :5_ :1:2") +
+      (random(6)
+        ? pick("   . .5 ._ .5_ .0_1 .e") + pick("    e3 e+3 E-1 e e_1 e+ E+3_")
+        : pick(".inf .Inf .INF .iNf .nan .NaN .NAN .naN inf nan"));
+    for (let edits = random(3) ? 0 : 1 + random(2); edits--;) {
+      const at = random(value.length + 1);
+      const op = random(3);
+      value =
+        value.slice(0, at) +
+        (op ? "0189_:.eE+-xboaF"[random(16)] : "") +
+        value.slice(op === 1 ? at : at + 1);
+    }
+    try {
+      if (isDeepStrictEqual(parseAll(`${value}\n---\n- ${value}`), [value, [value]]))
+        generated.add(value);
+    } catch {}
+  }
   const kind = (value: unknown) =>
     value instanceof Date ? "date" : typeof value === "string" ? "" : typeof value;
   // PyYAML's type for each value, "error" where it fails.
   const python = (() => {
+    const all = [...values, ...generated];
     const script = `import sys, json, yaml
 out = []
 for t in json.load(sys.stdin):
@@ -190,12 +237,12 @@ print(json.dumps(out))`;
     try {
       const types: string[] = JSON.parse(
         execFileSync("python3", ["-I", "-c", script], {
-          input: JSON.stringify(values),
+          input: JSON.stringify(all),
           encoding: "utf8",
           stdio: ["pipe", "pipe", "ignore"],
         }),
       );
-      return new Map(values.map((value, i) => [value, types[i]!]));
+      return new Map(all.map((value, i) => [value, types[i]!]));
     } catch {
       return undefined;
     }
@@ -231,5 +278,18 @@ print(json.dumps(out))`;
     const kinds = new Set(differ.map(({ reads }) => reads).filter((reads) => reads !== "error"));
     expect([...kinds]).toHaveLength(1);
     expect(message).toMatch(` it as a ${[...kinds][0]}.`);
+  });
+
+  it(`names the readers that don't read ${generated.size} generated numbers as strings`, () => {
+    const wrong = [...generated].filter((value) => {
+      const message = lint(`- ${value}\n`)[0]?.message;
+      return (
+        js5.load(value) !== value ||
+        yaml(value) !== value ||
+        (message !== undefined && !message.endsWith(" it as a number.")) ||
+        readers.some(([name, read]) => read && !!message?.includes(name) !== !!read(value))
+      );
+    });
+    expect(wrong).toEqual([]);
   });
 });

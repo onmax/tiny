@@ -109,7 +109,7 @@ function engine(
       switch (name.toLowerCase()) {
         case "!str":
         case "!!str":
-          return value ?? "";
+          return typeof value === "string" ? value.trim() : (value ?? "");
         case "!!int":
           return parseInt(evaluate(text) as string);
         case "!!float":
@@ -210,7 +210,7 @@ function requote(text: string): string {
   const out: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
-    const [, head, body] = /^((?: *-(?= |$))* *)(.*)$/.exec(line)!;
+    const [, head, body] = /^((?: *-(?= |$))* *)(.*)$/s.exec(line)!;
     if (!body || body[0] === "#") {
       // yamljs drops a comment line indented less than the block it's in.
       const next = lines.slice(i + 1).find((next) => next.trim());
@@ -219,7 +219,7 @@ function requote(text: string): string {
     }
     const entry = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^ '"[{].*?) *:(?:[ \t]+|$)/.exec(body);
     const key = entry && !entry[1]!.includes(" #") ? entry[1]! : undefined;
-    const [, anchor = "", value = ""] = /^(&\S+(?: +|$))?(.*?)\s*$/.exec(
+    const [, anchor = "", value = ""] = /^(&\S+(?: +|$))?(.*?)\s*$/s.exec(
       key === undefined ? body : body.slice(entry![0].length),
     )!;
     // Lines indented deeper than this belong to the value: past the `-` of

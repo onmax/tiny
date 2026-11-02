@@ -12,7 +12,7 @@
 // shows the same, one record per line. Review it before committing.
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { fail } from "./support.ts";
+import { fail, ownKeys } from "./support.ts";
 
 /** One known difference: which input, and what each side did with it. */
 export interface Difference {
@@ -72,7 +72,7 @@ function repeated(value: unknown): Set<object> {
     seen.add(x);
     if (x instanceof Map) for (const entry of x) stack.push(...entry);
     else if (x instanceof Set) stack.push(...x);
-    if (!ArrayBuffer.isView(x)) stack.push(...Object.values(x));
+    if (!ArrayBuffer.isView(x)) for (const key of ownKeys(x)) stack.push((x as never)[key]);
   }
   return shared;
 }
@@ -107,9 +107,10 @@ function serialize(value: unknown, depth: number, refs: Refs): string {
   }
   const proto = Object.getPrototypeOf(value) as object | null;
   const name = proto === null ? "[null]" : proto === Object.prototype ? "" : proto.constructor.name;
-  const keys = (keys: string[]) =>
+  const keys = (keys: (string | symbol)[]) =>
     keys.map(
-      (key) => `${JSON.stringify(key)}:${serialize((value as never)[key], depth + 1, refs)}`,
+      (key) =>
+        `${typeof key === "symbol" ? String(key) : JSON.stringify(key)}:${serialize((value as never)[key], depth + 1, refs)}`,
     );
   let text: string;
   if (value instanceof Date)
@@ -125,9 +126,9 @@ function serialize(value: unknown, depth: number, refs: Refs): string {
     const items = Array.from({ length: value.length }, (_, i) =>
       i in value ? serialize(value[i], depth + 1, refs) : "<hole>",
     );
-    const extra = Object.keys(value).filter((key) => !/^\d+$/.test(key));
+    const extra = ownKeys(value).filter((key) => !/^\d+$/.test(String(key)));
     text = `${name === "Array" ? "" : name}[${[...items, ...keys(extra)].join(",")}]`;
-  } else text = `${name}{${keys(Object.keys(value)).join(",")}}`;
+  } else text = `${name}{${keys(ownKeys(value)).join(",")}}`;
   return anchor + text;
 }
 

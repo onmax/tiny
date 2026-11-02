@@ -128,14 +128,14 @@ export default {
           ],
           [false, false, true, true, true],
         );
-        // tinyaml's own API is smaller than any drop-in, so it gets a line of its own.
+        // tinyaml's own API, for new code, gets a line of its own.
         if (!args.package || args.package === "tinyaml") {
           const { root } = data;
           const jsYaml = data.dropIns.find((r) => r.library === "js-yaml 4")!;
           const smaller = (bytes: number) => (bytes / root.gzip.ours).toFixed(1);
           lines.push(
             "",
-            `Starting fresh with YAML? The root \`tinyaml\` API is the smallest of all: ${kib(root.gzip.ours)} KiB, ` +
+            `Starting fresh with YAML? The root \`tinyaml\` API is ${kib(root.gzip.ours)} KiB, ` +
               `${smaller(jsYaml.gzip.theirs)}× smaller than js-yaml 4 and ${smaller(root.gzip.theirs)}× smaller than yaml. ` +
               `It parses ${times(root.parse)} faster than yaml and stringifies ${times(root.stringify!)} faster.`,
           );

@@ -137,6 +137,29 @@ describe("parse", () => {
     );
   });
 
+  it("takes any white space \\s matches after a `:` or `-`, as yamljs does", () => {
+    same(
+      "a:\f",
+      "a:\v",
+      "a:\fb",
+      "a:\u00a0b",
+      "a:\ufeff\nb: c",
+      "a:\u2028",
+      "-\f",
+      "-\u00a0a",
+      "-\v\n- b",
+      "a:\n  -\u3000",
+      "a: !!str \f",
+      "a: !!str \v",
+      "a: !!str \u00a0b\u00a0",
+      "a: 'b'\u2028",
+      'a: "b"\u2029',
+      "x: &a 1\nb: *a\u2028",
+    );
+    // The retry reads a line separator in a value without crashing.
+    expect(() => parse("a: \u2028: b")).not.toThrow();
+  });
+
   it("gives null for empty documents", () => {
     expect(parse("")).toBeNull();
     expect(parse("# just a comment\n")).toBeNull();

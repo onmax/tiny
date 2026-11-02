@@ -555,12 +555,16 @@ function engine(options: ParseOptions, version: unknown): Engine {
       return merge(source, anchors, map, value);
     },
     // yaml reads on to the end of the second document, and then rejects
-    // the source. To be silent, it converts the first and reads none after.
+    // the source. To be silent, it converts the first and reads none after,
+    // not even directives that end the input, which start no document.
     document(position, ends) {
       if (!ends) {
         if (opened++ === 1) {
           if (options.logLevel === "silent") return (opened = -Infinity);
-          second = { buffer: where()!.buffer, position, directives: ends === false };
+          const { buffer } = where()!;
+          if (position < buffer.length - 1)
+            second = { buffer, position, directives: ends === false };
+          else opened--;
         }
       } else if (opened < 2) kept = warnings.length;
       else if (opened < 3 && !LONE.test(source)) throw multiple();
