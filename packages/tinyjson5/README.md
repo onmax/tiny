@@ -242,7 +242,7 @@ Parses JSON5 and returns the value. `parse(text, options)` works too. The revive
 | Option   | Default | What it does                                                                                                                                                                                                              |
 | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `bigint` | `false` | Return integers outside the safe range, decimal or hex, as BigInts. A number with a decimal point or an exponent stays a Number. Omitted or `null` is `false`; any other value that isn't a boolean throws a `TypeError`. |
-| `jsonc`  | `false` | Accept only JSON with comments.                                                                                                                                                                                           |
+| `jsonc`  | `false` | Accept only JSON with comments. Any truthy value turns it on.                                                                                                                                                             |
 
 ### `stringify(value, replacer?, space?)` and `stringify(value, options)`
 
