@@ -75,15 +75,15 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
       continue;
     }
     // A component's markup can import too, as in Svelte's `{#await import("yaml")}`.
-    for (const found of new Map(picked.map((found) => [found.library.name, found])).values()) {
-      const name = found.library.name.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
-      if (!result.markup || !new RegExp(`["'\`]${name}(?:/[^"'\`]*)?["'\`]`).test(result.markup))
+    for (const name of new Set(picked.map(({ library }) => library.name))) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+      if (!result.markup || !new RegExp(`["'\`]${escaped}(?:/[^"'\`]*)?["'\`]`).test(result.markup))
         continue;
       skipped.push({
         file,
-        reason: `it names ${found.library.name} outside its <script> blocks, which tinymigrate doesn't rewrite`,
+        reason: `it names ${name} outside its <script> blocks, which tinymigrate doesn't rewrite`,
       });
-      keep(found);
+      for (const found of picked) if (found.library.name === name) keep(found);
     }
     const decisions = new Map<Specifier, { target?: string; reason?: string }>();
     for (const specifier of result.specifiers) {

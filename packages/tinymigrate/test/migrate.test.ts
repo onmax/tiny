@@ -215,6 +215,18 @@ describe("plan", () => {
     });
   });
 
+  it("keeps every original markup could import when no package.json owns it", () => {
+    const root = project({
+      "package.json": { private: true },
+      "a/package.json": { dependencies: { "js-yaml": "^4.1.0" } },
+      "b/package.json": { dependencies: { "js-yaml": "^5.0.0" } },
+      "c/x.svelte": `{#await import("js-yaml") then yaml}{/await}\n`,
+    });
+    migrate(root, ["js-yaml"]);
+    expect(JSON.parse(read(root, "a/package.json")).dependencies).toEqual({ "js-yaml": "^4.1.0" });
+    expect(JSON.parse(read(root, "b/package.json")).dependencies).toEqual({ "js-yaml": "^5.0.0" });
+  });
+
   it("reports a file it can't parse, and leaves it", () => {
     const root = project({
       "package.json": { dependencies: { ini: "^7.0.0" } },
