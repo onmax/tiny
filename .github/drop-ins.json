@@ -37,7 +37,7 @@
     },
     {
       "package": "tinyaml",
-      "library": "yaml",
+      "library": "yaml 2",
       "entry": "tinyaml/yaml",
       "gzip": {
         "theirs": 30563,
@@ -286,7 +286,7 @@
   ],
   "root": {
     "package": "tinyaml",
-    "library": "yaml",
+    "library": "yaml 2",
     "entry": "tinyaml",
     "gzip": {
       "theirs": 30563,
