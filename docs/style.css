@@ -588,6 +588,20 @@ kbd {
   color: var(--muted);
 }
 
+/* The questions as a plain list, like onmax.me's: no frame and no rules between them. comark's padding on each item
+   is !important in its layer, so the list widens by it instead, and the questions line up with the heading. */
+.landing main > .cdt-accordion {
+  --comark-font: var(--sans);
+  width: calc(var(--column) + 2rem);
+  border: 0;
+  background: none;
+}
+
+.landing .cdt-accordion > .cdt {
+  border: 0;
+  color: var(--muted);
+}
+
 
 /* The packages as a list: tiles sharing their borders, each one a link. */
 .grid {
@@ -1104,19 +1118,9 @@ nav > .nav-group:first-child {
   margin-top: 1.75rem;
 }
 
-.installer-bar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.installer .seg button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.7rem;
+.landing-hero .installer-note {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
   font-size: 0.8125rem;
 }
 
