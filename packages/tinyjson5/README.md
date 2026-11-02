@@ -85,6 +85,8 @@ Invalid input throws a `SyntaxError` with json5's message and its `lineNumber` a
 
 Each subpath exports the functions, options and types of the library it replaces, apart from the gaps listed below, so switching is a change to the import line. The last column is that library's own test suite, copied unchanged into `test/` and run with tinyjson5 in its place.
 
+`npx tinymigrate` makes this change for you: it rewrites the imports and swaps the dependency in package.json.
+
 | Library                   | Change the import to                 | Size, gzip      | Its own tests on tinyjson5 |
 | ------------------------- | ------------------------------------ | --------------- | -------------------------- |
 | json5 2.2.3               | `"tinyjson5/json5"`                  | 7.6 → 3.2 KiB   | 160 of 160                 |
