@@ -94,7 +94,7 @@ tinyini is also a TypeScript 7.1 [content mapper](https://devblogs.microsoft.com
 
 ```jsonc
 {
-  "contentMappers": [{ "package": "tinyini", "extensions": [".ini"] }]
+  "contentMappers": [{ "package": "tinyini", "extensions": [".ini"] }],
 }
 ```
 
