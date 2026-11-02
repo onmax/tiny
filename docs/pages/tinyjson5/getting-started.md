@@ -21,7 +21,7 @@ stringify({ a: 1 }, null, 2); // "{\n  a: 1,\n}"
 JSON5.parse("[1, 2]"); // [1, 2]
 ```
 
-The root follows [json5](https://github.com/json5/json5)'s main branch, which holds json5 3 before its release, and adds a strict JSONC mode. Where json5 2 and JSON differ, it does what `JSON.parse` and `JSON.stringify` do:
+The root follows [json5](https://github.com/json5/json5)'s main branch, which holds json5 3 before its release, and adds a strict JSONC mode. It differs from json5 2 in these ways, most of them toward what `JSON.parse` and `JSON.stringify` do:
 
 - No `console.warn`. json5 2 warns about U+2028 and U+2029 in strings.
 - The reviver walks own keys, as `JSON.parse`'s does, and a property it can't update stays as it is instead of throwing.
