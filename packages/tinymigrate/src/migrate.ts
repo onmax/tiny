@@ -4,8 +4,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { FIELDS, readJson, type Field, type Found, type Project } from "./detect.ts";
-import { EXPORTS, libraryOf, type Tiny } from "./libraries.ts";
-import { findSpecifiers, replaceSpecifiers } from "./rewrite.ts";
+import { EXPORTS, libraryOf, type Library, type Tiny } from "./libraries.ts";
+import { findSpecifiers, replaceSpecifiers, type Specifier } from "./rewrite.ts";
 
 export interface Change {
   line: number;
@@ -74,42 +74,41 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
       }
       continue;
     }
+    const decisions = new Map<Specifier, { target?: string; reason?: string }>();
+    for (const specifier of result.specifiers) {
+      const match = libraryOf(specifier.value);
+      if (match && names.includes(match.library.name))
+        decisions.set(
+          specifier,
+          decide(specifier, match, ownerOf(declared, match.library.name, file)),
+        );
+    }
+    // A mock follows the imports it stands in for, so one stays if any of
+    // them does.
+    for (const [specifier, decision] of decisions) {
+      const name = libraryOf(specifier.value)!.library.name;
+      const stays = [...decisions].some(
+        ([other, { reason }]) => reason && libraryOf(other.value)!.library.name === name,
+      );
+      if (specifier.kind === "mock" && decision.target && stays)
+        decisions.set(specifier, { reason: `an import of ${name} in this file stays` });
+    }
     const changes: Change[] = [];
-    const after = replaceSpecifiers(
-      before,
-      result.specifiers,
-      ({ value, line, kind, names: read }) => {
-        const match = libraryOf(value);
-        if (!match || !names.includes(match.library.name)) return undefined;
-        const { library, subpath } = match;
-        const owner = ownerOf(declared, library.name, file);
-        const skip = (reason: string) => {
-          skipped.push({ file, line, specifier: value, reason });
-          if (owner) blocked.add(`${owner.manifest}\0${library.name}`);
-          return undefined;
-        };
-        if (!owner)
-          return skip(
-            `the package.json files that depend on ${library.name} pick different drop-ins, and none of them is above this file`,
-          );
-        const target = owner.target;
-        if (!target) return skip(`${owner.reason!}, in ${owner.manifest}`);
-        if (subpath && !library.subpaths?.includes(subpath))
-          return skip(`${target} has no equivalent of ${value}`);
-        const exports = EXPORTS[target]!;
-        const missing = read.filter((name) => !exports.includes(name));
-        if (missing.length) return skip(`${target} doesn't export ${missing.join(", ")}`);
-        // require() gives an ES module's exports, so a function that is the
-        // default export is under `.default`.
-        if (kind === "require" && !read.length && exports.length === 1)
-          return skip(
-            `require() of ${target} gives { default }, so the function is under .default`,
-          );
-        moved.add(`${owner.manifest}\0${library.name}`);
-        changes.push({ line, from: value, to: target });
-        return target;
-      },
-    );
+    const after = replaceSpecifiers(before, result.specifiers, (specifier) => {
+      const decision = decisions.get(specifier);
+      if (!decision) return undefined;
+      const { value, line } = specifier;
+      const library = libraryOf(value)!.library.name;
+      const owner = ownerOf(declared, library, file);
+      if (decision.reason) {
+        skipped.push({ file, line, specifier: value, reason: decision.reason });
+        if (owner) blocked.add(`${owner.manifest}\0${library}`);
+        return undefined;
+      }
+      moved.add(`${owner!.manifest}\0${library}`);
+      changes.push({ line, from: value, to: decision.target! });
+      return decision.target;
+    });
     if (changes.length) edits.push({ file, before, after, changes });
   }
 
@@ -139,6 +138,32 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
     if (edit) manifests.push(edit);
   }
   return { edits, manifests, skipped };
+}
+
+// Where one specifier of a library picked goes, or why it stays.
+function decide(
+  { value, kind, names: read }: Specifier,
+  { library, subpath }: { library: Library; subpath: string },
+  owner: Found | undefined,
+): { target?: string; reason?: string } {
+  if (!owner)
+    return {
+      reason: `the package.json files that depend on ${library.name} pick different drop-ins, and none of them is above this file`,
+    };
+  const target = owner.target;
+  if (!target) return { reason: `${owner.reason!}, in ${owner.manifest}` };
+  if (subpath && !library.subpaths?.includes(subpath))
+    return { reason: `${target} has no equivalent of ${value}` };
+  const exports = EXPORTS[target]!;
+  const missing = read.filter((name) => !exports.includes(name));
+  if (missing.length) return { reason: `${target} doesn't export ${missing.join(", ")}` };
+  // require() gives an ES module's exports, so a function that is the
+  // default export is under `.default`.
+  if (kind === "require" && !read.length && exports.length === 1)
+    return {
+      reason: `require() of ${target} gives { default }, so the function is under .default`,
+    };
+  return { target };
 }
 
 // Whether a shell command runs `bin`, as a command of its own.

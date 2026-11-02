@@ -251,10 +251,11 @@ function boundsOf(range: string): [Version, Version] | undefined {
   else if (match[1] === "^" && minor) high = { major, minor, patch: ANY };
   return [low, high];
 }
-
+// "4.1.0", "4.x" and "4" as their numbers, with an x or a missing part as
+// undefined. A prerelease, which semver orders apart, reads as none.
 // "4.1.0", "4.x" and "4" as their numbers, with an x or a missing part as undefined.
 function partsOf(text: string) {
-  const match = /^v?(\d+|[xX*])(?:\.(\d+|[xX*]))?(?:\.(\d+|[xX*]))?(?:[-+][\w.-]*)?$/.exec(text);
+  const match = /^v?(\d+|[xX*])(?:\.(\d+|[xX*]))?(?:\.(\d+|[xX*]))?(?:\+[\w.-]*)?$/.exec(text);
   if (!match) return undefined;
   const [major, minor, patch] = [match[1], match[2], match[3]].map((part) =>
     part === undefined || !/^\d+$/.test(part) ? undefined : Number(part),

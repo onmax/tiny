@@ -108,6 +108,7 @@ describe("pickRange", () => {
     ["js-yaml", "npm:js-yaml@^4.1.0", "tinyaml/js-yaml"],
     ["js-yaml", "^3.14.0", undefined],
     ["js-yaml", "<4", null],
+    ["js-yaml", ">=4.0.0 <5.0.0-beta", null],
     ["js-yaml", ">=4", null],
     ["js-yaml", "^4.0.0 || ^5.0.0", null],
     ["js-yaml", "latest", null],

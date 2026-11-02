@@ -58,7 +58,10 @@ export function scan(root: string): Project {
         const parsed = installed === undefined ? undefined : parseVersion(installed);
         // null when the range allows versions with different drop-ins.
         const picked = parsed ? library.pick(parsed) : pickRange(library, range);
-        const target = picked ?? undefined;
+        // A package's users install its peer dependencies, so code that
+        // imports one keeps importing it.
+        const peer = Object.hasOwn((json.peerDependencies as object | undefined) ?? {}, name);
+        const target = peer ? undefined : (picked ?? undefined);
         found.push({
           library,
           manifest,
@@ -69,9 +72,11 @@ export function scan(root: string): Project {
           target,
           reason: target
             ? undefined
-            : picked === undefined
-              ? `${name} ${installed ?? range} has no drop-in: ${library.tiny} covers ${library.covers}`
-              : `can't tell which ${name} "${range}" is: install the dependencies first`,
+            : peer
+              ? `${name} is also a peer dependency, which this package's users install`
+              : picked === undefined
+                ? `${name} ${installed ?? range} has no drop-in: ${library.tiny} covers ${library.covers}`
+                : `can't tell which ${name} "${range}" is: install the dependencies first`,
         });
       }
     }

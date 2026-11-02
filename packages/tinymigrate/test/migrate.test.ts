@@ -132,6 +132,21 @@ describe("plan", () => {
     ]);
   });
 
+  it("keeps a mock where an import it stands in for stays", () => {
+    const root = project({
+      "package.json": { devDependencies: { yaml: "^2.8.0", "js-yaml": "^4.1.0" } },
+      "a.test.ts": `import { parseDocument } from "yaml";\nimport { load } from "js-yaml";\nvi.mock("yaml");\nvi.mock("js-yaml");\n`,
+    });
+    const result = migrate(root, ["yaml", "js-yaml"]);
+    expect(read(root, "a.test.ts")).toBe(
+      `import { parseDocument } from "yaml";\nimport { load } from "tinyaml/js-yaml";\nvi.mock("yaml");\nvi.mock("tinyaml/js-yaml");\n`,
+    );
+    expect(result.skipped.map(({ line, reason }) => ({ line, reason }))).toEqual([
+      { line: 1, reason: "tinyaml/yaml doesn't export parseDocument" },
+      { line: 3, reason: "an import of yaml in this file stays" },
+    ]);
+  });
+
   it("keeps an original a package.json script runs", () => {
     const root = project({
       "package.json": {

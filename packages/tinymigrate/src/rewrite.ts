@@ -10,8 +10,8 @@ export interface Specifier {
   start: number;
   end: number;
   line: number;
-  /** `require` for a CommonJS load, `import` for a static import or re-export. */
-  kind: "import" | "require" | "other";
+  /** `require` for a CommonJS load, `import` for a static import or re-export, `mock` for a test mock. */
+  kind: "import" | "require" | "mock" | "other";
   /** The exports read from it by name, `default` for a default import. */
   names: string[];
 }
@@ -168,7 +168,7 @@ function parseBlock(
           const property = (callee.property as Node).name as string;
           if (isIdentifier(object, "require") && property === "resolve") add(argument, "other");
           else if (object.type === "Identifier" && MOCKS.get(object.name as string)?.has(property))
-            add(argument, "other");
+            add(argument, "mock");
         }
         break;
       }

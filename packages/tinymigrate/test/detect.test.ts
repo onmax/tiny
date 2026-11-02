@@ -74,6 +74,22 @@ describe("detection", () => {
     ]);
   });
 
+  it("leaves an original that is also a peer dependency", () => {
+    const root = project({
+      "package.json": {
+        peerDependencies: { "js-yaml": "^4.0.0" },
+        devDependencies: { "js-yaml": "^4.1.0" },
+      },
+    });
+    expect(found(root)).toEqual([
+      expect.objectContaining({
+        name: "js-yaml",
+        target: undefined,
+        reason: "js-yaml is also a peer dependency, which this package's users install",
+      }),
+    ]);
+  });
+
   it("explains a version with no drop-in, and a range it can't read", () => {
     const root = project({
       "package.json": { dependencies: { "js-yaml": "^3.14.0", yaml: "latest" } },
