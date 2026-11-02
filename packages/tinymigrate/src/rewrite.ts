@@ -73,21 +73,26 @@ function langOf(file: string): Lang {
 // frontmatter, which is TypeScript.
 function scriptBlocks(code: string, file: string) {
   const blocks: { code: string; offset: number; lang: Lang }[] = [];
+  // Scripts come after the frontmatter, so one written in a string there
+  // isn't read as one.
+  let start = 0;
   if (file.endsWith(".astro")) {
-    const frontmatter = /^\s*---\r?\n([\s\S]*?)^---/m.exec(code);
-    if (frontmatter?.[1] !== undefined)
+    const frontmatter = /^\s*---\r?\n([\s\S]*?)\r?\n---/.exec(code);
+    if (frontmatter?.[1] !== undefined) {
       blocks.push({
         code: frontmatter[1],
-        offset: frontmatter.index + frontmatter[0].indexOf(frontmatter[1]),
+        offset: frontmatter[0].indexOf(frontmatter[1]),
         lang: "ts",
       });
+      start = frontmatter[0].length;
+    }
   }
-  for (const match of code.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
+  for (const match of code.slice(start).matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
     const [whole, attributes = "", body = ""] = match;
     const lang = /\blang=["']?(tsx?|ts|jsx)\b/.exec(attributes)?.[1] as Lang | undefined;
     blocks.push({
       code: body,
-      offset: match.index + whole.indexOf(">") + 1,
+      offset: start + match.index + whole.indexOf(">") + 1,
       lang: lang ?? (file.endsWith(".astro") ? "ts" : "jsx"),
     });
   }

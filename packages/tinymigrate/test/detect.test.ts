@@ -218,6 +218,21 @@ describe("lockfiles", () => {
     expect(fromYarn(combined, "ini", "^1.3.8")).toBe("1.3.8");
   });
 
+  it("reads the nearest node_modules above a workspace in package-lock.json", () => {
+    const root = project({
+      "package.json": { private: true },
+      "packages/group/app/package.json": { dependencies: { "js-yaml": "*" } },
+      "package-lock.json": {
+        lockfileVersion: 3,
+        packages: {
+          "node_modules/js-yaml": { version: "4.1.0" },
+          "packages/group/node_modules/js-yaml": { version: "5.0.0" },
+        },
+      },
+    });
+    expect(found(root)).toEqual([expect.objectContaining({ version: "5.0.0", from: "lockfile" })]);
+  });
+
   it("reads npm-shrinkwrap.json over package-lock.json, as npm does", () => {
     const lock = (version: string) => ({
       lockfileVersion: 3,

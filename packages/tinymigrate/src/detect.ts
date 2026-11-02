@@ -234,12 +234,14 @@ function fromNpm(text: string, importer: string, name: string): string | undefin
     packages?: Record<string, { version?: string }>;
     dependencies?: Record<string, { version?: string }>;
   };
-  const nested = importer ? `${importer}/node_modules/${name}` : undefined;
-  return (
-    (nested && json.packages?.[nested]?.version) ||
-    json.packages?.[`node_modules/${name}`]?.version ||
-    json.dependencies?.[name]?.version
-  );
+  // The nearest node_modules above the importer that has it, as Node looks.
+  const dirs = importer ? importer.split("/") : [];
+  for (let depth = dirs.length; depth >= 0; depth--) {
+    const prefix = dirs.slice(0, depth).join("/");
+    const version = json.packages?.[`${prefix ? `${prefix}/` : ""}node_modules/${name}`]?.version;
+    if (version) return version;
+  }
+  return json.dependencies?.[name]?.version;
 }
 
 // yarn 1 and yarn 2 and later both start an entry with its descriptors,

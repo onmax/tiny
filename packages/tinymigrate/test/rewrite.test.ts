@@ -189,6 +189,11 @@ describe("components", () => {
     );
   });
 
+  it("reads a <script> in an .astro file's frontmatter as a string", () => {
+    const code = '---\nconst a = `<script>import y from "js-yaml";</script>`;\n---\n<p/>\n';
+    expect(migrate(code, "a.astro")).toBe(code);
+  });
+
   it("gives lines in the whole file", () => {
     const found = findSpecifiers(
       `<template/>\n<script>\nimport y from "js-yaml";\n</script>`,
