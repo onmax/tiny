@@ -156,6 +156,11 @@ describe("describe", () => {
   class Map2 extends Map {}
   const proto = { a: 1 };
   const pairs: [string, unknown, unknown][] = [
+    [
+      "an array index that isn't enumerable",
+      [1],
+      Object.defineProperty([1], 0, { enumerable: false }),
+    ],
     ["Dates", date(1), date(1)],
     ["Dates at other times", date(1), date(2)],
     ["invalid Dates", new Date(NaN), new Date(NaN)],

@@ -129,11 +129,6 @@ export interface Engine {
   alias?: ((name: string, anchors: Map<string, unknown>) => void) | undefined;
   /** Whether an array is a mapping a tag built, which `<<` merges as one. */
   mapping?: ((value: unknown[]) => boolean) | undefined;
-  /**
-   * Byte order marks to drop after the first. Without it, the spec engines
-   * drop one that starts a document after a `...`, and the others none.
-   */
-  bom?: RegExp | undefined;
   /** The wording of each code in codes.ts. */
   messages: string[];
   /** `code` is undefined for the engine's own reasons, given to `fail`. */
@@ -207,6 +202,9 @@ const TAG_PREFIX =
 // What js-yaml 4 and std, and js-yaml 5, accept in a verbatim tag.
 const VERBATIM_4 = /^(?:!|[^,[\]{}])(?:%[\da-f]{2}|[\w\-#;/?:@&=+$,.!~*'()[\]])*$/i;
 const VERBATIM_5 = /^(?:%[\da-f]{2}|[\w\-#;/?:@&=+$,.!~*'()[\]])*$/i;
+// A byte order mark that js-yaml 5 takes to part a document from the next:
+// only blank lines and comments between it and a directive or `---`.
+const PARTS = /\uFEFF(?:[ \t]*(?:#[^\n]*)?\n)*(?:%|---(?:[ \t\n]|$))/y;
 
 export const YAML_TAG = "tag:yaml.org,2002:";
 export const MERGE_TAG = `${YAML_TAG}merge`;
@@ -476,15 +474,17 @@ function skipLines(spaces?: boolean): number {
   return spaces && tabbed ? leadingSpaces() : pos - lineStart;
 }
 
+// A `---` or `...` that starts its line, or in js-yaml 5 a byte order mark
+// that PARTS a document from the next.
 function isDocMarker(at = pos): boolean {
   const ch = src.charCodeAt(at);
-  return (
-    (ch === DASH || ch === DOT) &&
-    (at === 0 || src.charCodeAt(at - 1) === LF) &&
-    src.charCodeAt(at + 1) === ch &&
-    src.charCodeAt(at + 2) === ch &&
-    isBlank(src.charCodeAt(at + 3))
-  );
+  return js5 && ch === 0xfeff
+    ? (at === 0 || src.charCodeAt(at - 1) === LF) && ((PARTS.lastIndex = at), PARTS.test(src))
+    : (ch === DASH || ch === DOT) &&
+        (at === 0 || src.charCodeAt(at - 1) === LF) &&
+        src.charCodeAt(at + 1) === ch &&
+        src.charCodeAt(at + 2) === ch &&
+        isBlank(src.charCodeAt(at + 3));
 }
 
 function expectLineEnd(): void {
@@ -515,24 +515,30 @@ export function parse(input: string, use: Engine): unknown[] {
   if (lenient) explicitAt = -1;
   const docs: unknown[] = [];
   try {
-    src = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input;
+    // yaml drops it with the others below.
+    src = !yaml && input.charCodeAt(0) === 0xfeff ? input.slice(1) : input;
     if (src.includes("\r")) src = src.replace(/\r\n?/g, "\n");
     // js-yaml reads the input with a line break added at its end.
     if (lines && src && !src.endsWith("\n")) src += "\n";
     if (spec && src.includes("\uFEFF")) {
       // A document may start with a byte order mark too: the first line
-      // that isn't blank or a comment, after the start or a `...`.
+      // that isn't blank or a comment, after the start or a `...`. yaml
+      // drops one from each line before a document, directives included.
       let start = true;
       src = src
         .split("\n")
         .map((line) => {
           const bom = start && line.charCodeAt(0) === 0xfeff;
           if (bom) line = line.slice(1);
-          start = /^\.\.\.(?:[ \t]|$)/.test(line) || (start && !bom && /^[ \t]*(?:#|$)/.test(line));
+          start =
+            /^\.\.\.(?:[ \t]|$)/.test(line) ||
+            (start &&
+              (yaml || !bom) &&
+              (yaml ? /^(?:%|[ \t]*(?:#|$))/ : /^[ \t]*(?:#|$)/).test(line));
           return line;
         })
         .join("\n");
-    } else if (js5 && use.bom && src.includes("\uFEFF")) src = src.replace(use.bom, "");
+    }
     // yaml and yamljs read a null byte as any other character, and std as
     // the end of the input, where it fails once it has read the documents
     // before it.
@@ -546,13 +552,26 @@ export function parse(input: string, use: Engine): unknown[] {
     // Where js-yaml 4 starts the next document; -1 for after the lines that
     // follow a `...`.
     let start = 0;
+    // After a document or a `...`, js-yaml 5 drops a byte order mark that
+    // starts the line it reads on, whose indentation it measured before the
+    // mark; `dropped` is where.
+    let after = false;
+    let dropped = -1;
     for (;;) {
       let col = skipLines();
+      if (js5 && after && !col && src.charCodeAt(pos) === 0xfeff) {
+        src = src.slice(0, pos) + src.slice((dropped = pos) + 1);
+        len--;
+        col = skipLines();
+      }
+      after = true;
       // The input goes on past a null byte, where the parser's copy ends.
       if (repeats && docs.length && (col >= 0 || nul >= 0)) use.second?.(pos);
       if (lenient && warns && start < 0) start = pos;
       let directives = false;
-      let directiveEnd = -1;
+      // js-yaml 5 measures no indentation after a directive or where it dropped
+      // a byte order mark.
+      let directiveEnd = js5 ? dropped : -1;
       // yaml keeps a local tag as written where no %TAG declares `!`.
       handles = new Map().set("!!", YAML_TAG).set("!", yaml ? undefined : "!");
       let version = false;
@@ -572,7 +591,10 @@ export function parse(input: string, use: Engine): unknown[] {
         raw(pos, end);
         const line = src.slice(pos + 1, end);
         // A comment ends the arguments: it splits off with the space before it.
-        const args = line.split(/[ \t]+(?:#.*)?/).filter((arg, i) => arg || !i);
+        // yaml trims any white space off what's before it.
+        const args = (yaml ? line.split(/[ \t]#/)[0]!.trimEnd() : line)
+          .split(/[ \t]+(?:#.*)?/s)
+          .filter((arg, i) => arg || !i);
         const name = args.shift();
         pos++;
         if (!spec && !name) fail(E.DIRECTIVE_NAME);
@@ -628,6 +650,9 @@ export function parse(input: string, use: Engine): unknown[] {
       if (yaml && !directives && engine.document?.(lineStart)) break;
       if (explicit) pos += 3;
       else if (directives) fail(E.DIRECTIVES_END);
+      // js-yaml 5 reads nothing before a byte order mark that ends it.
+      else if (js5 && src.charCodeAt(pos) === 0xfeff && isDocMarker())
+        fail("can not read a document");
       else if (isDocMarker()) {
         // In js-yaml 4, a `...` with no document before it ends an empty one,
         // and in yaml one with an empty node.
@@ -647,7 +672,9 @@ export function parse(input: string, use: Engine): unknown[] {
       // very first line the top-level node's parent indent is -1.
       docs.push(
         parseValue(
-          spec || explicit || (!lines && !lineStart) ? -1 : leadingSpaces() - 1,
+          spec || explicit || (!lines && (!lineStart || (js5 && lineStart === dropped)))
+            ? -1
+            : leadingSpaces() - 1,
           false,
           lenient && explicit,
         ),
@@ -846,13 +873,21 @@ function parseValue(indent: number, inSeq: boolean, compact = inSeq, outer?: Pro
   // yamljs's line patterns skip any white space `\s` matches before a node,
   // all of it below a space or past ASCII. Where YAML reads what follows as
   // an indicator or no plain scalar, the white space begins a plain scalar
-  // instead, which yamljs's trim makes the same.
+  // instead, which yamljs's trim makes the same. So it does before what
+  // yamljs reads as text: a block scalar header with more on its line, and
+  // at the top level, which yamljs reads with its inline parser, an alias,
+  // an anchor or any block scalar header.
   if (first) {
     const at = pos;
     const ch = src.charCodeAt(at);
     if (ch > 159 || (ch < SPACE && ch !== LF)) {
       while (/[^\S\n]/.test(src.charAt(pos))) pos++;
-      if (/[-?:,\]}%@`]/.test(src.charAt(pos))) pos = at;
+      if (
+        (depth ? /^(?:[-?:,\]}%@`]|[|>](?![-+\d]*(?: +#.*)?$))/ : /^(?:[-?:,\]}%@`*&|>]|$)/).test(
+          src.slice(pos, lineEnd(pos)),
+        )
+      )
+        pos = at;
     }
   }
   const col = pos - lineStart;
@@ -886,8 +921,10 @@ function parseValue(indent: number, inSeq: boolean, compact = inSeq, outer?: Pro
         tabIndent();
       }
       if (js5 && !inSeq && indent >= 0) return splitProps(indent, next, merged);
+      // js-yaml takes the top-level node's parent indent from the line it
+      // starts on: the next one, unless properties start it on this one.
       return parseBlockNode(
-        indent < 0 && lenient ? leadingSpaces() - 1 : indent,
+        indent < 0 && (lenient || js5) && !props ? leadingSpaces() - 1 : indent,
         next,
         inSeq,
         merged,
@@ -1501,7 +1538,7 @@ function foldBreaks(): string {
 // and goes on past the indentation of the block it's in.
 function quotedBreaks(kind: string, indent: number): string {
   const breaks = foldBreaks();
-  if (isDocMarker()) fail(E.QUOTED_DOCUMENT_END, kind);
+  if (isDocMarker() && !(js5 && src.charCodeAt(pos) === 0xfeff)) fail(E.QUOTED_DOCUMENT_END, kind);
   if ((!spec || pos < len) && leadingSpaces() <= indent) bend(E.DEFICIENT_INDENT);
   return breaks;
 }

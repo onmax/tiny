@@ -586,22 +586,40 @@ folded: >
     expect(outcome(() => load("&a : b: c"))).toEqual(outcome(() => jsYaml.load("&a : b: c")));
   });
 
+  it("measures the top-level node after properties on the line it starts on, as js-yaml 4 does", () => {
+    for (const input of [
+      "---\n  a: b\n  ---\n",
+      "--- !!map\n  a: b\n  ---\n",
+      "--- &x\n  a: b\n  ---\n",
+      "!!map\n  a: b\n  ---\n",
+      "--- !!binary\n    aGk=\n  x\n",
+    ])
+      expect(
+        outcome(() => load(input)),
+        input,
+      ).toEqual(outcome(() => jsYaml.load(input)));
+  });
+
   it("reads its options in js-yaml 4's order and count", () => {
-    // Through a getter and every trap, with options neither library knows.
+    // Through a getter and every trap, with options neither library knows,
+    // and the schema's too.
+    const logged = <T extends object>(log: string[], target: T, name = "") =>
+      new Proxy(target, {
+        get: (t, key, r) => (log.push(`get ${name}${String(key)}`), Reflect.get(t, key, r)),
+        has: (t, key) => (log.push(`has ${name}${String(key)}`), Reflect.has(t, key)),
+        ownKeys: (t) => (log.push(`ownKeys ${name}`), Reflect.ownKeys(t)),
+        getOwnPropertyDescriptor: (t, key) => (
+          log.push(`descriptor ${name}${String(key)}`),
+          Reflect.getOwnPropertyDescriptor(t, key)
+        ),
+      });
     const options = (log: string[], target: Record<string, unknown>) => {
       Object.defineProperty(target, "maxDepth", {
         get: () => (log.push("maxDepth"), 50),
         enumerable: true,
       });
-      return new Proxy(Object.assign(target, { other: 0 }), {
-        get: (t, key, r) => (log.push(`get ${String(key)}`), Reflect.get(t, key, r)),
-        has: (t, key) => (log.push(`has ${String(key)}`), Reflect.has(t, key)),
-        ownKeys: (t) => (log.push("ownKeys"), Reflect.ownKeys(t)),
-        getOwnPropertyDescriptor: (t, key) => (
-          log.push(`descriptor ${String(key)}`),
-          Reflect.getOwnPropertyDescriptor(t, key)
-        ),
-      }) as never;
+      target.schema = logged(log, (target.schema as object) ?? DEFAULT_SCHEMA, "schema.");
+      return logged(log, Object.assign(target, { other: 0 })) as never;
     };
     const runs: [(input: string, options: never) => unknown, Record<string, unknown>][] = [
       [load, { filename: "f", json: true, maxTotalMergeKeys: 5, onWarning: () => {} }],
@@ -630,5 +648,19 @@ folded: >
     n = 0;
     expect(jsYaml.load("[[a]]", maxDepth as never)).toEqual([["a"]]);
     expect(n).toBe(2);
+    // It reads the schema's types after the numbers.
+    for (const fn of [load, jsYaml.load]) {
+      let limit = 100;
+      const schema = new Proxy(DEFAULT_SCHEMA, {
+        get: (t, key, r) => (key === "compiledImplicit" && (limit = 0), Reflect.get(t, key, r)),
+      });
+      const options = {
+        schema,
+        get maxDepth() {
+          return limit;
+        },
+      };
+      expect(fn("a: 1", options as never)).toEqual({ a: 1 });
+    }
   });
 });

@@ -179,6 +179,8 @@ describe("parse", () => {
       for (const input of inputs)
         expect(outcome(parse, input), input).toEqual(outcome(yamljs.parse, input));
     };
+    // Nodes after white space, starting with each indicator.
+    const nodes = ["*r", "&x y", "!!str y", "|", "| x", ">", "'x'", '"x"', "[x]", "{x: y}", "# c"];
     for (const w of spaces)
       alike(
         ...[
@@ -211,9 +213,27 @@ describe("parse", () => {
           "a:\n- b\n-Wc",
           "a:\n-Wb:Wc",
           "a:\n  -Wb:Wc",
+          ...nodes.flatMap((node) => [
+            `x: &r 1\na: W${node}`,
+            `x: &r 1\na:W${node}`,
+            `- W${node}`,
+            `-W${node}`,
+            `x: &r 1\na:\n  - W${node}`,
+          ]),
+          "-W|\n  x",
+          "-W|-\n  x",
+          "-W| #c\n  x",
+          "a:W>\n  x",
         ].map((input) => input.replaceAll("W", w)),
       );
+    // At the top level yamljs reads a line with its inline parser, which
+    // takes an alias, an anchor or a block scalar header as text. The parser
+    // drops a byte order mark at the start, and then reads what follows as
+    // it would without one.
+    for (const w of [...spaces.filter((c) => c !== "\uFEFF"), "\u2028"])
+      alike(...nodes.flatMap((node) => [w + node, `${w + node}\n`]));
     alike(
+      "---\u2028\na: b",
       "a:\u2028b",
       "-\u2028a",
       "-\u2028a:\u2028b",

@@ -48,11 +48,6 @@ type Collection = SequenceTagDefinition<any, any> | MappingTagDefinition<any, an
 // Errors in building values, which a syntax error anywhere comes before.
 const BUILT = new WeakSet<object>();
 
-// js-yaml 5 drops a byte order mark only before a document's directives or
-// `---`, or right after a `...`.
-const BOM =
-  /(?<=\n)\uFEFF(?=(?:[ \t]*(?:#.*)?\n)*(?:%|---(?:[ \t\n]|$)))|(?<=(?:^|\n)\.\.\.(?:[ \t].*)?\n(?:[ \t]*(?:#.*)?\n)*)\uFEFF/g;
-
 const isObjectMap = (tag: unknown): tag is MappingTagDefinition =>
   tag === mapTag || tag === legacyMapTag;
 
@@ -290,7 +285,6 @@ function engine(input: string, options: LoadOptions) {
   } = {
     tag: "",
     messages: MESSAGES,
-    bom: BOM,
     json: options.json,
     maxDepth: limit(options.maxDepth),
     maxMergeKeys: limit(options.maxTotalMergeKeys),
@@ -419,7 +413,6 @@ function probe(input: string, options: LoadOptions): Engine {
   return {
     tag: "",
     messages: MESSAGES,
-    bom: BOM,
     json: true,
     maxDepth: limit(options.maxDepth),
     maxMergeKeys: -1,

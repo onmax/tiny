@@ -686,6 +686,54 @@ describe("load", () => {
         expect(outcome(loadAll, input), input).toEqual(outcome(real.loadAll, input));
   });
 
+  it("measures the node after a `---` that ends its line on its own line, as js-yaml 5 does", () => {
+    const outcome = (fn: (input: string) => unknown, input: string) => {
+      try {
+        return { value: fn(input) };
+      } catch (e) {
+        const { message, mark } = e as YAMLException;
+        return { message, position: mark?.position };
+      }
+    };
+    for (const input of [
+      "---\n  a: b\n  ---\n",
+      "---\n  a: b\n  ...\n",
+      "--- # c\n\n  a: b\n  --- x\n",
+      "--- !!map\n  a: b\n  ---\n",
+      "---\n  a\n b",
+      "---\n  - a\n - b\n",
+      "\n  a: b\n  ---\n",
+    ])
+      expect(outcome(loadAll, input), JSON.stringify(input)).toEqual(outcome(real.loadAll, input));
+  });
+
+  it("drops a byte order mark only where js-yaml 5 reads the next document", () => {
+    const outcome = (fn: (input: string) => unknown, input: string) => {
+      try {
+        return { value: fn(input) };
+      } catch (e) {
+        const { message, mark } = e as YAMLException;
+        return { message, position: mark?.position };
+      }
+    };
+    for (const input of [
+      "\n\uFEFF---\na: 1\n",
+      "# c\n\uFEFF---\na: 1\n",
+      "\uFEFF\n\uFEFF---\na: 1\n",
+      "%YAML 1.2\n\uFEFF---\na: 1\n",
+      " \n\uFEFF\n\uFEFF---\n",
+      "\uFEFF\n\uFEFF# c\n\uFEFF---\n",
+      "a\n\uFEFF# c\n\uFEFF---\nb",
+      "a\n\uFEFF\n---\nb",
+      "a\n...\n\uFEFF# c\n\uFEFF---\nb",
+      "a\n...\n\uFEFF...\n\uFEFF...\n\uFEFFb",
+      "a\n\uFEFF...\n\uFEFFb",
+      "...\n\uFEFF# c\n\uFEFF  c",
+    ])
+      for (const text of [input, input.replaceAll("\n", "\r\n")])
+        expect(outcome(loadAll, text), JSON.stringify(text)).toEqual(outcome(real.loadAll, text));
+  });
+
   it("returns every document from loadAll", () => {
     expect(loadAll("a\n---\nb")).toEqual(["a", "b"]);
     const docs: unknown[] = [];

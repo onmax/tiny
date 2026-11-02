@@ -466,6 +466,15 @@ describe("where std's parser, js-yaml 3's, misreads", () => {
       same(input);
   });
 
+  it("measures the top-level node after properties on the line it starts on, as std does", () => {
+    for (const input of [
+      "---\n  a: b\n  ---\n",
+      "--- !!map\n  a: b\n  ---\n",
+      "--- &x\n  a: b\n  ---\n",
+    ])
+      same(input);
+  });
+
   it("ends a block scalar at a tab before a comment", () => {
     same("foo: |\n\t #\nbar: 1\n");
   });

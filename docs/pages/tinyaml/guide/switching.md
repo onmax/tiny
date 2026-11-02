@@ -7,8 +7,8 @@ Each subpath exports the functions, options and types of the library it replaces
 
 | Library         | Change the import to   | Size, gzip      | Its own tests on tinyaml |
 | --------------- | ---------------------- | --------------- | ------------------------ |
-| js-yaml 4.3.2   | `"tinyaml/js-yaml"`    | 14.4 → 11.7 KiB | 301 of 304 pass          |
-| js-yaml 5.5.0   | `"tinyaml/js-yaml-v5"` | 17.1 → 16.1 KiB | 1,023 of 1,646 pass      |
+| js-yaml 4.3.2   | `"tinyaml/js-yaml"`    | 14.4 → 11.8 KiB | 301 of 304 pass          |
+| js-yaml 5.5.0   | `"tinyaml/js-yaml-v5"` | 17.1 → 16.2 KiB | 1,023 of 1,646 pass      |
 | yaml 2.9.1      | `"tinyaml/yaml"`       | 29.9 → 16.8 KiB | 195 of 220 pass          |
 | yamljs 0.3.0    | `"tinyaml/yamljs"`     | 8.8 → 8.0 KiB   | 103 of 103 pass          |
 | @std/yaml 1.3.0 | `"tinyaml/std"`        | 11.3 → 10.6 KiB | 92 of 95 pass            |
@@ -30,7 +30,7 @@ Every subpath runs the same parser code as the root. The details below list each
 
 - The `listener` option isn't supported. It accounts for 2 of the 3 tests that don't pass. js-yaml skips the third test itself.
 - `safeLoad`, `safeLoadAll` and `safeDump` work and do what `load`, `loadAll` and `dump` do. js-yaml 4 throws for them.
-- js-yaml's tests make 746 calls to `load`, `loadAll` and `dump`. Replayed through tinyaml, 740 give the same result, and 6 throw the same error at a different position. tinyaml throws in every case js-yaml does.
+- js-yaml's tests make 746 calls to `load`, `loadAll` and `dump`. Replayed through tinyaml, 742 give the same result, and 4 throw the same error at a different position. tinyaml throws in every case js-yaml does.
 - On the yaml-test-suite, 399 of 402 cases give the same result as js-yaml. 1 is valid YAML that tinyaml loads and js-yaml rejects ([9KAX](https://github.com/yaml/yaml-test-suite/tree/data-2022-01-17/9KAX)). The other 2 are js-yaml bugs tinyaml doesn't copy: js-yaml drops a tag on its own line above a less indented block scalar ([M5C3](https://github.com/yaml/yaml-test-suite/tree/data-2022-01-17/M5C3)), and it loads the invalid [H7J7](https://github.com/yaml/yaml-test-suite/tree/data-2022-01-17/H7J7).
 - 5,000 randomly edited suite inputs: none load to a different value, none throw only in tinyaml, and 10 load where js-yaml throws, 1 of them invalid YAML. 5,000 random values give matching outcomes, including matching errors: 4,021 dump to the same text and 979 throw the same error.
 
@@ -43,7 +43,7 @@ Every subpath runs the same parser code as the root. The details below list each
 - A custom mapping tag gets js-yaml 5's `has`, `addPair` and `get` calls for each node, in the same order, but tinyaml builds a node when it ends. So an outer node's `create` comes after the nodes inside it, a merge calls its source's `keys` before `create` for the node it merges into, and a repeated key throws before the node's earlier pairs are added.
 - When the schema has a mapping tag other than the object maps, a repeated symbol or function key in an untagged mapping throws with the start of the input as its position, since tinyaml builds that mapping after reading the whole stream.
 - On the yaml-test-suite, all 402 cases give the same result as js-yaml 5. Both reject 126, and 109 of those throw the same message.
-- 5,000 randomly edited suite inputs: none load to a different value, and 2 load where js-yaml 5 throws. 5,000 random values give matching outcomes, including matching errors: 3,584 dump to the same text and 1,416 throw the same error.
+- 5,000 randomly edited suite inputs: none load to a different value, and none load where js-yaml 5 throws. 5,000 random values give matching outcomes, including matching errors: 3,584 dump to the same text and 1,416 throw the same error.
 
 ## yaml: what's different
 

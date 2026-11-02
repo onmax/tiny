@@ -36,9 +36,9 @@ const entries: [string, string][] = [
 const BUDGET: Record<string, number> = {
   tinyaml: 8120,
   "tinyaml/js-yaml": 12130,
-  "tinyaml/js-yaml-v5": 16630,
-  "tinyaml/yaml": 17320,
-  "tinyaml/yamljs": 8290,
+  "tinyaml/js-yaml-v5": 16690,
+  "tinyaml/yaml": 17350,
+  "tinyaml/yamljs": 8320,
   "tinyaml/std": 10950,
 };
 
@@ -60,8 +60,9 @@ const MARKERS: Record<keyof typeof MODES, string[]> = {
   std: [BLANK, LINES],
   // yamljs's check for the line that ends a block scalar, which reads on.
   yamljs: [BLANK, "(?:\\n|$)/"],
-  // js-yaml 5's engine hooks, which no other engine sets.
-  js5: [".alias?.(", ".bom", ".allKeys", MERGE_SIZE],
+  // js-yaml 5's engine hooks, which no other engine sets, and its error for a
+  // document a byte order mark ends before it starts.
+  js5: [".alias?.(", "can not read a document", ".allKeys", MERGE_SIZE],
 };
 const ALL_MARKERS = new Set(Object.values(MARKERS).flat());
 const modeOf = (entry: string) =>

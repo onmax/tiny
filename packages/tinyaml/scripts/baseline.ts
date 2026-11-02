@@ -159,8 +159,11 @@ function serialize(value: unknown, refs: Refs): string {
     );
   let text: string;
   if (Array.isArray(value)) {
+    // An own index that isn't enumerable reads like a hole to Object.keys.
     const items = Array.from({ length: value.length }, (_, i) =>
-      i in value ? serialize(value[i], refs) : "<hole>",
+      !(i in value)
+        ? "<hole>"
+        : `${Object.prototype.propertyIsEnumerable.call(value, i) ? "" : "<hidden>"}${serialize(value[i], refs)}`,
     );
     return `${anchor}${proto === Array.prototype ? "" : name}[${[...items, ...fields()].join(",")}]`;
   }

@@ -27,11 +27,15 @@ export interface LoadOptions {
 const plainObject = (value: unknown) => (kindOf(value) === "Object" ? "[object Object]" : value);
 
 function engine(input: string, options: LoadOptions): Engine {
-  // js-yaml 4 reads each option once, in this order, but a number twice.
+  // js-yaml 4 reads each option once, in this order, but a number twice,
+  // then the schema's types.
   const { filename, schema, onWarning, legacy, json, listener } = options as LoadOptions & {
     listener?: unknown;
   };
   void listener;
+  const maxDepth = typeof options.maxDepth === "number" ? options.maxDepth : 100;
+  const maxMergeKeys =
+    typeof options.maxTotalMergeKeys === "number" ? options.maxTotalMergeKeys : 10000;
   const { compiledImplicit, compiledTypeMap } = schema || DEFAULT_SCHEMA;
   const builtinsOnly = builtin(compiledImplicit);
   const exception = (reason: string, mark: Mark, code?: number) => {
@@ -54,8 +58,8 @@ function engine(input: string, options: LoadOptions): Engine {
     lenient: true,
     lines: true,
     json,
-    maxDepth: typeof options.maxDepth === "number" ? options.maxDepth : 100,
-    maxMergeKeys: typeof options.maxTotalMergeKeys === "number" ? options.maxTotalMergeKeys : 10000,
+    maxDepth,
+    maxMergeKeys,
     mergeSize: true,
     legacy,
     implicit(text) {

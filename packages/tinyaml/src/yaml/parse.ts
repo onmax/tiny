@@ -65,6 +65,8 @@ export interface ParseOptions {
   reviver?: Reviver;
   /** Called with each anchored value and how many times it's used, before the reviver runs. */
   onAnchor?: (value: unknown, count: number) => void;
+  /** Told where each line starts, such as yaml's LineCounter. */
+  lineCounter?: { addNewLine: (offset: number) => unknown };
   /** Other yaml options are accepted and ignored. */
   [option: string]: unknown;
 }
@@ -733,9 +735,12 @@ export function parse(src: string, reviver?: Reviver | ParseOptions, options?: P
   options ??= {};
   const raw = options;
   const prettyErrors = raw.prettyErrors;
-  void raw.lineCounter;
+  const newLine = raw.lineCounter?.addNewLine;
   // The version a %YAML directive yaml doesn't support leaves in place.
   const fallback = raw.version || "1.2";
+  // yaml counts the start of the input and of each line, though not all of
+  // them in input it rejects.
+  if (newLine) for (let at = 0; at >= 0; at = src.indexOf("\n", at) + 1 || -1) newLine(at);
   // yaml reads its own copy of the options over defaults, which an option
   // set to undefined still replaces, for each document, and another one to
   // convert the first.
@@ -769,18 +774,26 @@ export function parse(src: string, reviver?: Reviver | ParseOptions, options?: P
     pretty = prettyErrors !== false;
     warnings = [];
     keyWarned = false;
-    const directives = /^\uFEFF?((?:[ \t]*(?:#.*)?\r?\n|%.*\r?\n)*)/.exec(src)![1]!;
     let docs: unknown[];
     try {
       // The last %YAML directive yaml supports sets the version, and one it
-      // doesn't keeps the one before. Without one, the option sets it.
-      const version = /^%YAML(?=\s|$)/m.test(directives)
-        ? (directives
-            .match(/^%YAML[ \t]+1\.[12](?=\s)/gm)
-            ?.pop()!
-            .slice(-3) ?? fallback)
-        : options.version;
-      const use = engine(options, version, raw);
+      // doesn't keeps the one before. Without one, the option sets it. yaml
+      // reads directives, comments and blank lines, each line maybe after a
+      // byte order mark, up to the first document, and a directive up to a
+      // comment, trimmed.
+      let version: string | undefined;
+      for (const line of /^(?:\uFEFF?(?:%[^\n]*|[ \t]*(?:#[^\n]*|\r?))\n)*/
+        .exec(src)![0]
+        .split("\n")) {
+        const [name, ...args] = line
+          .split(/[ \t]#/)[0]!
+          .trim()
+          .split(/[ \t]+/);
+        if (name === "%YAML")
+          version =
+            args.length === 1 && /^1\.[12]$/.test(args[0]!) ? args[0] : (version ?? fallback);
+      }
+      const use = engine(options, version ?? options.version, raw);
       try {
         docs = parseDocs(src, use);
       } catch (error) {

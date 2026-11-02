@@ -381,6 +381,19 @@ describe("parse", () => {
       "%TAG ! !x\n%YAML\t1.1 # c\n---\nyes",
       "%YAML 2.0\n---\nyes",
       "%YAMLX 1.1\n---\nyes",
+      // A byte order mark may start any line before the document.
+      "# c\n\uFEFF%YAML 1.1\n---\nyes",
+      "# c\r\n\uFEFF%YAML 1.1\r\n---\r\nyes",
+      "\uFEFF\n\uFEFF# c\n\uFEFF%YAML 1.1\n---\nyes",
+      "%YAML 1.1\n\uFEFF# c\n\uFEFF---\nyes",
+      "\uFEFF\uFEFF%YAML 1.1\n---\nyes",
+      " \n\t# c\n%YAML 1.1\n---\nyes",
+      // A comment needs white space before it, and white space after the
+      // version is trimmed.
+      "%YAML 1.1 #c#d\n---\nyes",
+      "%YAML 1.1\u00a0\n---\nyes",
+      "%YAML 1.1\u2028 #c\n---\nyes",
+      "%YAML\u00a01.1\n---\nyes",
     ])
       for (const o of options) {
         const read = (fn: Parse) => {
@@ -589,10 +602,15 @@ describe("parse", () => {
   it("stops counting aliases at once on an expanding graph", () => {
     let nested = "[0]";
     for (let i = 0; i < 64; i++) nested = `[&a${i} ${nested}, *a${i}]`;
-    const start = performance.now();
-    expect(() => parse(nested)).toThrow("Excessive alias count");
-    // 28 levels used to take seconds.
-    expect(performance.now() - start).toBeLessThan(1000);
+    // 28 levels used to take seconds. The best of three runs, so a pause of
+    // the process doesn't count as parser work.
+    let fastest = Infinity;
+    for (let run = 0; run < 3; run++) {
+      const start = performance.now();
+      expect(() => parse(nested)).toThrow("Excessive alias count");
+      fastest = Math.min(fastest, performance.now() - start);
+    }
+    expect(fastest).toBeLessThan(1000);
     // An alias costs a step per anchored collection it's in, while it's under
     // the limit, so eight times the input takes about eight times as long,
     // not 64. A warm-up run and the best of five, and a bound of 32, since a
@@ -620,6 +638,25 @@ describe("parse", () => {
         new ReferenceError("Alias resolution is disabled"),
       );
     expect(parse("a: &a 1", { maxAliasCount: 0 })).toEqual({ a: 1 });
+  });
+
+  it("counts lines in a lineCounter as yaml does", () => {
+    for (const input of [
+      "",
+      "a",
+      "a: 1\nb: 2\n",
+      "\uFEFFa: 1\r\nb: |\r\n  x\r\n\r\n  y\r\n",
+      "a: 'x\n  y'\nb: \"p\n\n  q\"\nc: d\n  e\n",
+      "# c\n%YAML 1.1\n---\n- [a,\n  b]\n...\n",
+    ]) {
+      const counters = [new yaml.LineCounter(), new yaml.LineCounter()];
+      parse(input, { lineCounter: counters[0] } as never);
+      yaml.parse(input, { lineCounter: counters[1] });
+      expect(counters[0]!.lineStarts, JSON.stringify(input)).toEqual(counters[1]!.lineStarts);
+    }
+    const counter = new yaml.LineCounter();
+    parse("a: 1\nb: 2\n", { lineCounter: counter, prettyErrors: false } as never);
+    expect(counter.linePos(5)).toEqual({ line: 2, col: 1 });
   });
 
   it("points into the source through CRLFs and byte order marks", () => {

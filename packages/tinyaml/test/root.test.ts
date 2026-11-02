@@ -121,6 +121,13 @@ describe("parse", () => {
     expect(growth(text, parseAll, 25_000)).toBeLessThan(32);
   });
 
+  it("reads a line or paragraph separator in a directive's comment as part of it", () => {
+    for (const separator of ["\u2028", "\u2029"]) {
+      expect(parse(`%YAML 1.2 #${separator}\n---\na: 1\n`)).toEqual({ a: 1 });
+      expect(parse(`%TAG !e! tag:x, #${separator}\n--- !e!y z\n`)).toBe("z");
+    }
+  });
+
   it("rejects a document marker in a quoted scalar, even after an escaped break", () => {
     expect(() => parse('"a\\\n...\nb"')).toThrow(/document ends inside/);
     expect(() => parse('"a\\\n--- b"')).toThrow(/document ends inside/);

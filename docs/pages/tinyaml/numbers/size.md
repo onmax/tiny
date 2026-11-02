@@ -12,13 +12,13 @@ Each entry as npm ships it in `dist/`, bundled with esbuild, minified ESM, then 
 | Entry                | Minified | Gzip     |
 | -------------------- | -------- | -------- |
 | `tinyaml`            | 17.4 KiB | 7.8 KiB  |
-| `tinyaml/js-yaml`    | 26.4 KiB | 11.7 KiB |
+| `tinyaml/js-yaml`    | 26.4 KiB | 11.8 KiB |
 | js-yaml 4            | 42.8 KiB | 14.4 KiB |
-| `tinyaml/js-yaml-v5` | 39.4 KiB | 16.1 KiB |
+| `tinyaml/js-yaml-v5` | 39.5 KiB | 16.2 KiB |
 | js-yaml 5            | 56.4 KiB | 17.1 KiB |
-| `tinyaml/yaml`       | 39.4 KiB | 16.8 KiB |
+| `tinyaml/yaml`       | 39.5 KiB | 16.8 KiB |
 | yaml                 | 95.8 KiB | 29.9 KiB |
-| `tinyaml/yamljs`     | 17.9 KiB | 8.0 KiB  |
+| `tinyaml/yamljs`     | 18.0 KiB | 8.0 KiB  |
 | yamljs               | 28.4 KiB | 8.8 KiB  |
 | `tinyaml/std`        | 24.4 KiB | 10.6 KiB |
 | @std/yaml            | 35.4 KiB | 11.3 KiB |

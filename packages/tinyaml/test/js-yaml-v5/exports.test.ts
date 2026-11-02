@@ -85,4 +85,18 @@ it("reads its options in js-yaml 5's order and count", () => {
     },
   });
   expect(n).toBe(1);
+  // It reads every option before the schema.
+  for (const lib of [tiny, real] as (typeof real)[]) {
+    let limit = 100;
+    const schema = new Proxy(lib.CORE_SCHEMA, {
+      get: (t, key, r) => ((limit = 0), Reflect.get(t, key, r)),
+    });
+    const options = {
+      schema,
+      get maxDepth() {
+        return limit;
+      },
+    };
+    expect(lib.load("a: 1", options)).toEqual({ a: 1 });
+  }
 });
