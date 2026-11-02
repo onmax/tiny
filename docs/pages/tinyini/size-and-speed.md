@@ -19,7 +19,7 @@ Each entry as npm ships it in `dist/`, bundled with esbuild, minified ESM, then 
 | `tinyini/one-ini-v0.1` | 3.39 KiB  | 1.68 KiB  |
 | @one-ini/wasm 0.1.1    | 87.60 KiB | 32.35 KiB |
 
-ini is already small, so the ini subpaths save little: they look at character codes where ini runs a regular expression per line, and that takes about as much code. Importing one function leaves the rest out: `parse` alone gzips to 770 B from `tinyini` and 937 B from `tinyini/ini`, measured on Linux.
+ini is already small, so the ini subpaths save little: they look at character codes where ini runs a regular expression per line, and that takes about as much code. Importing one function leaves the rest out: `parse` alone is 0.75 KiB from `tinyini` and 0.91 KiB from `tinyini/ini`.
 
 Each subpath is built with the branches of one core mode only: ini 4.1 for `tinyini/ini`, ini 1.x to 4.0 for `tinyini/ini-v2`, ini 1.x for `tinyini/ini-v1`, and one-ini 0.2 or 0.1 for the one-ini entries. `scripts/size.ts` fails if an entry outgrows its budget or the library it replaces, if it still holds another mode's code or behaves as another mode, if a package specifier such as `tinyini/ini-v2` loads the wrong mode, if importing one function keeps the others, or if the root stops being the smallest entry.
 

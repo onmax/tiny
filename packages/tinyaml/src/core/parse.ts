@@ -127,7 +127,7 @@ export interface Engine {
   allKeys?: boolean | undefined;
   /** Called on each alias, with the current document's anchors. */
   alias?: ((name: string, anchors: Map<string, unknown>) => void) | undefined;
-  /** Whether an array is a mapping a tag built, which `<<` merges as one. */
+  /** Whether `<<` takes an array as one source: a mapping a tag built, or a scalar tag's value. */
   mapping?: ((value: unknown[]) => boolean) | undefined;
   /** The wording of each code in codes.ts. */
   messages: string[];
@@ -299,19 +299,32 @@ let handles = new Map<string, string>();
 // std and yaml warn as they read, in linear time, so they may mark many
 // places in one input, mostly in order: the input the parser reads, the copy
 // marks point into and what counts the lines in it, and where `original` got
-// to in it, each to read on from. The parser forgets them once it's done.
+// to in it, each to read on from. The parser forgets them once it's done, and
+// a document parsed inside another gives the outer one's back.
 // js-yaml 4 reads the whole input for each warning's snippet.
-let marked: [string, string, (at: number) => number] | undefined;
+let marked: [string, string, ReturnType<typeof countLines>] | undefined;
 let mapped: [input: string, buffer: string, i: number, dropped: number] | undefined;
 
-/** What counts the line breaks in `text` before an offset, on from the last. */
-export function countLines(text: string): (at: number) => number {
+/**
+ * What counts the line breaks in `text` before an offset, on from the last,
+ * or with `start`, finds where the offset's line starts.
+ */
+export function countLines(text: string): (at: number, start?: boolean) => number {
   let counted = 0;
   let found = 0;
-  return (at) => {
+  // The line whose start was looked up last, by the line breaks before it,
+  // and that start.
+  let line = -1;
+  let lineAt = 0;
+  return (at, start) => {
     while (counted < at) if (text.charCodeAt(counted++) === LF) found++;
     while (counted > at) if (text.charCodeAt(--counted) === LF) found--;
-    return found;
+    if (!start) return found;
+    if (line !== found) {
+      line = found;
+      lineAt = text.lastIndexOf("\n", counted - 1) + 1;
+    }
+    return lineAt;
   };
 }
 
@@ -326,7 +339,7 @@ function mark(exact?: boolean): Mark {
     buffer,
     position: at,
     line: repeats || yaml ? marked![2](at) : buffer.slice(0, at).split("\n").length - 1,
-    column: at - buffer.lastIndexOf("\n", at - 1) - 1,
+    column: at - (repeats || yaml ? marked![2](at, true) : buffer.lastIndexOf("\n", at - 1) + 1),
   };
 }
 
@@ -427,18 +440,37 @@ function separated(flow?: boolean): boolean {
 // indicator at `pos`, as its flow mappings do after a key: after the `-` that
 // starts a line or the entry of a `-` before it that holds a key, and after
 // the `:` of a key that starts the line or such an entry. Their `.` stops at
-// a line or paragraph separator, which may only end the line.
+// a line or paragraph separator, which may only end the line. It keeps what
+// it finds for the indicators after the same key or `-`: where the first
+// separator from it is, or -1 where the patterns don't take what's before
+// it, and where the line's last one with more than white space after it is.
+let looseAt: [line: number, at: number, stop: number, last: number] | undefined;
 function loose(): boolean {
   const dash = src[pos] === "-";
   const at = dash ? pos : keyAt;
-  const before = src.slice(lineStart, at);
-  const rest = src.slice(pos + 1, lineEnd(pos));
-  return (
-    (dash
-      ? /^ *(-\s+)*$/.test(before) && (!before.trim() || /:(\s|$)/.test(rest))
-      : src[pos] === ":" && /^ *(-\s*)*([!&]\S*\s+)*$/.test(before) && !/[[{]/.test(src[at]!)) &&
-    !/[\n\u2028\u2029]/.test(src.slice(at, pos) + rest.trim())
-  );
+  // A key on an earlier line is before a line break.
+  if (at < lineStart || !(dash || src[pos] === ":")) return false;
+  if (looseAt?.[0] !== lineStart || looseAt[1] !== at) {
+    const before = src.slice(lineStart, at);
+    // The line, but the white space that ends it, and its part from `at`.
+    const line = src.slice(lineStart, lineEnd(pos)).trimEnd();
+    const rest = line.slice(at - lineStart);
+    looseAt = [
+      lineStart,
+      at,
+      (
+        dash
+          ? /^ *(-\s+)*$/.test(before) && (!before.trim() || /:(\s|$)/.test(rest))
+          : /^ *(-\s*)*([!&]\S*\s+)*$/.test(before) && !/[[{]/.test(src[at]!)
+      )
+        ? at + `${rest}\n`.search(/[\n\u2028\u2029]/)
+        : -1,
+      lineStart + line.search(/[\u2028\u2029][^\u2028\u2029]*$/),
+    ];
+  }
+  // No separator between `at` and the indicator, and the last before the
+  // text after it.
+  return looseAt[2] >= pos && looseAt[3] <= pos + src.slice(pos + 1).search(/\S/);
 }
 
 // Whether `ch` is at `pos` and stands alone.
@@ -456,10 +488,17 @@ function hasTab(from: number, to: number): boolean {
   return false;
 }
 
+// In js-yaml 5, which measures a line's indentation again at each tab in
+// flow, the line it last measured and the spaces it found there.
+let measured = -1;
+let spaces = 0;
+
 // Spaces before the first other character of the current line.
 function leadingSpaces(): number {
+  if (js5 && measured === lineStart) return spaces;
   let i = lineStart;
   while (src.charCodeAt(i) === SPACE) i++;
+  if (js5) spaces = i - (measured = lineStart);
   return i - lineStart;
 }
 
@@ -542,6 +581,7 @@ export function parse(input: string, use: Engine): unknown[] {
   const outer = [src, pos, lineStart, len, anchors, plain, tabbed, crossed, emptyKey, pendingAnchor, depth, brink, tabs, maxDepth, lastTag, keyAt, engine, implicit, mergeKeys, explicitAt, handles] as const;
   const restore = setMode(use);
   const outerDropped = dropped;
+  const outerMarks = [marked, mapped] as const;
   engine = use;
   implicit = use.implicit;
   maxDepth = use.maxDepth ?? 100;
@@ -549,6 +589,7 @@ export function parse(input: string, use: Engine): unknown[] {
   depth = mergeKeys = 0;
   brink = -1;
   if (lenient) explicitAt = -1;
+  if (first) looseAt = undefined;
   const docs: unknown[] = [];
   try {
     // yaml drops it with the others below.
@@ -592,7 +633,7 @@ export function parse(input: string, use: Engine): unknown[] {
     // starts the line it reads on, whose indentation it measured before the
     // mark, and starts the line after it.
     let after = false;
-    if (js5) dropped = -1;
+    if (js5) dropped = measured = -1;
     for (;;) {
       let col = skipLines();
       if (js5 && after && !col && src.charCodeAt(pos) === 0xfeff) {
@@ -735,9 +776,12 @@ export function parse(input: string, use: Engine): unknown[] {
   } finally {
     // prettier-ignore
     [src, pos, lineStart, len, anchors, plain, tabbed, crossed, emptyKey, pendingAnchor, depth, brink, tabs, maxDepth, lastTag, keyAt, engine, implicit, mergeKeys, explicitAt, handles] = outer;
-    if (repeats || yaml) marked = mapped = undefined;
+    if (repeats || yaml) [marked, mapped] = outerMarks;
     restore?.();
-    if (js5) dropped = outerDropped;
+    if (js5) {
+      dropped = outerDropped;
+      measured = -1;
+    }
   }
   return docs;
 }

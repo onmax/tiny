@@ -13,31 +13,61 @@ export const run = (script: string, ...args: string[]): string =>
     stdio: ["ignore", "pipe", "pipe"],
   });
 
-// How much longer reading the text for 8n takes than for n, after warming
-// both and taking the best of five: about 8 when the work is linear, 64
-// when it's quadratic. Interleave the sizes, small first, so optimization
-// during sampling doesn't compare a cold large read with a hot small one.
-// Tests check it stays under 32, since a busy CI runner can slow one side
-// two or three times.
-export function growth(
+// The CPU time the process has spent, in microseconds. Node counts a
+// thread's time only to about a tenth of a millisecond.
+const cpu = () => {
+  const { user, system } = process.cpuUsage();
+  return user + system;
+};
+
+// Halfway from linear to quadratic: on a busy machine, a linear reader's
+// slope has come out at up to 1.45, and the quadratic ones these tests caught
+// at 1.7 and more.
+export const LINEAR = 1.5;
+
+// How the time reading `text(n)` takes grows with n: the slope of its
+// logarithm against n's, about 1 when the work is linear and 2 when it's
+// quadratic; tests check it stays under LINEAR. It reads the n that makes
+// about `chars` characters, and 16 times as many, enough for quadratic work
+// to show over the linear, each up to ten times, while they take less than
+// 100 ms in all, and keeps the fastest. On the way it reads 4 times as many, and stops
+// there when the slope is already over 1.8, so a quadratic reader fails soon.
+// A slope over its limit is measured up to twice more, with the fastest runs
+// of all rounds, since a busy machine may hold up the compiler or share a
+// core's caches for one. It counts CPU time, which a busy machine stretches
+// far less than the time on the clock, and leaves errors without the stack
+// trace that makes each one slow to make.
+export function slope(
   text: (n: number) => string,
   read: (text: string) => unknown,
-  n: number,
+  chars = 16_000,
 ): number {
-  const small = text(n);
-  const large = text(8 * n);
-  read(small);
-  read(large);
-  const time = (input: string) => {
-    const start = performance.now();
-    read(input);
-    return performance.now() - start;
+  const n = Math.ceil(chars / (text(2).length - text(1).length));
+  // The fastest run of each size so far.
+  const fastest: Record<number, number> = {};
+  const best = (size: number) => {
+    const input = text(size * n);
+    for (let run = 0, spent = 0; run < 10 && spent < 100_000; run++) {
+      const start = cpu();
+      read(input);
+      const took = cpu() - start;
+      fastest[size] = Math.min(fastest[size] ?? Infinity, took);
+      spent += took;
+    }
+    return fastest[size]!;
   };
-  let fastestSmall = Infinity;
-  let fastestLarge = Infinity;
-  for (let run = 0; run < 5; run++) {
-    fastestSmall = Math.min(fastestSmall, time(small));
-    fastestLarge = Math.min(fastestLarge, time(large));
+  const growth = (size: number, limit: number) => {
+    let measured = Infinity;
+    for (let round = 0; round < 3 && measured > limit; round++)
+      measured = Math.log(best(size) / best(1)) / Math.log(size);
+    return measured;
+  };
+  const limit = Error.stackTraceLimit;
+  Error.stackTraceLimit = 0;
+  try {
+    const middle = growth(4, 1.8);
+    return middle > 1.8 ? middle : growth(16, LINEAR);
+  } finally {
+    Error.stackTraceLimit = limit;
   }
-  return fastestLarge / fastestSmall;
 }

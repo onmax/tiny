@@ -823,6 +823,98 @@ describe("load", () => {
     check(real.load(text, { schema: real.CORE_SCHEMA.withTags(...theirs) }));
   });
 
+  it("leaves what a collection tag makes as it is, as js-yaml 5 does", () => {
+    const tags = (lib: typeof real) => [
+      lib.defineSequenceTag("!box", {
+        ...lib.seqTag,
+        finalize: (items) => ({ metadata: { enabled: true }, items }),
+      }),
+      lib.defineSequenceTag("!frozen", { ...lib.seqTag, finalize: Object.freeze }),
+      lib.defineMappingTag("!wrap", {
+        ...lib.mapTag,
+        finalize: (pairs) => ({ wrap: { x: [1] }, pairs }),
+      }),
+      lib.defineMappingTag("!fz", { ...lib.mapTag, finalize: Object.freeze }),
+      lib.defineMappingTag("!preset", { ...lib.mapTag, create: () => ({ preset: { a: [1] } }) }),
+      lib.defineMappingTag("!keys", {
+        ...lib.realMapTag,
+        create: () => new Map([[{ k: 1 }, { v: 2 }]]),
+      }),
+    ];
+    const outcome = (lib: typeof real, input: string, json: boolean, map: boolean) => {
+      const extra = map ? [lib.realMapTag] : [];
+      try {
+        const schema = lib.CORE_SCHEMA.withTags(...extra, lib.mergeTag, ...tags(lib));
+        return lib.load(input, { schema, json });
+      } catch (e) {
+        return (e as YAMLException).reason;
+      }
+    };
+    for (const input of [
+      "!box [one]",
+      "!box [!box [x]]",
+      "a: &a !box [x]\nb: *a\nc: [*a]\n",
+      "!frozen [one, {a: 1}]",
+      "a: &a !frozen [x, {y: 1}]\nb: *a\nc: [*a]\n",
+      "a: !wrap {k: v}\nb: &x !wrap {z: 1}\nc: *x\n",
+      "a: &a !wrap {k: v}\nb: {<<: *a}\n",
+      "a: &a !fz {k: {q: 1}}\nb: {<<: *a}\nc: *a\n",
+      "a: &a !preset {x: {y: 1}}\nb: {<<: *a}\nc: [*a]\n",
+      "a: &a !keys {x: 1}\nb: {<<: *a}\n",
+    ])
+      for (const json of [false, true])
+        for (const map of [false, true])
+          expect(outcome(lib as never, input, json, map), `${input} ${json} ${map}`).toEqual(
+            outcome(real, input, json, map),
+          );
+  });
+
+  it("merges only mappings and sequences a tag of their kind made, as js-yaml 5 does", () => {
+    const tags = (lib: typeof real) => [
+      lib.defineScalarTag("!include", {
+        resolve: () => [{ enabled: true }],
+        identify: () => false,
+      }),
+      lib.defineScalarTag("!frozen", {
+        resolve: () => Object.freeze([{ enabled: true }]),
+        identify: () => false,
+      }),
+      lib.defineScalarTag("!object", { resolve: () => ({ enabled: true }), identify: () => false }),
+      lib.defineSequenceTag("!box", { ...lib.seqTag, finalize: Object.freeze }),
+      lib.defineSequenceTag("!wrap", { ...lib.seqTag, finalize: (items) => ({ items }) }),
+      lib.defineMappingTag("!list", { ...lib.mapTag, finalize: (pairs) => [pairs] as never }),
+    ];
+    const outcome = (lib: typeof real, input: string, json: boolean, map: boolean) => {
+      const extra = map ? [lib.realMapTag] : [];
+      try {
+        const schema = lib.CORE_SCHEMA.withTags(...extra, lib.mergeTag, ...tags(lib));
+        return lib.load(input, { schema, json });
+      } catch (e) {
+        return [(e as YAMLException).reason, (e as YAMLException).mark?.position];
+      }
+    };
+    for (const input of [
+      "defaults: &d !include defaults.yml\nconfig: {<<: *d}\n",
+      "config: {<<: !include x}\n",
+      "config: {<<: !frozen x}\n",
+      "config: {<<: [!include x]}\n",
+      "config: {<<: !object x}\n",
+      "d: &d !object x\nconfig: {<<: [*d]}\n",
+      "config: {<<: !box [{a: 1}, {b: 2}]}\n",
+      "a: &a !box [{a: 1}]\nconfig: {<<: *a}\n",
+      "config: {<<: !wrap [{a: 1}]}\n",
+      "config: {<<: !list {a: 1}}\n",
+      "config: {<<: [[{a: 1}]]}\n",
+      "config: {<<: !!seq }\n",
+      "a: &a [{x: 1}, {y: 2}]\nconfig: {<<: *a}\n",
+    ])
+      for (const json of [false, true])
+        for (const map of [false, true])
+          expect(outcome(lib as never, input, json, map), `${input} ${json} ${map}`).toEqual(
+            outcome(real, input, json, map),
+          );
+  });
+
   it("builds schemas like js-yaml 5", () => {
     expect(() => new Schema([])).toThrow(/default scalar tag/);
     const schema = FAILSAFE_SCHEMA.withTags([{ ...strTag, resolve: (s: string) => `<${s}>` }]);

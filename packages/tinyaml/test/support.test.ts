@@ -163,7 +163,15 @@ describe("describe", () => {
   const Anonymous = [class {}][0]!;
   class Map2 extends Map {}
   const proto = { a: 1 };
+  // Arrays whose prototype has an item at 0.
+  const items = Object.assign(Object.create(Array.prototype) as unknown[], { 0: 1 });
+  const inherited = () => Object.setPrototypeOf(holes(1, {}), items) as unknown[];
   const pairs: [string, unknown, unknown][] = [
+    [
+      "an inherited array index and an own one that isn't enumerable",
+      inherited(),
+      Object.defineProperty(inherited(), 0, { value: 1, enumerable: false }),
+    ],
     [
       "an array index that isn't enumerable",
       [1],

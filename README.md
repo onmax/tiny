@@ -55,9 +55,9 @@ Each package matches its original on that library's own tests and on tens of tho
 | --------------------- | ---------------------------------- | --------------: | -----------: | ----------: |
 | js-yaml 4             | `tinyaml/js-yaml`                  | 14.4 → 11.6 KiB |  1.6× faster | 1.7× faster |
 | js-yaml 5             | `tinyaml/js-yaml-v5`               | 17.0 → 16.1 KiB |  1.5× faster | 1.8× faster |
-| yaml                  | `tinyaml/yaml`                     | 29.8 → 16.8 KiB | 12.0× faster | 2.8× faster |
-| yamljs                | `tinyaml/yamljs`                   |   8.8 → 8.0 KiB |  5.1× faster | 1.1× faster |
-| @std/yaml             | `tinyaml/std`                      | 11.2 → 10.6 KiB |  2.4× faster | 1.6× faster |
+| yaml                  | `tinyaml/yaml`                     | 29.8 → 16.9 KiB | 12.0× faster | 2.8× faster |
+| yamljs                | `tinyaml/yamljs`                   |   8.8 → 8.1 KiB |  5.1× faster | 1.1× faster |
+| @std/yaml             | `tinyaml/std`                      | 11.2 → 10.7 KiB |  2.4× faster | 1.6× faster |
 | json5 2.2.3           | `tinyjson5/json5`                  |   7.5 → 3.2 KiB |  7.4× faster | 4.7× faster |
 | json5 1.0.2           | `tinyjson5/json5-v1`               |   8.3 → 3.3 KiB |  7.1× faster | 5.1× faster |
 | strip-json-comments 3 | `tinyjson5/strip-json-comments`    |   0.7 → 0.5 KiB |  3.8× faster |           — |
@@ -95,7 +95,7 @@ pnpm readme   # rewrite the badges and drop-in tables in every README with autom
 pnpm brand    # redraw the logo, favicons and banners from .github/scripts/brand.ts
 ```
 
-The logo is the 🤏 emoji as [Twemoji](https://github.com/jdecked/twemoji) draws it, under CC-BY 4.0.
+The logo is the 🤏 emoji as [Noto Emoji](https://github.com/googlefonts/noto-emoji) draws it, under the Apache License 2.0.
 
 All packages share one version and release together.
 

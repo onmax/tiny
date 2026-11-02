@@ -106,6 +106,9 @@ let kept = 0;
 const STR = `${Y}str`;
 // The engine's tag after a plain scalar that a tag would read only as a key.
 const KEY = "key";
+// The keys of each mapping's `written` pairs, but merges, by the name each is
+// stored under.
+const keysOf = new WeakMap<object, Map<string, Set<unknown>>>();
 
 // A YAMLParseError, or a YAMLWarning added to the warnings, pointed at
 // `mark`, or at the span from there to `end` in the same copy of the input,
@@ -431,6 +434,7 @@ function engine(options: ParseOptions, version: unknown, raw: ParseOptions): Eng
     if (!pairs) {
       specials = true;
       written.set(map, (pairs = Object.entries(map).map(([k, v]): Written => [k, v, k])));
+      keysOf.set(map, new Map(pairs.map(([k]) => [k as string, new Set([k])])));
     }
     return pairs;
   };
@@ -582,7 +586,7 @@ function engine(options: ParseOptions, version: unknown, raw: ParseOptions): Eng
       // `written` pairs, its keys are strings with names of their own, none
       // an array index.
       const fresh = !Object.hasOwn(map, name);
-      let seen: unknown[] = [];
+      let repeated = false;
       if (
         (specials && written.has(map)) ||
         !fresh ||
@@ -591,11 +595,14 @@ function engine(options: ParseOptions, version: unknown, raw: ParseOptions): Eng
         (key.charCodeAt(0) ^ 48) < 10
       ) {
         const pairs = pairsOf(map);
-        if (!fresh) {
-          for (const [k, , n] of pairs) if (n === name && k !== MERGE) seen.push(k);
-          // A key a merge copied in.
-          if (!seen.length) seen = [name];
-        }
+        const keys = keysOf.get(map)!;
+        const seen = keys.get(name);
+        // NaN is a key of its own. yaml's collection keys are too, but tinyaml
+        // tells them apart only by how they're written out. A key a merge
+        // copied in has no pair.
+        if (!fresh)
+          repeated = key === Object(key) || (seen ? key === key && seen.has(key) : key === name);
+        keys.set(name, (seen ?? new Set()).add(key));
         pairs.push(bare ? [key, value, name, true] : [key, value, name]);
         bare = false;
       }
@@ -605,9 +612,7 @@ function engine(options: ParseOptions, version: unknown, raw: ParseOptions): Eng
         earlier.set(map, keys);
         return keys.some((k) => unique(k, node)) || !keys.push(node);
       }
-      // NaN is a key of its own. yaml's collection keys are too, but tinyaml
-      // tells them apart only by how they're written out.
-      return !!seen.length && (key === Object(key) || seen.indexOf(key) >= 0);
+      return repeated;
     },
     // yaml resolves an empty node like "", but a pair without a value is
     // null whatever the schema.

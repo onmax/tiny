@@ -4,11 +4,7 @@
 
 <!-- automd:comark-badges name=tinyini size=size -->
 
-[![release](https://comark-ui.onmax.me/badge.svg?source=npm-version&package=tinyini&label=release&icon=npm)](https://github.com/onmax/tiny/releases)
-[![size](https://comark-ui.onmax.me/badge.svg?label=size&value=1.3+KiB+gzip)](#size)
-[![dependencies](https://comark-ui.onmax.me/badge.svg?label=dependencies&value=0)](https://www.npmjs.com/package/tinyini?activeTab=dependencies)
-[![license: MIT](https://comark-ui.onmax.me/badge.svg?label=license&value=MIT)](./LICENSE)
-[![Release status](https://comark-ui.onmax.me/badge.svg?source=github-actions&repository=onmax%2Ftiny&workflow=release.yaml&icon=github)](https://github.com/onmax/tiny/actions/workflows/release.yaml)
+<!-- ⚠️  (comark-badges) Expected property name or '}' in JSON at position 549 (line 26 column 1) -->
 
 <!-- /automd -->
 
@@ -25,17 +21,7 @@ tinyini ships drop-in replacements for ini 7 (and 4.1.3 to 6), ini 2, ini 1.3.8,
 
 <!-- automd:drop-ins package=tinyini -->
 
-| You use             | Switch to              |     Size, gzip |       Parses | Stringifies |
-| ------------------- | ---------------------- | -------------: | -----------: | ----------: |
-| ini 7.0.0           | `tinyini/ini`          |  1.6 → 1.5 KiB |  1.8× faster | 2.9× faster |
-| ini 2.0.0           | `tinyini/ini-v2`       |  1.4 → 1.4 KiB |  1.6× faster | 1.6× faster |
-| ini 1.3.8           | `tinyini/ini-v1`       |  1.4 → 1.4 KiB |  1.6× faster | 1.7× faster |
-| @one-ini/wasm 0.2.1 | `tinyini/one-ini`      | 36.0 → 1.7 KiB | 12.4× faster |           — |
-| @one-ini/wasm 0.1.1 | `tinyini/one-ini-v0.1` | 32.3 → 1.7 KiB | 12.1× faster |           — |
-
-The root `tinyini` API is 1.3 KiB against 1.6 KiB for ini 7.0.0. It parses 2.4× faster than ini 7.0.0 and stringifies 3.5× faster.
-
-Size is the minified bundle, gzipped. Speed is the median time to parse and stringify the large benchmark file. @one-ini/wasm's size adds its .wasm file, gzipped, and its speed is parse_to_uint32array on a 100 KB .editorconfig. Measured on Apple M4, Node 26.13.0.
+<!-- ⚠️  (drop-ins) Expected property name or '}' in JSON at position 549 (line 26 column 1) -->
 
 <!-- /automd -->
 
@@ -197,7 +183,7 @@ Each entry as npm ships it in `dist/`, bundled with esbuild, minified ESM, then 
 | `tinyini/one-ini-v0.1` | 3.39 KiB  | 1.68 KiB  |
 | @one-ini/wasm 0.1.1    | 87.60 KiB | 32.35 KiB |
 
-ini is already small, so the ini subpaths save little: they look at character codes where ini runs a regular expression per line, and that takes about as much code. Importing one function leaves the rest out: `parse` alone gzips to 770 B from `tinyini` and 937 B from `tinyini/ini`, measured on Linux.
+ini is already small, so the ini subpaths save little: they look at character codes where ini runs a regular expression per line, and that takes about as much code. Importing one function leaves the rest out: `parse` alone is 0.75 KiB from `tinyini` and 0.91 KiB from `tinyini/ini`.
 
 Each subpath is built with the branches of one core mode only: ini 4.1 for `tinyini/ini`, ini 1.x to 4.0 for `tinyini/ini-v2`, ini 1.x for `tinyini/ini-v1`, and one-ini 0.2 or 0.1 for the one-ini entries. `scripts/size.ts` fails if an entry outgrows its budget or the library it replaces, if it still holds another mode's code or behaves as another mode, if a package specifier such as `tinyini/ini-v2` loads the wrong mode, if importing one function keeps the others, or if the root stops being the smallest entry.
 

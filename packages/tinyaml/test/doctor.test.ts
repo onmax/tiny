@@ -18,12 +18,12 @@ describe("Doctor cache", () => {
       "vite-doctor/extension": [null, []],
       "js-yaml.ts": ["load", ["parse.ts"]],
     };
-    const version = (id?: string) =>
+    const version = (id?: string, change = (code: string) => `${code} `) =>
       linterHash.renderChunk.call(
         {
           getModuleInfo: (module) => {
             const [code, importedIds] = modules[module]!;
-            return { code: module === id ? `${code} ` : code, importedIds };
+            return { code: module === id && code ? change(code) : code, importedIds };
           },
         },
         modules[doctor]![0]!,
@@ -33,6 +33,13 @@ describe("Doctor cache", () => {
     for (const changed of ["linter.ts", "parse.ts", "index.ts"])
       expect(version(changed), changed).not.toBe(version());
     expect(version("js-yaml.ts")).toBe(version());
+    // The same code with other line breaks, as a CRLF checkout gives.
+    modules["linter.ts"]![0] = "lint\nrules\n";
+    for (const breaks of ["\r\n", "\r"])
+      expect(
+        version("linter.ts", (code) => code.replaceAll("\n", breaks)),
+        breaks,
+      ).toBe(version());
   });
 
   it("is told apart by each rule's version in the build", async () => {

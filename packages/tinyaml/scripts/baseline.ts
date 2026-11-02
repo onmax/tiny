@@ -159,9 +159,10 @@ function serialize(value: unknown, refs: Refs): string {
     );
   let text: string;
   if (Array.isArray(value)) {
-    // An own index that isn't enumerable reads like a hole to Object.keys.
+    // An own index that isn't enumerable reads like a hole to Object.keys,
+    // and an inherited one is a hole.
     const items = Array.from({ length: value.length }, (_, i) =>
-      !(i in value)
+      !Object.hasOwn(value, i)
         ? "<hole>"
         : `${Object.prototype.propertyIsEnumerable.call(value, i) ? "" : "<hidden>"}${serialize(value[i], refs)}`,
     );
