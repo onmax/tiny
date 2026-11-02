@@ -1,21 +1,21 @@
 {
-  "machine": "Apple M4, Node 26.13",
+  "machine": "Apple M4, Node 26.13.0",
   "dropIns": [
     {
       "package": "tinyaml",
       "library": "js-yaml 4",
       "entry": "tinyaml/js-yaml",
       "gzip": {
-        "theirs": 14791,
-        "ours": 12034
+        "theirs": 14702,
+        "ours": 11910
       },
       "parse": {
-        "theirs": 3,
-        "ours": 2
+        "theirs": 3.302098937499977,
+        "ours": 2.0074830625000004
       },
       "stringify": {
-        "theirs": 4.51,
-        "ours": 2.77
+        "theirs": 4.473791687500011,
+        "ours": 2.6507708125000136
       }
     },
     {
@@ -23,16 +23,16 @@
       "library": "js-yaml 5",
       "entry": "tinyaml/js-yaml-v5",
       "gzip": {
-        "theirs": 17529,
-        "ours": 16624
+        "theirs": 17432,
+        "ours": 16474
       },
       "parse": {
-        "theirs": 3.07,
-        "ours": 2
+        "theirs": 3.0349453125000423,
+        "ours": 1.9702512812500004
       },
       "stringify": {
-        "theirs": 5.22,
-        "ours": 2.9
+        "theirs": 5.1650026250000565,
+        "ours": 2.8882304687499527
       }
     },
     {
@@ -40,16 +40,16 @@
       "library": "yaml",
       "entry": "tinyaml/yaml",
       "gzip": {
-        "theirs": 30643,
-        "ours": 17350
+        "theirs": 30563,
+        "ours": 17221
       },
       "parse": {
-        "theirs": 35.89,
-        "ours": 2.85
+        "theirs": 33.53483349999988,
+        "ours": 2.7926679687499245
       },
       "stringify": {
-        "theirs": 11.93,
-        "ours": 4.22
+        "theirs": 11.775849000000107,
+        "ours": 4.157588499999974
       }
     },
     {
@@ -57,16 +57,16 @@
       "library": "yamljs",
       "entry": "tinyaml/yamljs",
       "gzip": {
-        "theirs": 9029,
-        "ours": 8238
+        "theirs": 8982,
+        "ours": 8180
       },
       "parse": {
-        "theirs": 11.36,
-        "ours": 2.29
+        "theirs": 11.303562500000226,
+        "ours": 2.23723565625005
       },
       "stringify": {
-        "theirs": 1.46,
-        "ours": 1.28
+        "theirs": 1.4380677187499487,
+        "ours": 1.2623411406250398
       }
     },
     {
@@ -74,16 +74,16 @@
       "library": "@std/yaml",
       "entry": "tinyaml/std",
       "gzip": {
-        "theirs": 11554,
-        "ours": 10999
+        "theirs": 11497,
+        "ours": 10875
       },
       "parse": {
-        "theirs": 4.03,
-        "ours": 2.03
+        "theirs": 4.752596374999939,
+        "ours": 1.9684322812499886
       },
       "stringify": {
-        "theirs": 4.1,
-        "ours": 2.56
+        "theirs": 4.10089062499992,
+        "ours": 2.55332159375007
       }
     },
     {
@@ -91,210 +91,197 @@
       "library": "json5 2.2.3",
       "entry": "tinyjson5/json5",
       "gzip": {
-        "theirs": 7812,
-        "ours": 3257
+        "theirs": 7675,
+        "ours": 3227
       },
       "parse": {
-        "theirs": 16.22728374999997,
-        "ours": 2.012292187499952
+        "theirs": 7.890953124999896,
+        "ours": 1.0635253906249886
       },
       "stringify": {
-        "theirs": 5.172699999999963,
-        "ours": 0.9252788906250089
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 2.244552062499963,
+        "ours": 0.4816305390624933
+      }
     },
     {
       "package": "tinyjson5",
       "library": "json5 1.0.2",
       "entry": "tinyjson5/json5-v1",
       "gzip": {
-        "theirs": 8623,
-        "ours": 3374
+        "theirs": 8473,
+        "ours": 3348
       },
       "parse": {
-        "theirs": 16.279050250000182,
-        "ours": 1.9323416875000703
+        "theirs": 7.217812500000036,
+        "ours": 1.016429031250027
       },
       "stringify": {
-        "theirs": 4.243197624999993,
-        "ours": 0.6936655703125041
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 2.4435950624999805,
+        "ours": 0.4772763671874998
+      }
     },
     {
       "package": "tinyjson5",
       "library": "strip-json-comments 3",
       "entry": "tinyjson5/strip-json-comments",
       "gzip": {
-        "theirs": 770,
-        "ours": 537
+        "theirs": 763,
+        "ours": 530
       },
       "parse": {
-        "theirs": 3.741226187499933,
-        "ours": 0.9658312968750238
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 2.3361445312500564,
+        "ours": 0.6228352890624933
+      }
     },
     {
       "package": "tinyjson5",
       "library": "strip-json-comments 2",
       "entry": "tinyjson5/strip-json-comments-v2",
       "gzip": {
-        "theirs": 672,
-        "ours": 530
+        "theirs": 665,
+        "ours": 524
       },
       "parse": {
-        "theirs": 4.679186937499935,
-        "ours": 1.1536451093750202
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 2.615932281250025,
+        "ours": 0.6229469374999894
+      }
     },
     {
       "package": "tinyjson5",
       "library": "strip-json-comments 5",
       "entry": "tinyjson5/strip-json-comments-v5",
       "gzip": {
-        "theirs": 654,
-        "ours": 646
+        "theirs": 642,
+        "ours": 641
       },
       "parse": {
-        "theirs": 3.8128107499996986,
-        "ours": 0.9706082031250389
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 2.371954437500108,
+        "ours": 0.6604150390625136
+      }
     },
     {
       "package": "tinyjson5",
       "library": "jsonc-parser 3.3.1",
       "entry": "tinyjson5/jsonc-parser",
       "gzip": {
-        "theirs": 6788,
-        "ours": 5877
+        "theirs": 6754,
+        "ours": 5838
       },
       "parse": {
-        "theirs": 2.142901156249991,
-        "ours": 1.8373418124999716
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 1.4076145937499405,
+        "ours": 1.1878352812500452
+      }
     },
     {
       "package": "tinyjson5",
       "library": "comment-json 4.6.2",
       "entry": "tinyjson5/comment-json",
       "gzip": {
-        "theirs": 36531,
-        "ours": 18868
+        "theirs": 36151,
+        "ours": 18627
       },
       "parse": {
-        "theirs": 15.466695999999502,
-        "ours": 9.832335500000227
+        "theirs": 6.074598937500014,
+        "ours": 3.3998463124999034
       },
       "stringify": {
-        "theirs": 7.624717249999776,
-        "ours": 4.564816124999652
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 2.941329437499917,
+        "ours": 2.3267187500000546
+      }
     },
     {
       "package": "tinyjson5",
       "library": "jju 1.4.0",
       "entry": "tinyjson5/jju",
       "gzip": {
-        "theirs": 9988,
-        "ours": 9894
+        "theirs": 9807,
+        "ours": 9717
       },
       "parse": {
-        "theirs": 3.241101937500389,
-        "ours": 2.653828125000018
+        "theirs": 1.910589843750131,
+        "ours": 1.6827265625001928
       },
       "stringify": {
-        "theirs": 3.19264506250056,
-        "ours": 1.9882913437500065
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 1.5972682500000701,
+        "ours": 0.9733587187499779
+      }
     },
     {
       "package": "tinyini",
       "library": "ini 7.0.0",
       "entry": "tinyini/ini",
       "gzip": {
-        "theirs": 1682,
-        "ours": 1576
+        "theirs": 1678,
+        "ours": 1571
       },
       "parse": {
-        "theirs": 3.4146791250000206,
-        "ours": 2.388202531250016
+        "theirs": 1.4321666718749952,
+        "ours": 0.8098294218750084
       },
       "stringify": {
-        "theirs": 2.334256625000023,
-        "ours": 1.051113015624992
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 1.477535156249985,
+        "ours": 0.5017415312500049
+      }
     },
     {
       "package": "tinyini",
       "library": "ini 2.0.0",
       "entry": "tinyini/ini-v2",
       "gzip": {
-        "theirs": 1435,
-        "ours": 1401
+        "theirs": 1430,
+        "ours": 1397
       },
       "parse": {
-        "theirs": 2.893240031250002,
-        "ours": 1.7389292812499662
+        "theirs": 1.514188812499981,
+        "ours": 0.9541998593749668
       },
       "stringify": {
-        "theirs": 1.8273546875000193,
-        "ours": 1.3103023593749867
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 0.9969654999999875,
+        "ours": 0.6345458984374943
+      }
     },
     {
       "package": "tinyini",
       "library": "ini 1.3.8",
       "entry": "tinyini/ini-v1",
       "gzip": {
-        "theirs": 1452,
-        "ours": 1406
+        "theirs": 1436,
+        "ours": 1402
       },
       "parse": {
-        "theirs": 3.133525406249987,
-        "ours": 2.3444913749999614
+        "theirs": 1.4457740937500034,
+        "ours": 0.8974655000000098
       },
       "stringify": {
-        "theirs": 2.1009477187499215,
-        "ours": 1.6262973749999219
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 0.8879244843750485,
+        "ours": 0.5349101562499641
+      }
     },
     {
       "package": "tinyini",
       "library": "@one-ini/wasm 0.2.1",
       "entry": "tinyini/one-ini",
       "gzip": {
-        "theirs": 37044,
-        "ours": 1731
+        "theirs": 36859,
+        "ours": 1721
       },
       "parse": {
-        "theirs": 14.590562000001228,
-        "ours": 1.1103650937500333
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 7.037432249999256,
+        "ours": 0.5690472031249101
+      }
     },
     {
       "package": "tinyini",
       "library": "@one-ini/wasm 0.1.1",
       "entry": "tinyini/one-ini-v0.1",
       "gzip": {
-        "theirs": 33299,
-        "ours": 1735
+        "theirs": 33123,
+        "ours": 1724
       },
       "parse": {
-        "theirs": 18.76125350000075,
-        "ours": 1.277727046875043
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 6.977973875000316,
+        "ours": 0.5743697890625299
+      }
     }
   ],
   "root": {
@@ -302,16 +289,16 @@
     "library": "yaml",
     "entry": "tinyaml",
     "gzip": {
-      "theirs": 30643,
-      "ours": 8020
+      "theirs": 30563,
+      "ours": 7935
     },
     "parse": {
-      "theirs": 36.22,
-      "ours": 1.876
+      "theirs": 33.47462499999892,
+      "ours": 1.7870000000000346
     },
     "stringify": {
-      "theirs": 12.65,
-      "ours": 1.01
+      "theirs": 11.739713500000107,
+      "ours": 0.910936859375056
     }
   },
   "roots": [
@@ -320,36 +307,34 @@
       "library": "json5 2.2.3",
       "entry": "tinyjson5",
       "gzip": {
-        "theirs": 7812,
-        "ours": 3510
+        "theirs": 7675,
+        "ours": 3481
       },
       "parse": {
-        "theirs": 14.357005000001664,
-        "ours": 1.7293059687499408
+        "theirs": 7.577583250000316,
+        "ours": 1.2115917968749272
       },
       "stringify": {
-        "theirs": 3.7629261250003765,
-        "ours": 0.7354244609375655
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 2.1147369999998773,
+        "ours": 0.4937392578124218
+      }
     },
     {
       "package": "tinyini",
       "library": "ini 7.0.0",
       "entry": "tinyini",
       "gzip": {
-        "theirs": 1682,
-        "ours": 1360
+        "theirs": 1678,
+        "ours": 1352
       },
       "parse": {
-        "theirs": 3.3653124375000516,
-        "ours": 1.4501298437500054
+        "theirs": 1.4909498749999557,
+        "ours": 0.6236318359374877
       },
       "stringify": {
-        "theirs": 2.5585498750001534,
-        "ours": 0.8900440781250154
-      },
-      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
+        "theirs": 1.5631965937500354,
+        "ours": 0.44089388281247466
+      }
     }
   ]
 }

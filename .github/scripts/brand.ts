@@ -77,11 +77,11 @@ const banners: Banner[] = [
   {
     file: ".github/assets/banner.svg",
     name: "tiny",
-    title: "tiny: smaller, faster drop-ins for js-yaml, yaml, yamljs, @std/yaml, json5 and ini",
+    title: "tiny: smaller, faster drop-ins for YAML, JSON5, JSONC and INI libraries",
     tagline: "Swap your parsers for smaller, faster ones.",
     stats: [
-      ["7", "drop-in replacements"],
-      ["11.9×", "faster than yaml"],
+      ["18", "drop-in replacements"],
+      ["12×", "faster than yaml"],
       ["0", "dependencies"],
     ],
     code: [
@@ -115,7 +115,7 @@ const banners: Banner[] = [
       "tinyjson5: smaller, faster drop-ins for json5 2 and 1, strip-json-comments, jsonc-parser, comment-json and jju",
     tagline: "Faster drop-ins for JSON5 and JSONC parsers.",
     stats: [
-      ["8×", "faster than json5"],
+      ["7×", "faster than json5"],
       ["8", "drop-in replacements"],
       ["0", "dependencies"],
     ],

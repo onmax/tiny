@@ -27,15 +27,15 @@ tinyini ships drop-in replacements for ini 7 (and 4.1.3 to 6), ini 2, ini 1.3.8,
 
 | You use             | Switch to              |     Size, gzip |       Parses | Stringifies |
 | ------------------- | ---------------------- | -------------: | -----------: | ----------: |
-| ini 7.0.0           | `tinyini/ini`          |  1.6 → 1.5 KiB |  1.4× faster | 2.2× faster |
-| ini 2.0.0           | `tinyini/ini-v2`       |  1.4 → 1.4 KiB |  1.7× faster | 1.4× faster |
-| ini 1.3.8           | `tinyini/ini-v1`       |  1.4 → 1.4 KiB |  1.3× faster | 1.3× faster |
-| @one-ini/wasm 0.2.1 | `tinyini/one-ini`      | 36.2 → 1.7 KiB | 13.1× faster |           — |
-| @one-ini/wasm 0.1.1 | `tinyini/one-ini-v0.1` | 32.5 → 1.7 KiB | 14.7× faster |           — |
+| ini 7.0.0           | `tinyini/ini`          |  1.6 → 1.5 KiB |  1.8× faster | 2.9× faster |
+| ini 2.0.0           | `tinyini/ini-v2`       |  1.4 → 1.4 KiB |  1.6× faster | 1.6× faster |
+| ini 1.3.8           | `tinyini/ini-v1`       |  1.4 → 1.4 KiB |  1.6× faster | 1.7× faster |
+| @one-ini/wasm 0.2.1 | `tinyini/one-ini`      | 36.0 → 1.7 KiB | 12.4× faster |           — |
+| @one-ini/wasm 0.1.1 | `tinyini/one-ini-v0.1` | 32.3 → 1.7 KiB | 12.1× faster |           — |
 
-The root `tinyini` API is 1.3 KiB against 1.6 KiB for ini 7.0.0. It parses 2.3× faster than ini 7.0.0 and stringifies 2.9× faster.
+The root `tinyini` API is 1.3 KiB against 1.6 KiB for ini 7.0.0. It parses 2.4× faster than ini 7.0.0 and stringifies 3.5× faster.
 
-Size is the minified bundle, gzipped. Speed is the median time to parse and stringify the large benchmark file. @one-ini/wasm's size adds its .wasm file, gzipped, and its speed is parse_to_uint32array on a 100 KB .editorconfig. Measured on AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0.
+Size is the minified bundle, gzipped. Speed is the median time to parse and stringify the large benchmark file. @one-ini/wasm's size adds its .wasm file, gzipped, and its speed is parse_to_uint32array on a 100 KB .editorconfig. Measured on Apple M4, Node 26.13.0.
 
 <!-- /automd -->
 

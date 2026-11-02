@@ -17,7 +17,7 @@
 <g font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
 <text x="188" y="140" fill="#fafafa" font-size="80" font-weight="700" letter-spacing="-3">tinyjson5</text>
 <text x="80" y="214" fill="#a3a3a3" font-size="28">Faster drop-ins for JSON5 and JSONC parsers.</text>
-<text x="80" y="306" fill="#fafafa" font-size="56" font-weight="700" letter-spacing="-2">8<tspan fill="#e5484d">×</tspan></text>
+<text x="80" y="306" fill="#fafafa" font-size="56" font-weight="700" letter-spacing="-2">7<tspan fill="#e5484d">×</tspan></text>
 <text x="80" y="340" fill="#737373" font-size="20">faster than json5</text>
 <text x="290" y="306" fill="#fafafa" font-size="56" font-weight="700" letter-spacing="-2">8</text>
 <text x="290" y="340" fill="#737373" font-size="20">drop-in replacements</text>

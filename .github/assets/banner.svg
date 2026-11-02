@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" role="img" aria-labelledby="t">
-<title id="t">tiny: smaller, faster drop-ins for js-yaml, yaml, yamljs, @std/yaml, json5 and ini</title>
+<title id="t">tiny: smaller, faster drop-ins for YAML, JSON5, JSONC and INI libraries</title>
 <defs>
 <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#fff" fill-opacity=".06"/></pattern>
 <radialGradient id="glow" cx="1060" cy="420" r="520" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e5484d" stop-opacity=".18"/><stop offset="1" stop-color="#e5484d" stop-opacity="0"/></radialGradient>
@@ -17,9 +17,9 @@
 <g font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
 <text x="188" y="140" fill="#fafafa" font-size="80" font-weight="700" letter-spacing="-3">tiny</text>
 <text x="80" y="214" fill="#a3a3a3" font-size="28">Swap your parsers for smaller, faster ones.</text>
-<text x="80" y="306" fill="#fafafa" font-size="56" font-weight="700" letter-spacing="-2">7</text>
+<text x="80" y="306" fill="#fafafa" font-size="56" font-weight="700" letter-spacing="-2">18</text>
 <text x="80" y="340" fill="#737373" font-size="20">drop-in replacements</text>
-<text x="290" y="306" fill="#fafafa" font-size="56" font-weight="700" letter-spacing="-2">11.9<tspan fill="#e5484d">×</tspan></text>
+<text x="290" y="306" fill="#fafafa" font-size="56" font-weight="700" letter-spacing="-2">12<tspan fill="#e5484d">×</tspan></text>
 <text x="290" y="340" fill="#737373" font-size="20">faster than yaml</text>
 <text x="500" y="306" fill="#fafafa" font-size="56" font-weight="700" letter-spacing="-2">0</text>
 <text x="500" y="340" fill="#737373" font-size="20">dependencies</text>
