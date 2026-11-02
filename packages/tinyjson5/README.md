@@ -239,10 +239,10 @@ Every entry is faster than its original at every operation benchmarked, from 1.0
 
 Parses JSON5 and returns the value. `parse(text, options)` works too. The reviver is the one `JSON.parse` takes.
 
-| Option   | Default | What it does                                                                                                                                        |
-| -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bigint` | `false` | Return integers outside the safe range, decimal or hex, as BigInts. A number with a decimal point or an exponent stays a Number. Must be a boolean. |
-| `jsonc`  | `false` | Accept only JSON with comments.                                                                                                                     |
+| Option   | Default | What it does                                                                                                                                                                                                              |
+| -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bigint` | `false` | Return integers outside the safe range, decimal or hex, as BigInts. A number with a decimal point or an exponent stays a Number. Omitted or `null` is `false`; any other value that isn't a boolean throws a `TypeError`. |
+| `jsonc`  | `false` | Accept only JSON with comments.                                                                                                                                                                                           |
 
 ### `stringify(value, replacer?, space?)` and `stringify(value, options)`
 
