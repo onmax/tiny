@@ -18,11 +18,12 @@ description: Bundle size of each tinyaml entry and the library it replaces, mini
 | js-yaml 5            | 56.4 KiB | 17.1 KiB |
 | `tinyaml/yaml`       | 39.9 KiB | 17.0 KiB |
 | yaml 2               | 95.8 KiB | 29.9 KiB |
+| yaml 3.0.0-2         | 98.0 KiB | 30.5 KiB |
 | `tinyaml/yamljs`     | 18.2 KiB | 8.1 KiB  |
 | yamljs               | 28.4 KiB | 8.8 KiB  |
 | `tinyaml/std`        | 24.6 KiB | 10.8 KiB |
 | @std/yaml            | 35.4 KiB | 11.3 KiB |
 
-The tinyaml entries export everything in the subpath. js-yaml 4 and yamljs are bundled whole, js-yaml 5 with `load`, `loadAll`, `dump`, `Schema` and `YAMLException`, yaml with only `parse` and `stringify`, and @std/yaml with `parse`, `parseAll` and `stringify`.
+The tinyaml entries export everything in the subpath. js-yaml 4 and yamljs are bundled whole, js-yaml 5 with `load`, `loadAll`, `dump`, `Schema` and `YAMLException`, yaml 2 and yaml 3 with only `parse` and `stringify`, and @std/yaml with `parse`, `parseAll` and `stringify`. yaml 3.0.0-2 is a prerelease, listed for comparison: `tinyaml/yaml` follows yaml 2.
 
 The parser is one pass over character codes that builds JS values directly, with no tokens or syntax tree in between. Every entry shares it, so a subpath only adds its own value rules, error messages and stringifier. Each entry is built with the branches of one parser mode only: the spec for the root and tinyaml/yaml, js-yaml 4's leniency for tinyaml/js-yaml, tinyaml/yamljs and tinyaml/std, and js-yaml 5's rules for tinyaml/js-yaml-v5, each with only its own engine's settings. `scripts/size.ts` fails if an entry still holds another mode's code. The parser reports errors as numbered codes, and each entry has its own table of wording, so no bundle carries another library's messages.

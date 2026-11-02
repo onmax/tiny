@@ -18,6 +18,7 @@ import { parseAll as stdParseAll } from "@std/yaml";
 import * as jsYaml4 from "js-yaml";
 import * as jsYaml5 from "js-yaml5";
 import { parseAllDocuments } from "yaml";
+import { parseAllDocuments as parseAllDocuments3 } from "yaml3";
 import yamljs from "yamljs";
 import { parseAll } from "../src/index.ts";
 import { equal, expectCount, suiteCases } from "./support.ts";
@@ -28,6 +29,12 @@ const libraries: Record<string, (input: string) => unknown[]> = {
   "js-yaml 5": (input) => jsYaml5.loadAll(input),
   yaml: (input) => {
     const docs = parseAllDocuments(input, { schema: "core", resolveKnownTags: false });
+    for (const doc of docs) if (doc.errors.length) throw doc.errors[0];
+    return docs.map((doc) => doc.toJS());
+  },
+  // yaml 3, still a prerelease, with the same options as yaml 2.
+  "yaml 3": (input) => {
+    const docs = parseAllDocuments3(input, { schema: "core", resolveKnownTags: false });
     for (const doc of docs) if (doc.errors.length) throw doc.errors[0];
     return docs.map((doc) => doc.toJS());
   },

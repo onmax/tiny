@@ -15,6 +15,7 @@ yamljs reads one document, so it's scored on the 256 valid cases with exactly on
 | js-yaml 4.3.2   | 244 of 264            | 15                         | 80 of 94              |
 | js-yaml 5.5.0   | 263 of 263            | 16                         | 94 of 94              |
 | yaml 2.9.1      | 276 of 279            | 0                          | 92 of 94              |
+| yaml 3.0.0-2    | 276 of 279            | 0                          | 92 of 94              |
 | yamljs 0.3.0    | 97 of 256             | 0                          | 49 of 94              |
 | @std/yaml 1.3.0 | 217 of 264            | 15                         | 70 of 94              |
 
@@ -29,6 +30,8 @@ tinyaml's root gets every case right, including the 34 that js-yaml 4 gets wrong
 ## yaml: 5 cases wrong
 
 yaml reads a `...` with nothing but comments before it as an empty document, where the suite expects none, which gives the 3 wrong values. It accepts a `%YAML` directive with no document after it (9MMA) and a repeated `%YAML` directive (SF5V) by choice, and its own run of the suite skips the error check for both.
+
+yaml 3.0.0-2, a prerelease, run with the same options, differs from the suite on the same 5 cases.
 
 - Valid YAML read to the wrong value (3): [HWV9](https://github.com/yaml/yaml-test-suite/tree/data-2022-01-17/HWV9), [M7A3](https://github.com/yaml/yaml-test-suite/tree/data-2022-01-17/M7A3), [QT73](https://github.com/yaml/yaml-test-suite/tree/data-2022-01-17/QT73)
 - Invalid YAML accepted (2): [9MMA](https://github.com/yaml/yaml-test-suite/tree/data-2022-01-17/9MMA), [SF5V](https://github.com/yaml/yaml-test-suite/tree/data-2022-01-17/SF5V)
