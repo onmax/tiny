@@ -34,7 +34,17 @@ pnpm add tinyaml tinyjson5 tinyini
 
 ## Switching
 
-Change the import. The calls, options, output and errors stay the same.
+The quickest way is the codemod. Run it in your project:
+
+```sh
+npx tinyswap
+```
+
+It finds the libraries you use, picks the tiny subpath that matches each installed version, and asks which ones to migrate. It shows the files it will change, then rewrites the imports and requires, swaps the dependencies in package.json, and offers to run your install. It covers js-yaml, yaml, yamljs, @std/yaml, json5, strip-json-comments, jsonc-parser, comment-json, jju, ini and @one-ini/wasm. `pnpm dlx tinyswap` and `bunx tinyswap` work too, and you can pass a directory, which defaults to the current one.
+
+It won't write to a project outside git or with uncommitted changes unless you pass `--force`. `--yes` migrates everything it finds without asking, `--dry-run` prints the diff and writes nothing, `--only js-yaml,json5` limits it to those libraries, and `--help` lists the flags.
+
+To switch by hand, change the import. The calls, options, output and errors stay the same.
 
 ```diff
 - import yaml from "js-yaml";

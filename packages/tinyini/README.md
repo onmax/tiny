@@ -96,6 +96,8 @@ Content mappers run code, so tsc needs `--runExternalCode`. `"options": { "liter
 
 Each subpath exports the functions of the library it replaces, so switching is a change to the import line. The last column is that library's own test suite, run with tinyini in its place.
 
+`npx tinyswap` makes this change for you: it rewrites the imports and swaps the dependency in package.json.
+
 | Library                   | Change the import to     | Size, gzip      | Its own tests on tinyini                    |
 | ------------------------- | ------------------------ | --------------- | ------------------------------------------- |
 | ini 4.1.3 to 7.0.0        | `"tinyini/ini"`          | 1.64 → 1.53 KiB | 40 of 40 pass                               |
