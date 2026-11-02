@@ -3,7 +3,7 @@ title: Size and speed
 description: Bundle size and timings of each entry next to the library it replaces.
 ---
 
-Bundled with esbuild, minified ESM, every export kept, then gzip -9 (`pnpm size`):
+Each entry is bundled with esbuild as minified ESM with every export kept, then compressed with gzip -9 (`pnpm size`).
 
 | Entry                              | Minified |     Gzip | Original                  |  Minified |     Gzip |
 | ---------------------------------- | -------: | -------: | ------------------------- | --------: | -------: |

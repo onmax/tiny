@@ -135,7 +135,7 @@ export default {
           const smaller = (bytes: number) => (bytes / root.gzip.ours).toFixed(1);
           lines.push(
             "",
-            `Starting fresh with YAML? The root \`tinyaml\` API is ${kib(root.gzip.ours)} KiB, ` +
+            `For new code, the root \`tinyaml\` API is ${kib(root.gzip.ours)} KiB, ` +
               `${smaller(jsYaml.gzip.theirs)}× smaller than js-yaml 4 and ${smaller(root.gzip.theirs)}× smaller than yaml. ` +
               `It parses ${times(root.parse)} faster than yaml and stringifies ${times(root.stringify!)} faster.`,
           );

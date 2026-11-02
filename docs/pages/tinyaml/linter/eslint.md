@@ -3,11 +3,11 @@ title: ESLint
 description: Run the tinyaml linter rules from ESLint with tinyaml/eslint.
 ---
 
-`tinyaml/eslint` runs the [linter's rules](/tinyaml/linter/overview/#rules) from ESLint, so `eslint .`, your editor, and your CI report YAML problems next to code problems.
+`tinyaml/eslint` runs the [linter's rules](/tinyaml/linter/overview/#rules) as ESLint rules, so YAML problems show up wherever ESLint runs, in your editor and in CI.
 
 ## Setup
 
-Install the packages. It needs ESLint 9.15 or later and `yaml-eslint-parser` 2 or later, which parses the YAML for ESLint.
+It needs ESLint 9.15 or later and `yaml-eslint-parser` 2 or later, which parses the YAML for ESLint.
 
 ```sh
 pnpm add -D tinyaml eslint yaml-eslint-parser
@@ -38,7 +38,7 @@ site.yaml
 
 YAML that `yaml-eslint-parser` can't parse, such as a duplicated key, shows up as an ESLint parsing error instead of under `tinyaml/invalid-yaml`.
 
-## Turn a rule off or up
+## Change a rule's severity
 
 Set the rule in `rules` after the recommended config:
 

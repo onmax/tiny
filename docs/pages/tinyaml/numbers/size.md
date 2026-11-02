@@ -5,7 +5,7 @@ description: Bundle size of each tinyaml entry and the library it replaces, mini
 
 ![Bundle size, KiB gzip](/charts/size.svg)
 
-Each entry as npm ships it in `dist/`, bundled with esbuild, minified ESM, then gzip -9, from [`scripts/size.ts`](https://github.com/onmax/tiny/blob/main/packages/tinyaml/scripts/size.ts). A KiB is 1,024 bytes. Gzip sizes come from the zlib in the official Node builds; a Node linked to another zlib, such as Homebrew's, gives about 1% less.
+[`scripts/size.ts`](https://github.com/onmax/tiny/blob/main/packages/tinyaml/scripts/size.ts) takes each entry as npm ships it in `dist/`, bundles it with esbuild as minified ESM, then runs gzip -9. A KiB is 1,024 bytes. Gzip sizes come from the zlib in the official Node builds. A Node linked to another zlib, such as Homebrew's, gives about 1% less.
 
 ## All sizes
 

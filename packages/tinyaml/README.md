@@ -35,7 +35,7 @@ tinyaml ships drop-in replacements for js-yaml 4 and 5, yaml, yamljs and @std/ya
 | yamljs    | `tinyaml/yamljs`     |   8.8 → 8.0 KiB |  5.1× faster | 1.1× faster |
 | @std/yaml | `tinyaml/std`        | 11.2 → 10.6 KiB |  2.4× faster | 1.6× faster |
 
-Starting fresh with YAML? The root `tinyaml` API is 7.7 KiB, 1.9× smaller than js-yaml 4 and 3.9× smaller than yaml. It parses 18.7× faster than yaml and stringifies 12.9× faster.
+For new code, the root `tinyaml` API is 7.7 KiB, 1.9× smaller than js-yaml 4 and 3.9× smaller than yaml. It parses 18.7× faster than yaml and stringifies 12.9× faster.
 
 Size is the minified bundle, gzipped. Speed is the median time to parse and stringify the large benchmark file. Measured on Apple M4, Node 26.13.0.
 

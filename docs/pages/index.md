@@ -6,23 +6,31 @@ tagline: Drop-in replacements for the YAML, JSON5 and INI libraries you already 
 install: pnpm add tinyaml tinyjson5 tinyini
 ---
 
-```diff [config.ts]
-- import yaml from "js-yaml";
-- import JSON5 from "json5";
-- import ini from "ini";
-+ import yaml from "tinyaml/js-yaml";
-+ import JSON5 from "tinyjson5/json5";
-+ import ini from "tinyini/ini";
+::code-group
+```ts [tinyaml] icon=lucide:file-code del={1} ins={2}
+import yaml from "js-yaml";
+import yaml from "tinyaml/js-yaml";
 ```
 
-## One package per format
+```ts [tinyjson5] icon=lucide:braces del={1} ins={2}
+import JSON5 from "json5";
+import JSON5 from "tinyjson5/json5";
+```
 
-Each is published on its own, so you install only what you use.
+```ts [tinyini] icon=lucide:settings-2 del={1} ins={2}
+import ini from "ini";
+import ini from "tinyini/ini";
+```
+::
+
+## Packages
+
+Each format is its own package, so you install only the ones you read.
 
 ::packages
 ::
 
-## Next to what they replace
+## Size and speed
 
 <!-- automd:drop-ins -->
 
@@ -47,7 +55,7 @@ Each is published on its own, so you install only what you use.
 | @one-ini/wasm 0.2.1   | `tinyini/one-ini`                  |  36.0 → 1.7 KiB | 12.4× faster |           — |
 | @one-ini/wasm 0.1.1   | `tinyini/one-ini-v0.1`             |  32.3 → 1.7 KiB | 12.1× faster |           — |
 
-Starting fresh with YAML? The root `tinyaml` API is 7.7 KiB, 1.9× smaller than js-yaml 4 and 3.9× smaller than yaml. It parses 18.7× faster than yaml and stringifies 12.9× faster.
+For new code, the root `tinyaml` API is 7.7 KiB, 1.9× smaller than js-yaml 4 and 3.9× smaller than yaml. It parses 18.7× faster than yaml and stringifies 12.9× faster.
 
 Size is the minified bundle, gzipped. Speed is the median time to parse and stringify each package's large benchmark file. @one-ini/wasm's size adds its .wasm file, gzipped, and its speed is parse_to_uint32array on a 100 KB .editorconfig. strip-json-comments only strips comments, so its time is the time to strip them. Measured on Apple M4, Node 26.13.0.
 
@@ -57,18 +65,18 @@ Size is the minified bundle, gzipped. Speed is the median time to parse and stri
 
 ::accordion
 :::accordion-item{label="How close is each package to the library it replaces?"}
-Each one runs the original library's own tests and is compared with it on fuzzed inputs: 1 million for tinyjson5, 6 million calls for tinyini, and every yaml-test-suite case plus thousands of edits for tinyaml. Each package's compatibility page lists every known difference: [tinyaml](/tinyaml/guide/switching/), [tinyjson5](/tinyjson5/compatibility/), [tinyini](/tinyini/compatibility/).
+Each one runs the original library's own tests. It's also compared with the original on fuzzed inputs, 1 million for tinyjson5, 6 million calls for tinyini, and every yaml-test-suite case plus thousands of edits for tinyaml. The compatibility pages list every known difference for [tinyaml](/tinyaml/guide/switching/), [tinyjson5](/tinyjson5/compatibility/), [tinyini](/tinyini/compatibility/).
 :::
 
 :::accordion-item{label="Can I load them with require()?"}
-Yes. All three ship ESM only, and Node 22.12 and later load ESM from `require()`. Bundlers handle them too.
+Yes. All three are ESM only, and Node 22.12 and later load ESM with `require()`, as do bundlers.
 :::
 
 :::accordion-item{label="Why are they faster?"}
-Each parser reads character codes in one pass and builds JavaScript values directly, without a tokenizer or a syntax tree in between. tinyjson5's ports of jsonc-parser, comment-json and jju keep the scanner or tokenizer their API exposes, and are faster at it.
+Each parser reads character codes in one pass and builds JavaScript values directly, without a tokenizer or a syntax tree in between. tinyjson5's jsonc-parser, comment-json and jju subpaths keep the scanner or tokenizer those APIs expose, and run it faster.
 :::
 
 :::accordion-item{label="How are the numbers measured?"}
-With scripts in the repository that you can rerun. Each package has a page with the commands: [tinyaml](/tinyaml/numbers/reproduce/), [tinyjson5](/tinyjson5/develop/), [tinyini](/tinyini/develop/).
+With scripts in the repository, which you can rerun. The commands are on [tinyaml](/tinyaml/numbers/reproduce/), [tinyjson5](/tinyjson5/develop/), [tinyini](/tinyini/develop/).
 :::
 ::

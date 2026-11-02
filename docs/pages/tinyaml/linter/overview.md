@@ -5,7 +5,7 @@ description: Check YAML the way tinyaml loads it, from the command line, as a li
 
 The linter checks YAML files the way tinyaml loads them. It reports YAML tinyaml can't load, with the line and column, and plain values that load as strings here but that other YAML readers take for a boolean, a number, or a date.
 
-It runs from the command line, as a library, as an [ESLint](/tinyaml/linter/eslint/) plugin, or as a [Vite Doctor](/tinyaml/linter/vite-doctor/) extension. It all ships with tinyaml. The command line and the library need nothing else, and the ESLint plugin and the Vite Doctor extension need ESLint or Vite Doctor installed.
+It runs from the command line, as a library, as an [ESLint](/tinyaml/linter/eslint/) plugin, or as a [Vite Doctor](/tinyaml/linter/vite-doctor/) extension, and all four ship with tinyaml. The ESLint plugin needs ESLint installed and the Vite Doctor extension needs Vite Doctor. The command line and the library need nothing else.
 
 ## Command line
 
@@ -32,7 +32,7 @@ lint("draft: no\n");
 // [{ rule: "tinyaml/ambiguous-value", severity: "warn", line: 1, column: 8, offset: 7, message: "…", fix: "…" }]
 ```
 
-`lint` takes one YAML stream and never throws. Lines and columns count from 1 and offsets from 0, in the text as given; as in ESLint, columns start past a byte order mark at the start of the text. `lintFiles(files, read)` lints several files, reading each one with `read`. `rules` maps each rule to its Vite Doctor code, title, and severity.
+`lint` takes one YAML stream and never throws. Lines and columns count from 1 and offsets from 0, in the text as given. As in ESLint, columns start past a byte order mark at the start of the text. `lintFiles(files, read)` lints several files, reading each one with `read`. `rules` maps each rule to its Vite Doctor code, title, and severity.
 
 ## Rules
 
@@ -58,7 +58,7 @@ title: Hello
 
 ### `tinyaml/ambiguous-value`
 
-tinyaml reads YAML with the YAML 1.2 core schema, as js-yaml 5 and the `yaml` package do by default. Other readers turn more plain values into something else, so the same file gives different data depending on who reads it:
+tinyaml reads YAML with the YAML 1.2 core schema, as js-yaml 5 and the `yaml` package do by default. Other readers turn more plain values into booleans, numbers or dates, so the same file gives different data in each:
 
 | Values                              | Read as   | By                                                   |
 | ----------------------------------- | --------- | ---------------------------------------------------- |
