@@ -74,7 +74,8 @@ The root follows [json5](https://github.com/json5/json5)'s main branch, which ho
 - The reviver walks own keys, as `JSON.parse`'s does, and a property it can't update stays as it is instead of throwing.
 - Error positions count `\r`, `\r\n`, U+2028 and U+2029 as line breaks, and an error on a line break is reported on the line it ends.
 - `{ bigint: true }` returns integers outside the safe range, decimal or hex, as BigInts. A number with a decimal point or an exponent stays a Number.
-- `stringify` throws on a BigInt, takes only `'`, `"` or, for the default, `null` as `quote`, escapes lone surrogates, writes keys with identifier characters above U+FFFF bare, and reads replacer lists and arrays once, as `JSON.stringify` does. Before it writes a value, it looks up `toJSON5` once, and `toJSON` once if `toJSON5` isn't a function.
+- `stringify` takes each value as `JSON.stringify` does: it looks up `toJSON5` once, and `toJSON` once if `toJSON5` isn't a function, calls the one it finds, and then the replacer. A BigInt left after them throws a `TypeError`. It reads replacer lists and arrays once, as `JSON.stringify` does.
+- `stringify` takes only `'`, `"` or, for the default, `null` as `quote`, escapes lone surrogates, and writes keys with identifier characters above U+FFFF bare.
 
 `{ jsonc: true }` accepts JSON with `//` and `/* */` comments and nothing more: no single quotes, unquoted keys, hex, `+`, `Infinity`, `NaN`, trailing commas, escapes JSON lacks, or whitespace other than JSON's. Line comments end at `\n` or `\r`, and block comments at `*/`.
 
