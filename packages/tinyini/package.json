@@ -100,6 +100,14 @@
     "typescript": "^7.0.2",
     "vite-plus": "^1.4.0"
   },
+  "typescript": {
+    "contentMapper": {
+      "exec": [
+        "node",
+        "./dist/mapper.mjs"
+      ]
+    }
+  },
   "engines": {
     "node": ">=22"
   }

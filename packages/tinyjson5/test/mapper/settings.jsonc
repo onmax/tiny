@@ -1,0 +1,5 @@
+{
+  // A comment, and a trailing comma, as in a tsconfig.json.
+  "strict": true,
+  "paths": ["src"],
+}

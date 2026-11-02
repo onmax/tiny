@@ -24,6 +24,10 @@ const TOOLS = {
   eslint: "src/eslint.ts",
   cli: "src/cli.ts",
 };
+// TypeScript's content mapper, which TypeScript runs and no entry imports,
+// builds on its own too, so no other build changes.
+const MAPPER = { mapper: "src/mapper.ts" };
+const BUILDS = [...Object.entries(MODES), ["spec", TOOLS] as const, ["spec", MAPPER] as const];
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const MODE = here("src/core/mode.ts");
 
@@ -64,14 +68,14 @@ export const linterHash = {
 export default defineConfig({
   // ESM only, with types, and publint fails the build on a broken package.json.
   // tsdown cleans once, and runs publint once all the builds are done.
-  pack: [...Object.entries(MODES), ["spec", TOOLS] as const].map(([mode, entry]) => ({
+  pack: BUILDS.map(([mode, entry]) => ({
     entry,
     format: ["esm"],
     platform: "neutral",
     // The CLI and the Doctor extension run in Node.
     deps: { neverBundle: [/^node:/] },
     fixedExtension: true,
-    dts: true,
+    dts: entry !== MAPPER,
     clean: true,
     publint: true,
     // The parser in a module of its own: V8 runs it a few percent slower
@@ -99,8 +103,11 @@ export default defineConfig({
   staged: {
     "*": "vp check --fix",
   },
-  // The fuzzers' baselines keep one record per line, for readable diffs.
-  fmt: { ignorePatterns: ["**/dist/**", ".cache/**", "scripts/baselines/**"] },
+  // The fuzzers' baselines keep one record per line, for readable diffs, and
+  // the content mapper's test has YAML it can't read on purpose.
+  fmt: {
+    ignorePatterns: ["**/dist/**", ".cache/**", "scripts/baselines/**", "test/mapper/errors/**"],
+  },
   lint: {
     ignorePatterns: ["**/dist/**", ".cache/**"],
     options: { typeAware: true, typeCheck: false },

@@ -1,0 +1,5 @@
+{
+  "compilerOptions": { "noEmit": true, "types": [] },
+  "contentMappers": [{ "package": "../../..", "extensions": [".json5"] }],
+  "include": ["*.json5"]
+}
