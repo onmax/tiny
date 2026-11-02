@@ -16,18 +16,22 @@ export const MODES = {
   "comment-json": { "comment-json": "src/comment-json/index.ts" },
   jju: { jju: "src/jju/index.ts" },
 };
+// TypeScript's content mapper, which TypeScript runs and no entry imports,
+// builds on its own, so no other build changes.
+const MAPPER = { mapper: "src/mapper.ts" };
+const BUILDS = [...Object.entries(MODES), ["lean", MAPPER] as const];
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const MODE = here("src/core/mode.ts");
 
 export default defineConfig({
   // ESM only, with types, and publint fails the build on a broken package.json.
   // tsdown cleans once, and runs publint once all the builds are done.
-  pack: Object.entries(MODES).map(([mode, entry]) => ({
+  pack: BUILDS.map(([mode, entry]) => ({
     entry,
     format: ["esm"],
     platform: "neutral",
     fixedExtension: true,
-    dts: true,
+    dts: entry !== MAPPER,
     clean: true,
     publint: true,
     plugins: [
@@ -66,6 +70,7 @@ export default defineConfig({
       "test/jju/**",
       // jju's code, kept as it is upstream but where marked "tinyjson5".
       "src/jju/*.js",
+      "test/mapper/**/*.json5",
     ],
   },
   lint: {

@@ -79,6 +79,22 @@ The root follows [json5](https://github.com/json5/json5)'s main branch, which ho
 
 Invalid input throws a `SyntaxError` with json5's message and its `lineNumber` and `columnNumber`, as in `JSON5: invalid character '@' at 2:5`.
 
+## Typed imports
+
+tinyjson5 is also a TypeScript 7.1 [content mapper](https://devblogs.microsoft.com/typescript/announcing-typescript-7-1-beta/). Register it in `tsconfig.json`, and TypeScript types an import of a JSON5 file as it types a `.json` one under `resolveJsonModule`:
+
+```jsonc
+{
+  "contentMappers": [{ "package": "tinyjson5", "extensions": [".json5", ".jsonc"] }]
+}
+```
+
+```ts
+import config from "./config.json5"; // { name: string; port: number }
+```
+
+Content mappers run code, so tsc needs `--runExternalCode`. `"options": { "literal": true }` types values as `as const` would. Both extensions are read as JSON5, which accepts all of JSON with comments, and a syntax error is reported at its line and column. TypeScript checks every file with a registered extension that the project includes, so use a narrower one, such as `.config.json5`, if only some of them are config. The mapper only gives the import its type; your bundler or runtime still has to load the file. TypeScript runs `dist/mapper.mjs` as a process of its own, and no entry imports it, so nothing you bundle gets bigger.
+
 ## Switching from another library
 
 Each subpath exports the functions, options and types of the library it replaces, apart from the gaps listed below, so switching is a change to the import line. The last column is that library's own test suite, copied unchanged into `test/` and run with tinyjson5 in its place.

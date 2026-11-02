@@ -56,3 +56,19 @@ Writes JSON5. The replacer is a function or a list of keys. `space` is a number 
 | `quote`    | auto    | `'` or `"`. Omitted or `null` picks `'`, or `"` when the string has more `'` than `"`. Anything else throws a `TypeError`.                                                           |
 
 Keys that are identifiers are written bare. `NaN`, `Infinity` and `-Infinity` are written as such, `-0` as `0`. `toJSON5()` is used before `toJSON()`. A cycle throws `TypeError: Converting circular structure to JSON5`.
+
+## Typed imports
+
+tinyjson5 is also a TypeScript 7.1 [content mapper](https://devblogs.microsoft.com/typescript/announcing-typescript-7-1-beta/). Register it in `tsconfig.json`, and TypeScript types an import of a JSON5 file as it types a `.json` one under `resolveJsonModule`:
+
+```jsonc
+{
+  "contentMappers": [{ "package": "tinyjson5", "extensions": [".json5", ".jsonc"] }]
+}
+```
+
+```ts
+import config from "./config.json5"; // { name: string; port: number }
+```
+
+Content mappers run code, so tsc needs `--runExternalCode`. `"options": { "literal": true }` types values as `as const` would. Both extensions are read as JSON5, which accepts all of JSON with comments, and a syntax error is reported at its line and column. TypeScript checks every file with a registered extension that the project includes, so use a narrower one, such as `.config.json5`, if only some of them are config. The mapper only gives the import its type; your bundler or runtime still has to load the file. TypeScript runs `dist/mapper.mjs` as a process of its own, and no entry imports it, so nothing you bundle gets bigger.

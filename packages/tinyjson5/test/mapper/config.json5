@@ -1,0 +1,9 @@
+// Comments, unquoted keys, single quotes, hex, Infinity and trailing commas.
+{
+  name: 'app',
+  port: 0x1f90,
+  ratio: Infinity,
+  tags: ['a', 'b',],
+  nested: { on: true, off: null },
+  "__proto__": 1,
+}

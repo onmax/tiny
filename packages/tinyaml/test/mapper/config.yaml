@@ -1,0 +1,11 @@
+server: &server
+  host: localhost
+  port: 8080
+staging:
+  <<: *server
+  port: 8081
+mirrors: [*server, *server]
+tags: [a, b]
+ratio: .inf
+empty:
+"__proto__": 1

@@ -52,3 +52,19 @@ import ini, { parse, stringify } from "tinyini";
 ```
 
 The calls, options, output, and errors are the same. tinyini has no CommonJS build.
+
+## Typed imports
+
+tinyini is also a TypeScript 7.1 [content mapper](https://devblogs.microsoft.com/typescript/announcing-typescript-7-1-beta/). Register it in `tsconfig.json`, and TypeScript types an import of a INI file as it types a `.json` one under `resolveJsonModule`:
+
+```jsonc
+{
+  "contentMappers": [{ "package": "tinyini", "extensions": [".ini"] }]
+}
+```
+
+```ts
+import config from "./config.ini"; // { name: string; server: { port: string } }
+```
+
+Content mappers run code, so tsc needs `--runExternalCode`. `"options": { "literal": true }` types values as `as const` would. TypeScript checks every file with a registered extension that the project includes, so use a narrower one, such as `.config.ini`, if only some of them are config. The mapper only gives the import its type; your bundler or runtime still has to load the file. TypeScript runs `dist/mapper.mjs` as a process of its own, and no entry imports it, so nothing you bundle gets bigger.

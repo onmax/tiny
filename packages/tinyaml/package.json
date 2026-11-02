@@ -135,6 +135,14 @@
       "optional": true
     }
   },
+  "typescript": {
+    "contentMapper": {
+      "exec": [
+        "node",
+        "./dist/mapper.mjs"
+      ]
+    }
+  },
   "engines": {
     "node": ">=22.12.0"
   }

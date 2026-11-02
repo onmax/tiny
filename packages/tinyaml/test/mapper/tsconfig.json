@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "module": "nodenext",
+    "noEmit": true,
+    "types": []
+  },
+  "contentMappers": [{ "package": "../..", "extensions": [".yaml", ".yml"] }],
+  "files": ["index.ts"]
+}

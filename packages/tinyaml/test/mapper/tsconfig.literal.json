@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "contentMappers": [
+    { "package": "../..", "extensions": [".yaml", ".yml"], "options": { "literal": true } }
+  ],
+  "files": ["literal.ts"]
+}
