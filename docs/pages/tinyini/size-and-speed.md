@@ -1,6 +1,6 @@
 ---
 title: Size and speed
-description: Bundle size and parse and stringify timings next to ini.
+description: Bundle size and parse and stringify timings for tinyini and ini.
 ---
 
 Bundled with esbuild, minified ESM, then gzip level 9:
@@ -13,7 +13,7 @@ Bundled with esbuild, minified ESM, then gzip level 9:
 | ini, the whole module                                 | 3.46 KB  | 1.64 KB |
 | ini, `parse` and `stringify`, as confbox imports them | 3.51 KB  | 1.66 KB |
 
-ini is one CommonJS module, so a bundler keeps all of it and adds its CommonJS wrapper; its source alone minifies to 2.9 KB, 1.4 KB gzipped. tinyini's character loops take more code than ini's regular expressions, so the whole module is 0.1 KB larger minified. `parse` alone tree-shakes to 1.0 KB.
+ini is one CommonJS module, so a bundler keeps all of it and adds its CommonJS wrapper. Its source alone minifies to 2.9 KB, 1.4 KB gzipped. tinyini's character loops take more code than ini's regular expressions, so the whole module is 0.1 KB larger minified. `parse` alone tree-shakes to 1.0 KB.
 
 Median time per call on an Apple M4 with Node 26.13. `foo.ini` is ini's test fixture, `.gitconfig` is the one in `test/samples`, and the large file is 100 KB of generated sections with comments, quoted values, escapes, and arrays. Stringify uses `whitespace: true`, as confbox does.
 

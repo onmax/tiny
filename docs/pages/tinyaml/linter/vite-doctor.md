@@ -7,7 +7,9 @@ description: Add the tinyaml linter rules to a Vite Doctor run with tinyaml/doct
 
 ## Setup
 
-Install both packages. It needs `vite-doctor` 0.1.1 or later, which needs Node 22.20 or later; on older Node, Vite Doctor finds no files and reports nothing. In TypeScript, it needs `moduleResolution` set to `node16`, `nodenext`, or `bundler`, as Vite Doctor does: `vite-doctor` declares `vite-doctor/config` and `vite-doctor/extension` only in its `exports`, which the legacy `node` resolution doesn't read.
+It needs `vite-doctor` 0.1.1 or later, which needs Node 22.20 or later. On older Node, Vite Doctor finds no files and reports nothing.
+
+In TypeScript, set `moduleResolution` to `node16`, `nodenext`, or `bundler`, as Vite Doctor requires. `vite-doctor` declares `vite-doctor/config` and `vite-doctor/extension` only in its `exports`, which the legacy `node` resolution doesn't read.
 
 ```sh
 pnpm add -D tinyaml vite-doctor
@@ -26,13 +28,13 @@ export default defineDoctorConfig({
 });
 ```
 
-`tinyaml/recommended` turns on both rules, next to Vite Doctor's own presets. Then run it:
+`tinyaml/recommended` turns on both rules and goes in `extends` with Vite Doctor's own presets. Then run it:
 
 ```sh
 pnpm vite-doctor . --config doctor.config.ts
 ```
 
-Each problem reports with its own code, `TINYAML0001` or `TINYAML0002`, linked to the rule's section in the [linter docs](/tinyaml/linter/overview/#rules). Each diagnostic carries `why`, `fix`, and the YAML location in `sources`.
+Each problem has its own code, `TINYAML0001` or `TINYAML0002`, which links to the rule's section in the [linter docs](/tinyaml/linter/overview/#rules). Each diagnostic carries `why`, `fix`, and the YAML location in `sources`.
 
 ## Options
 

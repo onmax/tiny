@@ -72,7 +72,7 @@ Each package matches its original on that library's own tests and on tens of tho
 | @one-ini/wasm 0.2.1   | `tinyini/one-ini`                  |  36.0 → 1.7 KiB | 12.4× faster |           — |
 | @one-ini/wasm 0.1.1   | `tinyini/one-ini-v0.1`             |  32.3 → 1.7 KiB | 12.1× faster |           — |
 
-Starting fresh with YAML? The root `tinyaml` API is 7.7 KiB, 1.9× smaller than js-yaml 4 and 3.9× smaller than yaml. It parses 18.7× faster than yaml and stringifies 12.9× faster.
+For new code, the root `tinyaml` API is 7.7 KiB, 1.9× smaller than js-yaml 4 and 3.9× smaller than yaml. It parses 18.7× faster than yaml and stringifies 12.9× faster.
 
 Size is the minified bundle, gzipped. Speed is the median time to parse and stringify each package's large benchmark file. @one-ini/wasm's size adds its .wasm file, gzipped, and its speed is parse_to_uint32array on a 100 KB .editorconfig. strip-json-comments only strips comments, so its time is the time to strip them. Measured on Apple M4, Node 26.13.0.
 
