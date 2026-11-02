@@ -105,8 +105,11 @@ function parseError(
 }
 
 // js-yaml 5 compares a limit of null as 0, and writes it as null.
-const limit = (value?: number) =>
-  value === null ? ({ valueOf: () => 0, toString: () => "null" } as unknown as number) : value;
+const NULL_LIMIT: number = Object.create(null, {
+  valueOf: { value: () => 0 },
+  toString: { value: () => "null" },
+});
+const limit = (value?: number) => (value === null ? NULL_LIMIT : value);
 
 function engine(input: string, options: LoadOptions) {
   const schema = options.schema === undefined ? CORE_SCHEMA : options.schema;
