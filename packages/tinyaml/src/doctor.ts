@@ -16,6 +16,8 @@ export interface DoctorOptions {
 
 // SAFETY: the keys of `rules` are exactly the rules.
 const ids = Object.keys(rules) as Rule[];
+// A hash of the code the rules run, which the build puts here.
+const LINTER = "tinyaml-linter";
 
 const diagnostics = defineDoctorDiagnostics(
   ids.map((ruleId) => ({ code: rules[ruleId].code, ruleId })),
@@ -34,8 +36,9 @@ const diagnostics = defineDoctorDiagnostics(
 export default function tinyaml(options: DoctorOptions = {}) {
   const { include = "**/*.{yaml,yml}", exclude = ["**/node_modules/**", "**/dist/**"] } = options;
   // Doctor keys the results it keeps between runs by each Rule's meta and
-  // code, not by these options, so the meta's `version` holds them.
-  const files = JSON.stringify([include, exclude]);
+  // code, not by these options or the linter that code calls, so the meta's
+  // `version` holds them.
+  const files = JSON.stringify([LINTER, include, exclude]);
 
   // Every Rule reads the same results; the first one to run lints the files.
   const lintProject = async (ctx: RuleContext) => {

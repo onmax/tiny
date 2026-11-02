@@ -1,8 +1,52 @@
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 import { createProjectFixture } from "vite-doctor/testkit";
+import { build, ENTRIES } from "../scripts/dist.ts";
 import tinyaml from "../src/doctor.ts";
+import { LINTER, linterHash } from "../vite.config.ts";
 
 describe("Doctor cache", () => {
+  it("keeps no results from a build whose linter or parser reads YAML another way", () => {
+    // The build puts a hash of the code the rules run in their version,
+    // which Doctor keeps results by: the modules the extension imports.
+    const doctor = fileURLToPath(new URL("../src/doctor.ts", import.meta.url));
+    const modules: Record<string, [code: string | null, imports: string[]]> = {
+      [doctor]: [`const LINTER = ${LINTER};`, ["linter.ts", "vite-doctor/extension"]],
+      "linter.ts": ["lint", ["parse.ts", "index.ts"]],
+      "parse.ts": ["parse", []],
+      "index.ts": ["parseAll", ["parse.ts"]],
+      "vite-doctor/extension": [null, []],
+      "js-yaml.ts": ["load", ["parse.ts"]],
+    };
+    const version = (id?: string) =>
+      linterHash.renderChunk.call(
+        {
+          getModuleInfo: (module) => {
+            const [code, importedIds] = modules[module]!;
+            return { code: module === id ? `${code} ` : code, importedIds };
+          },
+        },
+        modules[doctor]![0]!,
+        { facadeModuleId: doctor },
+      );
+    expect(version()).toMatch(/^const LINTER = "[\da-f]{16}";$/);
+    for (const changed of ["linter.ts", "parse.ts", "index.ts"])
+      expect(version(changed), changed).not.toBe(version());
+    expect(version("js-yaml.ts")).toBe(version());
+  });
+
+  it("is told apart by each rule's version in the build", async () => {
+    build();
+    const { default: built } = (await import(ENTRIES.doctor!)) as { default: typeof tinyaml };
+    const [pack] = built().rulePacks!;
+    for (const { meta } of pack!.rules)
+      expect(JSON.parse(meta.version!)).toEqual([
+        expect.stringMatching(/^[\da-f]{16}$/),
+        "**/*.{yaml,yml}",
+        ["**/node_modules/**", "**/dist/**"],
+      ]);
+  });
+
   it("invalidates both rules when clean YAML contents change", async () => {
     const fixture = createProjectFixture({
       framework: "vite",

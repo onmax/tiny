@@ -208,12 +208,15 @@ function requote(text: string): string {
   // yamljs ignores the spaces of a blank line.
   const lines = text.replace(/^[ \t]+$/gm, "").split("\n");
   const out: string[] = [];
+  // The next line past `i` that isn't blank.
+  let ahead = 0;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     const [, head, body] = /^((?: *-(?= |$))* *)(.*)$/s.exec(line)!;
     if (!body || body[0] === "#") {
       // yamljs drops a comment line indented less than the block it's in.
-      const next = lines.slice(i + 1).find((next) => next.trim());
+      if (ahead <= i) for (ahead = i + 1; lines[ahead]?.trim() === "";) ahead++;
+      const next = lines[ahead];
       if (!body || head!.includes("-") || !next || indentOf(next) <= head!.length) out.push(line);
       continue;
     }

@@ -343,7 +343,18 @@ export function equal(a: unknown, b: unknown, { keyOrder = true, identity = true
       pairs.add(y);
     }
     if (Object.getPrototypeOf(x) !== Object.getPrototypeOf(y)) return false;
-    if (Array.isArray(x) && x.length !== (y as unknown[]).length) return false;
+    if (Array.isArray(x)) {
+      const ys = y as unknown[];
+      if (x.length !== ys.length) return false;
+      // Every index, enumerable or not: a hole, a hidden item and a plain
+      // one all differ, and a hidden item's value counts too.
+      for (let i = 0; i < x.length; i++) {
+        const own = Object.getOwnPropertyDescriptor(x, i);
+        const theirs = Object.getOwnPropertyDescriptor(ys, i);
+        if (!own !== !theirs || own?.enumerable !== theirs?.enumerable) return false;
+        if (own && !own.enumerable) stack.push([x[i], ys[i]]);
+      }
+    }
     if (
       x instanceof Date ||
       x instanceof Number ||

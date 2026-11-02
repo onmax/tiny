@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite-plus";
 
@@ -26,6 +27,39 @@ const TOOLS = {
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const MODE = here("src/core/mode.ts");
 
+// Doctor keeps a Rule's results between runs by its meta and `create`, so
+// the Doctor extension's rules carry a hash of the code they run in their
+// version: what src/doctor.ts holds as LINTER, the build replaces. A build
+// whose linter or parser reads YAML another way then reuses no results.
+export const LINTER = '"tinyaml-linter"';
+interface Module {
+  code: string | null;
+  importedIds: readonly string[];
+}
+export const linterHash = {
+  name: "tinyaml-linter-hash",
+  renderChunk(
+    this: { getModuleInfo(id: string): Module | null },
+    code: string,
+    { facadeModuleId }: { facadeModuleId: string | null },
+  ) {
+    if (facadeModuleId !== here("src/doctor.ts")) return null;
+    const hash = createHash("sha256");
+    const seen = new Set<string>();
+    const add = (id: string) => {
+      if (seen.has(id)) return;
+      seen.add(id);
+      // Outside modules, such as Doctor's, have no code here.
+      const module = this.getModuleInfo(id);
+      if (!module?.code) return;
+      hash.update(`${module.code}\0`);
+      module.importedIds.forEach(add);
+    };
+    add(facadeModuleId);
+    return code.replaceAll(LINTER, `"${hash.digest("hex").slice(0, 16)}"`);
+  },
+};
+
 export default defineConfig({
   // ESM only, with types, and publint fails the build on a broken package.json.
   // tsdown cleans once, and runs publint once all the builds are done.
@@ -45,6 +79,7 @@ export default defineConfig({
       codeSplitting: { groups: [{ name: "parse", test: /src[\\/]core[\\/]parse\.ts$/ }] },
     },
     plugins: [
+      linterHash,
       {
         name: "tinyaml-mode",
         async resolveId(id: string, importer: string | undefined) {

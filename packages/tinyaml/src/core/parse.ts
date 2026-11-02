@@ -268,6 +268,9 @@ let mergeKeys = 0;
 // In js-yaml 4, the column of the block mapping whose explicit `?` key is
 // being read.
 let explicitAt = -1;
+// In js-yaml 5, where the line goes on after the byte order mark it skipped
+// last, which reads as the line's start.
+let dropped = -1;
 // Keys a merge copied into a mapping, which explicit keys may still override.
 let overridable = new WeakMap<object, Set<string>>();
 
@@ -293,15 +296,36 @@ function frame(at: number, level = depth + 1): void {
 // %TAG handles of the current document, to their prefixes, none of them empty.
 let handles = new Map<string, string>();
 
+// std and yaml warn as they read, in linear time, so they may mark many
+// places in one input, mostly in order: the input the parser reads, the copy
+// marks point into and what counts the lines in it, and where `original` got
+// to in it, each to read on from. The parser forgets them once it's done.
+// js-yaml 4 reads the whole input for each warning's snippet.
+let marked: [string, string, (at: number) => number] | undefined;
+let mapped: [input: string, buffer: string, i: number, dropped: number] | undefined;
+
+/** What counts the line breaks in `text` before an offset, on from the last. */
+export function countLines(text: string): (at: number) => number {
+  let counted = 0;
+  let found = 0;
+  return (at) => {
+    while (counted < at) if (text.charCodeAt(counted++) === LF) found++;
+    while (counted > at) if (text.charCodeAt(--counted) === LF) found--;
+    return found;
+  };
+}
+
 function mark(exact?: boolean): Mark {
   // js-yaml 4 reads a copy that ends in a line break, and mostly reports
   // problems at the end of input after that break.
-  const buffer = src.endsWith("\n") ? src : `${src}\n`;
+  let buffer = src.endsWith("\n") ? src : `${src}\n`;
+  if (repeats || yaml)
+    buffer = (marked = marked?.[0] === src ? marked : [src, buffer, countLines(buffer)])[1];
   const at = pos < len || exact || !lenient ? pos : lines ? len : buffer.length;
   return {
     buffer,
     position: at,
-    line: buffer.slice(0, at).split("\n").length - 1,
+    line: repeats || yaml ? marked![2](at) : buffer.slice(0, at).split("\n").length - 1,
     column: at - buffer.lastIndexOf("\n", at - 1) - 1,
   };
 }
@@ -314,13 +338,22 @@ export function original(
   input: string,
   { buffer, position }: Pick<Mark, "buffer" | "position">,
 ): number {
-  // How many characters of `input` the copy dropped so far.
+  let i = 0;
+  // How many characters of `input` the copy dropped before `i`.
   let dropped = 0;
+  if (
+    (repeats || yaml) &&
+    mapped?.[0] === input &&
+    mapped[1] === buffer &&
+    mapped[2] - mapped[3] <= position
+  )
+    [, , i, dropped] = mapped;
   // Whether the copy dropped the byte order mark at `i`: the first one, or
   // one the copy doesn't have there. A position points past those it's at.
   const bom = (i: number) => input[i] === "\uFEFF" && (!i || buffer[i - dropped] !== "\uFEFF");
-  for (let i = 0; i - dropped < position || (!lenient && bom(i)); i++)
+  for (; i - dropped < position || (!lenient && bom(i)); i++)
     if ((input[i] === "\r" && input[i + 1] === "\n") || (!lenient && bom(i))) dropped++;
+  if ((repeats || yaml) && marked) mapped = [input, buffer, i, dropped];
   return position + dropped;
 }
 
@@ -452,7 +485,8 @@ function skipComment(): void {
   if (src.charCodeAt(pos) === HASH) {
     // js-yaml 4 takes `#` as a comment wherever white space may go, even
     // right after a quote or bracket. At the start, NaN counts as blank.
-    if (!lenient && !isBlank(src.charCodeAt(pos - 1))) fail(E.COMMENT_SPACE);
+    if (!lenient && !(js5 && pos === dropped) && !isBlank(src.charCodeAt(pos - 1)))
+      fail(E.COMMENT_SPACE);
     raw(pos, (pos = lineEnd(pos)));
   }
 }
@@ -479,9 +513,10 @@ function skipLines(spaces?: boolean): number {
 function isDocMarker(at = pos): boolean {
   const ch = src.charCodeAt(at);
   return js5 && ch === 0xfeff
-    ? (at === 0 || src.charCodeAt(at - 1) === LF) && ((PARTS.lastIndex = at), PARTS.test(src))
+    ? (at === 0 || src.charCodeAt(at - 1) === LF || at === dropped) &&
+        ((PARTS.lastIndex = at), PARTS.test(src))
     : (ch === DASH || ch === DOT) &&
-        (at === 0 || src.charCodeAt(at - 1) === LF) &&
+        ((js5 && at === dropped) || at === 0 || src.charCodeAt(at - 1) === LF) &&
         src.charCodeAt(at + 1) === ch &&
         src.charCodeAt(at + 2) === ch &&
         isBlank(src.charCodeAt(at + 3));
@@ -506,6 +541,7 @@ export function parse(input: string, use: Engine): unknown[] {
   // prettier-ignore
   const outer = [src, pos, lineStart, len, anchors, plain, tabbed, crossed, emptyKey, pendingAnchor, depth, brink, tabs, maxDepth, lastTag, keyAt, engine, implicit, mergeKeys, explicitAt, handles] as const;
   const restore = setMode(use);
+  const outerDropped = dropped;
   engine = use;
   implicit = use.implicit;
   maxDepth = use.maxDepth ?? 100;
@@ -552,16 +588,15 @@ export function parse(input: string, use: Engine): unknown[] {
     // Where js-yaml 4 starts the next document; -1 for after the lines that
     // follow a `...`.
     let start = 0;
-    // After a document or a `...`, js-yaml 5 drops a byte order mark that
+    // After a document or a `...`, js-yaml 5 skips a byte order mark that
     // starts the line it reads on, whose indentation it measured before the
-    // mark; `dropped` is where.
+    // mark, and starts the line after it.
     let after = false;
-    let dropped = -1;
+    if (js5) dropped = -1;
     for (;;) {
       let col = skipLines();
       if (js5 && after && !col && src.charCodeAt(pos) === 0xfeff) {
-        src = src.slice(0, pos) + src.slice((dropped = pos) + 1);
-        len--;
+        lineStart = dropped = ++pos;
         col = skipLines();
       }
       after = true;
@@ -569,7 +604,7 @@ export function parse(input: string, use: Engine): unknown[] {
       if (repeats && docs.length && (col >= 0 || nul >= 0)) use.second?.(pos);
       if (lenient && warns && start < 0) start = pos;
       let directives = false;
-      // js-yaml 5 measures no indentation after a directive or where it dropped
+      // js-yaml 5 measures no indentation after a directive or where it skipped
       // a byte order mark.
       let directiveEnd = js5 ? dropped : -1;
       // yaml keeps a local tag as written where no %TAG declares `!`.
@@ -700,7 +735,9 @@ export function parse(input: string, use: Engine): unknown[] {
   } finally {
     // prettier-ignore
     [src, pos, lineStart, len, anchors, plain, tabbed, crossed, emptyKey, pendingAnchor, depth, brink, tabs, maxDepth, lastTag, keyAt, engine, implicit, mergeKeys, explicitAt, handles] = outer;
+    if (repeats || yaml) marked = mapped = undefined;
     restore?.();
+    if (js5) dropped = outerDropped;
   }
   return docs;
 }
@@ -895,7 +932,7 @@ function parseValue(indent: number, inSeq: boolean, compact = inSeq, outer?: Pro
   // except in a compact `- ` entry. Where that matters, the node follows an
   // indicator right before `start`, or starts a document, where js-yaml 4
   // ignores a `...` and white space before it on the line.
-  const inline = !compact && src.charCodeAt(start - 1) > SPACE;
+  const inline = !compact && !(js5 && start === dropped) && src.charCodeAt(start - 1) > SPACE;
   const separatedByTab = hasTab(start, pos);
   if (!spec && inSeq) {
     const first = src.charCodeAt(pos);

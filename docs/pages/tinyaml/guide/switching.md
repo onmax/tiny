@@ -9,9 +9,9 @@ Each subpath exports the functions, options and types of the library it replaces
 | --------------- | ---------------------- | --------------- | ------------------------ |
 | js-yaml 4.3.2   | `"tinyaml/js-yaml"`    | 14.4 → 11.8 KiB | 301 of 304 pass          |
 | js-yaml 5.5.0   | `"tinyaml/js-yaml-v5"` | 17.1 → 16.2 KiB | 1,023 of 1,646 pass      |
-| yaml 2.9.1      | `"tinyaml/yaml"`       | 29.9 → 16.8 KiB | 195 of 220 pass          |
+| yaml 2.9.1      | `"tinyaml/yaml"`       | 29.9 → 16.9 KiB | 195 of 220 pass          |
 | yamljs 0.3.0    | `"tinyaml/yamljs"`     | 8.8 → 8.0 KiB   | 103 of 103 pass          |
-| @std/yaml 1.3.0 | `"tinyaml/std"`        | 11.3 → 10.6 KiB | 92 of 95 pass            |
+| @std/yaml 1.3.0 | `"tinyaml/std"`        | 11.3 → 10.7 KiB | 92 of 95 pass            |
 
 ```ts
 // before
@@ -22,7 +22,7 @@ import yaml from "tinyaml/js-yaml";
 
 Of js-yaml 5's 1,646 tests, 610 call the events and AST API that tinyaml/js-yaml-v5 leaves out, and js-yaml 5 skips 13 itself. The other 1,023 pass. yaml's five test files that cover `parse` and `stringify` hold 531 tests, and the 220 counted are the ones that call tinyaml. The rest test yaml's Document API.
 
-For yamljs and @std/yaml the swap saves about 0.8 KiB and 0.7 KiB. The bigger change is the parser. On the yaml-test-suite, tinyaml/yamljs loads 130 cases that yamljs throws on, and in 39 where the two disagree only tinyaml/yamljs matches the suite.
+For yamljs and @std/yaml the swap saves about 0.8 KiB and 0.5 KiB. The bigger change is the parser. On the yaml-test-suite, tinyaml/yamljs loads 130 cases that yamljs throws on, and in 39 where the two disagree only tinyaml/yamljs matches the suite.
 
 Every subpath runs the same parser code as the root. The details below list each known difference from the original.
 

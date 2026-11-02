@@ -61,20 +61,21 @@ export class YAMLWarning extends YAMLError {
 
 // yaml's prettifyError: 1-based line and column of both ends of `pos`, and
 // the offending line (with the one before, when the error is at its start)
-// with carets under the span.
-export function prettify(src: string, error: YAMLError): void {
-  const starts = [0];
-  for (let i = src.indexOf("\n"); i >= 0; i = src.indexOf("\n", i + 1)) starts.push(i + 1);
-  const at = (offset: number): LinePos => {
-    let line = 0;
-    while (line < starts.length - 1 && starts[line + 1]! <= offset) line++;
-    return { line: line + 1, col: offset - starts[line]! + 1 };
-  };
+// with carets under the span. `lines` counts the line breaks in `src`
+// before an offset.
+export function prettify(src: string, error: YAMLError, lines: (at: number) => number): void {
+  const at = (offset: number): LinePos => ({
+    line: lines(offset) + 1,
+    col: offset - src.lastIndexOf("\n", offset - 1),
+  });
   const [start, end] = (error.linePos = [at(error.pos[0]), at(error.pos[1])]);
   const { line, col } = start;
   error.message += ` at line ${line}, column ${col}`;
   let ci = col - 1;
-  let text = src.substring(starts[line - 1]!, starts[line]).replace(/[\n\r]+$/, "");
+  const lineStart = error.pos[0] - ci;
+  let text = src
+    .substring(lineStart, src.indexOf("\n", lineStart) + 1 || undefined)
+    .replace(/[\n\r]+$/, "");
   if (ci >= 60 && text.length > 80) {
     const trim = Math.min(ci - 39, text.length - 79);
     text = `…${text.substring(trim)}`;
@@ -82,7 +83,7 @@ export function prettify(src: string, error: YAMLError): void {
   }
   if (text.length > 80) text = `${text.substring(0, 79)}…`;
   if (line > 1 && /^ *$/.test(text.substring(0, ci))) {
-    let prev = src.substring(starts[line - 2]!, starts[line - 1]);
+    let prev = src.substring(src.lastIndexOf("\n", lineStart - 2) + 1, lineStart);
     if (prev.length > 80) prev = `${prev.substring(0, 79)}…\n`;
     text = prev + text;
   }

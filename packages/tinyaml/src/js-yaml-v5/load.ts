@@ -164,6 +164,12 @@ function engine(input: string, options: LoadOptions) {
     if (typeof value === "object" && value !== null) built.add(value);
     return value;
   };
+  // What a scalar tag resolves to is the tag's own value, never walked.
+  const opaque = new WeakSet<object>();
+  const scalar = (value: unknown) => {
+    if (typeof value === "object" && value !== null) opaque.add(value);
+    return mark(value);
+  };
 
   const decode = (name: string) => (keys.has(name) ? keys.get(name) : name);
 
@@ -249,7 +255,7 @@ function engine(input: string, options: LoadOptions) {
   // objects become their default tag's value, and the children of built
   // values are converted in place.
   function convert(value: unknown): unknown {
-    if (!walk || typeof value !== "object" || value === null) return value;
+    if (!walk || typeof value !== "object" || value === null || opaque.has(value)) return value;
     if (replaced.has(value)) return replaced.get(value);
     if (!built.has(value)) {
       if (Array.isArray(value)) {
@@ -291,7 +297,7 @@ function engine(input: string, options: LoadOptions) {
     implicit(text) {
       const { value, tag } = schema.resolveImplicitScalarTag(text ?? "");
       self.tag = tag.tagName;
-      return mark(value);
+      return scalar(value);
     },
     explicit(value, name, kind) {
       if (kind === "scalar" || kind === "fallback") {
@@ -302,7 +308,7 @@ function engine(input: string, options: LoadOptions) {
           if (result === NOT_RESOLVED)
             reject(`cannot resolve a node with !<${name}> explicit tag`, name);
           self.tag = tag.tagName;
-          return mark(result);
+          return scalar(result);
         }
         const collection = schema.lookupMappingTag(name) ?? schema.lookupSequenceTag(name);
         if (!collection) reject(`unknown scalar tag !<${name}>`, name);

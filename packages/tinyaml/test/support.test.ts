@@ -26,6 +26,14 @@ describe("equal", () => {
     expect(equal(Object.assign([1], { x: 1 }), [1])).toBe(false);
   });
 
+  it("compares array items that aren't enumerable", () => {
+    const hidden = (value: unknown) => Object.defineProperty([0], 0, { value, enumerable: false });
+    expect(equal(hidden({ x: 1 }), hidden({ x: 1 }))).toBe(true);
+    expect(equal(hidden({ x: 1 }), hidden(new Map([["x", 1]])))).toBe(false);
+    expect(equal(hidden(1), [1])).toBe(false);
+    expect(equal(hidden(1), holes(1, {}))).toBe(false);
+  });
+
   it("compares prototypes, key order and own keys", () => {
     expect(equal({ a: 1 }, Object.assign(Object.create(null), { a: 1 }))).toBe(false);
     expect(equal(new (class A {})(), {})).toBe(false);

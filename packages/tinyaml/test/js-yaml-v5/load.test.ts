@@ -729,9 +729,31 @@ describe("load", () => {
       "a\n...\n\uFEFF...\n\uFEFF...\n\uFEFFb",
       "a\n\uFEFF...\n\uFEFFb",
       "...\n\uFEFF# c\n\uFEFF  c",
+      // The line goes on from the mark: no white space before it, and no
+      // indentation.
+      "a\n...\n\uFEFF#c\nb",
+      "a\n...\n\uFEFFb: 1\nc: 2",
+      "a\n...\n\uFEFF  - b\n  - c",
+      "a\n...\n\uFEFF--- b",
+      "a\n...\n\uFEFF...\nb",
+      "a\n...\n\uFEFF]",
+      // Where the next mark parts documents, nothing is read before it.
+      "...\n\uFEFF\uFEFF---\n",
+      "a\n...\n\uFEFF\uFEFF#c\n---\nb\n",
     ])
       for (const text of [input, input.replaceAll("\n", "\r\n")])
         expect(outcome(loadAll, text), JSON.stringify(text)).toEqual(outcome(real.loadAll, text));
+    // A tag that loads a stream where a mark is skipped, past which its line
+    // goes on, at the outer stream's `#`, which still fails there.
+    const schema = lib.CORE_SCHEMA.withTags(
+      lib.defineScalarTag("!load", {
+        resolve: () => loadAll("abc\n...\n\uFEFFb"),
+        identify: () => false,
+      }),
+    );
+    expect(() => loadAll("[!load x]#c\n", { schema })).toThrow(
+      expect.objectContaining({ mark: expect.objectContaining({ position: 9 }) }),
+    );
   });
 
   it("returns every document from loadAll", () => {
@@ -779,6 +801,26 @@ describe("load", () => {
     const theirs = real.CORE_SCHEMA.withTags(real.defineScalarTag("!u", tag));
     expect(load("!u x: 1", { schema })).toEqual({ undefined: 1 });
     expect(real.load("!u x: 1", { schema: theirs })).toEqual({ undefined: 1 });
+  });
+
+  it("leaves what a scalar tag resolves to as it is, as js-yaml 5 does", () => {
+    const frozen = { resolve: () => Object.freeze({ x: 1 }), identify: () => false };
+    const nested = { resolve: () => ({ x: { y: 1 } }), identify: () => false };
+    const text = "a: !f x\nb: !n y\n";
+    const check = (value: unknown) => {
+      const map = value as Map<string, { x: unknown }>;
+      expect(map.get("a")).toEqual({ x: 1 });
+      expect(map.get("b")!.x).toEqual({ y: 1 });
+      expect(map.get("b")!.x).not.toBeInstanceOf(Map);
+    };
+    const tags = [realMapTag, defineScalarTag("!f", frozen), defineScalarTag("!n", nested)];
+    check(load(text, { schema: CORE_SCHEMA.withTags(...tags) }));
+    const theirs = [
+      real.realMapTag,
+      real.defineScalarTag("!f", frozen),
+      real.defineScalarTag("!n", nested),
+    ];
+    check(real.load(text, { schema: real.CORE_SCHEMA.withTags(...theirs) }));
   });
 
   it("builds schemas like js-yaml 5", () => {

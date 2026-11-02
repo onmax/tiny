@@ -2,6 +2,7 @@
 // js-yaml 4's leniency, and std's YamlSyntaxError with its wording.
 import * as E from "../core/codes.ts";
 import {
+  countLines,
   fail,
   original,
   parse as parseDocuments,
@@ -74,28 +75,36 @@ function snippet(buffer: string, position: number): string {
 // itself, which are all about values.
 const IN_NODE = [E.ALIAS_UNKNOWN, E.NON_PRINTABLE, E.MERGE_SOURCE, E.YAML_VERSION, E.NON_SPECIFIC];
 
-// The input as std reads it, with `\n` for each line break, as the parser does.
-const lines = (content: string) => sanitize(content).replace(/\r\n?/g, "\n");
-
-// A YamlSyntaxError at `offset` in the `lines` of `content`. Its offset
-// points into `content` as it is.
-function syntaxError(message: string, content: string, offset: number): YamlSyntaxError {
-  const buffer = lines(content);
-  const lineStart = buffer.lastIndexOf("\n", offset - 1) + 1;
-  return new YamlSyntaxError(
-    message,
-    {
-      line: buffer.slice(0, lineStart).split("\n").length,
-      column: offset - lineStart + 1,
-      offset: original(sanitize(content), { buffer, position: offset }),
-    },
-    snippet(buffer, offset),
-  );
+// What makes a YamlSyntaxError at `offset` in `content` as std reads it, with
+// `\n` for each line break, as the parser does. Its offset points into
+// `content` as it is.
+function syntaxErrors(content: string) {
+  const input = sanitize(content);
+  const buffer = input.replace(/\r\n?/g, "\n");
+  const line = countLines(buffer);
+  return (message: string, offset: number) => {
+    const lineStart = buffer.lastIndexOf("\n", offset - 1) + 1;
+    return new YamlSyntaxError(
+      message,
+      {
+        line: line(lineStart) + 1,
+        column: offset - lineStart + 1,
+        offset: original(input, { buffer, position: offset }),
+      },
+      snippet(buffer, offset),
+    );
+  };
 }
 
-function engine(content: string, options: ParseOptions): Engine {
+// With `single`, for `parse`, which reads the first document, then fails
+// where the input goes on.
+function engine(content: string, options: ParseOptions, single?: boolean): Engine {
   // std reads its own copy of the options, then the schema again.
   const copy = { ...options };
+  // Made for the first error, which may be one of many warnings.
+  let made: ReturnType<typeof syntaxErrors> | undefined;
+  const syntaxError = (message: string, offset: number) =>
+    (made ??= syntaxErrors(content))(message, offset);
   const { implicit, types } = schemaOf(options.schema);
   const error = (message: string, { buffer, position }: Mark, code?: number) => {
     // The line that ends at the position, line break included: the
@@ -120,7 +129,7 @@ function engine(content: string, options: ParseOptions): Engine {
       !/(?:^|[ \t])![^ \t\n]*\n$/.test(line)
     )
       position--;
-    return syntaxError(message, content, position);
+    return syntaxError(message, position);
   };
   const self: Engine = {
     tag: "",
@@ -165,6 +174,14 @@ function engine(content: string, options: ParseOptions): Engine {
     },
     error,
     warn: copy.onWarning && ((reason, mark, code) => copy.onWarning!(error(reason, mark, code))),
+    second: single
+      ? (at) => {
+          throw syntaxError(
+            "Found more than 1 document in the stream: expected a single document",
+            at,
+          );
+        }
+      : undefined,
   };
   return self;
 }
@@ -180,14 +197,5 @@ export function parseAll(content: string, options: ParseOptions = {}): unknown[]
 /** The single document in `content`, or null when there is none. */
 export function parse(content: string, options: ParseOptions = {}): unknown {
   content = String(content);
-  const use = engine(content, options);
-  // std reads the first document, then fails where the input goes on.
-  use.second = (at) => {
-    throw syntaxError(
-      "Found more than 1 document in the stream: expected a single document",
-      content,
-      at,
-    );
-  };
-  return parseDocuments(content, use)[0] ?? null;
+  return parseDocuments(content, engine(content, options, true))[0] ?? null;
 }

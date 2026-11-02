@@ -4,6 +4,7 @@
 import * as E from "../core/codes.ts";
 import {
   at,
+  countLines,
   define,
   MERGE_TAG,
   original,
@@ -73,7 +74,9 @@ export interface ParseOptions {
 
 let warnings: YAMLWarning[] = [];
 let source = "";
-let pretty = true;
+// What counts the line breaks in `source` before an offset, unless errors
+// aren't to be pretty.
+let pretty: ((at: number) => number) | false = false;
 let keyWarned: string | false = false;
 // Why to throw from the alias count, once the aliases read so far, or the
 // first `upTo` of them, are counted.
@@ -123,7 +126,7 @@ function report(
       from = to - end + mark.position;
     }
     error.pos = [from, to];
-    if (pretty) prettify(source, error);
+    if (pretty) prettify(source, error, pretty);
   }
   if (warning) warnings.push(error);
   return error;
@@ -771,7 +774,7 @@ export function parse(src: string, reviver?: Reviver | ParseOptions, options?: P
   ] as const;
   try {
     source = src;
-    pretty = prettyErrors !== false;
+    pretty = prettyErrors !== false && countLines(src);
     warnings = [];
     keyWarned = false;
     let docs: unknown[];
