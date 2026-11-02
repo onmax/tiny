@@ -477,7 +477,7 @@ shell({
   title: `${landing.title} · ${landing.description}`,
   description: landing.tagline,
   body: `<div class="landing">
-<div class="landing-hero"><div><h1>${escapeHtml(landing.headline)}</h1><p>${escapeHtml(landing.tagline)}</p>${pageActions("")}</div>
+<div class="landing-hero"><div><img class="hero-mark" src="/logo.svg" alt="" width="72" height="72"><h1>${escapeHtml(landing.headline)}</h1><p>${escapeHtml(landing.tagline)}</p>${pageActions("")}</div>
 <div>${installer(landing.install)}<div class="actions"><a class="button primary" href="/tinyaml/guide/getting-started/">Get started${siteIcon("arrow-right", 15)}</a><a class="button" href="${github}">${githubIcon}GitHub</a></div></div></div>
 <main>${await render(landing, { packages: packageGrid })}</main>
 ${footer}
