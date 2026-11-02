@@ -21,6 +21,11 @@ const files: [from: string, to: string][] = [
   ...["size", "speed", "correctness"].map(
     (chart) => [`packages/tinyaml/.github/${chart}.svg`, `charts/${chart}.svg`] as [string, string],
   ),
+  ["packages/tinyaml/.github/typed-imports.png", "demos/tinyaml-typed-imports.png"],
+  ["packages/tinyjson5/.github/typed-imports.png", "demos/tinyjson5-typed-imports.png"],
+  ["packages/tinyini/.github/typed-imports.png", "demos/tinyini-typed-imports.png"],
+  ["packages/tinyaml/.github/linter.png", "demos/linter.png"],
+  ["packages/tinyaml/.github/doctor.png", "demos/doctor.png"],
   ["node_modules/geist/dist/fonts/geist-sans/Geist-Variable.woff2", "fonts/Geist-Variable.woff2"],
   [
     "node_modules/geist/dist/fonts/geist-mono/GeistMono-Variable.woff2",

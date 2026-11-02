@@ -83,6 +83,8 @@ Values follow the YAML 1.2 core schema, merge keys are on by default, and errors
 
 ## Typed imports
 
+![VS Code with config.yaml beside app.ts, which imports it: hovering config shows the type TypeScript gives the YAML file, and a misspelled key is an error](./.github/typed-imports.png)
+
 tinyaml is also a TypeScript 7.1 [content mapper](https://devblogs.microsoft.com/typescript/announcing-typescript-7-1-beta/). Register it in `tsconfig.json`, and TypeScript types an import of a YAML file as it types a `.json` one under `resolveJsonModule`:
 
 ```jsonc
@@ -98,6 +100,8 @@ import config from "./config.yaml"; // { server: { host: string; port: number } 
 Content mappers run code, so tsc needs `--runExternalCode`. `"options": { "literal": true }` types values as `as const` would. A file with several documents becomes a tuple of them, and a YAML error is reported at its line and column. TypeScript checks every file with a registered extension that the project includes, so use a narrower one, such as `.config.yaml`, if only some of them are config. The mapper only gives the import its type; your bundler or runtime still has to load the file. TypeScript runs `dist/mapper.mjs` as a process of its own, and no entry imports it, so nothing you bundle gets bigger.
 
 ## Linter
+
+![VS Code with ESLint and tinyaml/eslint: draft: no and published: 2026-11-01 are underlined, and the hover says other YAML readers load no as a boolean](./.github/linter.png)
 
 `tinyaml-lint` reports YAML tinyaml can't parse, and plain values such as `no` or `1_000` that parse as strings here but not in other YAML readers. It also runs as a library (`tinyaml/linter`), an [ESLint plugin](https://tiny.onmax.me/tinyaml/linter/eslint/) (`tinyaml/eslint`), and a [Vite Doctor extension](https://tiny.onmax.me/tinyaml/linter/vite-doctor/) (`tinyaml/doctor`). See [the linter docs](https://tiny.onmax.me/tinyaml/linter/overview/).
 
