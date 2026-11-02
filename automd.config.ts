@@ -37,10 +37,10 @@ const table = (rows: string[][], right: boolean[]) => {
   return [line(rows[0]!), `| ${rule.join(" | ")} |`, ...rows.slice(1).map(line)];
 };
 
-const kib = (bytes: number) => (bytes / 1024).toFixed(1);
-const times = ({ theirs, ours }: Timing) => `${(theirs / ours).toFixed(1)}×`;
+export const kib = (bytes: number) => (bytes / 1024).toFixed(1);
+export const times = ({ theirs, ours }: Timing) => `${(theirs / ours).toFixed(1)}×`;
 
-const readDropIns = (): DropIns => JSON.parse(readFileSync(".github/drop-ins.json", "utf8"));
+export const readDropIns = (): DropIns => JSON.parse(readFileSync(".github/drop-ins.json", "utf8"));
 
 // The machines the rows were measured on: one, or each with its packages.
 const machines = (data: DropIns, rows: Comparison[]) => {
