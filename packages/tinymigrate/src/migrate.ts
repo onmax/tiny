@@ -1,0 +1,216 @@
+// Turns what a scan found into the edits for the libraries picked: each
+// import of them pointed at its drop-in, and each package.json's
+// dependencies swapped. Nothing here writes until `apply`.
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { FIELDS, type Field, type Found, type Project } from "./detect.ts";
+import { EXPORTS, libraryOf, type Tiny } from "./libraries.ts";
+import { findSpecifiers, replaceSpecifiers } from "./rewrite.ts";
+
+export interface Change {
+  line: number;
+  from: string;
+  to: string;
+}
+
+export interface FileEdit {
+  /** Relative to the project. */
+  file: string;
+  before: string;
+  after: string;
+}
+
+export interface Edit extends FileEdit {
+  changes: Change[];
+}
+
+export interface Skipped {
+  file: string;
+  line?: number;
+  specifier?: string;
+  reason: string;
+}
+
+export interface ManifestEdit extends FileEdit {
+  removed: string[];
+  added: { name: string; range: string; field: Field }[];
+  /** Originals that stay because an import of them couldn't move. */
+  kept: string[];
+}
+
+export interface Plan {
+  edits: Edit[];
+  manifests: ManifestEdit[];
+  skipped: Skipped[];
+}
+
+/**
+ * The edits that move `names` to their drop-ins. `ranges` gives the version
+ * range each tiny package is added with.
+ */
+export function plan(project: Project, names: string[], ranges: Record<Tiny, string>): Plan {
+  const picked = project.found.filter(
+    (found) => found.target && names.includes(found.library.name),
+  );
+  const edits: Edit[] = [];
+  const skipped: Skipped[] = [];
+  // Each dependency, as its package.json and name, with an import that
+  // stays, and with one that moves.
+  const blocked = new Set<string>();
+  const moved = new Set<string>();
+
+  for (const file of project.files) {
+    const before = readFileSync(join(project.root, file), "utf8");
+    if (!picked.some(({ library }) => before.includes(library.name))) continue;
+    const result = findSpecifiers(before, file);
+    if ("error" in result) {
+      skipped.push({ file, reason: `can't parse it: ${result.error}` });
+      continue;
+    }
+    const changes: Change[] = [];
+    const after = replaceSpecifiers(
+      before,
+      result.specifiers,
+      ({ value, line, kind, names: read }) => {
+        const match = libraryOf(value);
+        if (!match || !names.includes(match.library.name)) return undefined;
+        const { library, subpath } = match;
+        const owner = ownerOf(picked, library.name, file);
+        const skip = (reason: string) => {
+          skipped.push({ file, line, specifier: value, reason });
+          if (owner) blocked.add(`${owner.manifest}\0${library.name}`);
+          return undefined;
+        };
+        if (!owner)
+          return skip(
+            `the package.json files that depend on ${library.name} pick different drop-ins, and none of them is above this file`,
+          );
+        if (subpath && !library.subpaths?.includes(subpath))
+          return skip(`${owner.target} has no equivalent of ${value}`);
+        const target = owner.target!;
+        const exports = EXPORTS[target]!;
+        const missing = read.filter((name) => !exports.includes(name));
+        if (missing.length) return skip(`${target} doesn't export ${missing.join(", ")}`);
+        // require() gives an ES module's exports, so a function that is the
+        // default export is under `.default`.
+        if (kind === "require" && !read.length && exports.length === 1)
+          return skip(
+            `require() of ${target} gives { default }, so the function is under .default`,
+          );
+        moved.add(`${owner.manifest}\0${library.name}`);
+        changes.push({ line, from: value, to: target });
+        return target;
+      },
+    );
+    if (changes.length) edits.push({ file, before, after, changes });
+  }
+
+  const manifests: ManifestEdit[] = [];
+  for (const manifest of new Set(picked.map((found) => found.manifest))) {
+    const edit = editManifest(
+      project.root,
+      manifest,
+      picked.filter((found) => found.manifest === manifest),
+      (name) => blocked.has(`${manifest}\0${name}`),
+      (name) => moved.has(`${manifest}\0${name}`),
+      ranges,
+    );
+    if (edit) manifests.push(edit);
+  }
+  return { edits, manifests, skipped };
+}
+
+// The dependency an import resolves to: the one in the nearest package.json
+// above the file, or the only drop-in every package.json picks.
+function ownerOf(picked: Found[], name: string, file: string): Found | undefined {
+  const candidates = picked.filter((found) => found.library.name === name);
+  let best: Found | undefined;
+  for (const found of candidates) {
+    const dir = dirname(found.manifest);
+    if (dir !== "." && !file.startsWith(`${dir}/`)) continue;
+    if (!best || dir.length > dirname(best.manifest).length) best = found;
+  }
+  if (best) return best;
+  return new Set(candidates.map((found) => found.target)).size === 1 ? candidates[0] : undefined;
+}
+
+// A dependency field outranks the ones after it: a drop-in that replaces a
+// dependency and a devDependency is a dependency.
+const RANK: Record<Field, number> = {
+  dependencies: 0,
+  optionalDependencies: 1,
+  devDependencies: 2,
+};
+
+function editManifest(
+  root: string,
+  manifest: string,
+  found: Found[],
+  blocked: (name: string) => boolean,
+  moved: (name: string) => boolean,
+  ranges: Record<Tiny, string>,
+): ManifestEdit | undefined {
+  const before = readFileSync(join(root, manifest), "utf8");
+  const json = JSON.parse(before) as Record<string, Record<string, string> | undefined>;
+  const removed: string[] = [];
+  const kept: string[] = [];
+  const needs = new Map<Tiny, Field>();
+  for (const { library, field } of found) {
+    // The tiny package comes in once an import uses it or the original goes.
+    if (moved(library.name) || !blocked(library.name)) {
+      const best = needs.get(library.tiny);
+      if (best === undefined || RANK[field] < RANK[best]) needs.set(library.tiny, field);
+    }
+    if (blocked(library.name)) {
+      kept.push(library.name);
+      continue;
+    }
+    delete json[field]![library.name];
+    removed.push(library.name);
+    // Its types go with it, from wherever they are.
+    for (const other of FIELDS)
+      if (library.types && json[other]?.[library.types] !== undefined) {
+        delete json[other]![library.types];
+        removed.push(library.types);
+      }
+  }
+  const added: ManifestEdit["added"] = [];
+  for (const [tiny, field] of needs) {
+    const current = FIELDS.find((other) => json[other]?.[tiny] !== undefined);
+    if (current && RANK[current] <= RANK[field]) continue;
+    const range = current ? json[current]![tiny]! : ranges[tiny];
+    if (current) delete json[current]![tiny];
+    json[field] = insert(json[field] ?? {}, tiny, range);
+    added.push({ name: tiny, range, field });
+  }
+  if (!removed.length && !added.length) return undefined;
+  // A field the migration emptied goes, and one that was empty stays.
+  const original = JSON.parse(before) as typeof json;
+  for (const field of FIELDS)
+    if (
+      json[field] &&
+      !Object.keys(json[field]).length &&
+      Object.keys(original[field] ?? {}).length
+    )
+      delete json[field];
+  const indent = /^\{\r?\n([ \t]+)"/.exec(before)?.[1] ?? "  ";
+  const newline = before.includes("\r\n") ? "\r\n" : "\n";
+  let after = JSON.stringify(json, null, indent);
+  if (newline !== "\n") after = after.replaceAll("\n", newline);
+  if (/\r?\n$/.test(before)) after += newline;
+  return { file: manifest, before, after, removed, added, kept };
+}
+
+// Adds a key where it sorts, if the keys are sorted, or at the end.
+function insert(deps: Record<string, string>, name: string, range: string) {
+  const keys = Object.keys(deps);
+  const sorted = keys.every((key, i) => i === 0 || keys[i - 1]! <= key);
+  if (!sorted) return { ...deps, [name]: range };
+  return Object.fromEntries(
+    [...Object.entries(deps), [name, range] as const].sort(([a], [b]) => (a < b ? -1 : 1)),
+  );
+}
+
+export function apply(root: string, { edits, manifests }: Plan) {
+  for (const { file, after } of [...edits, ...manifests]) writeFileSync(join(root, file), after);
+}
