@@ -46,7 +46,12 @@ function transform(text: string, literal: boolean): { text: string; diagnostics?
     const length = start < text.length ? 1 : 0;
     return { text: ANY, diagnostics: [{ messageText, start, length, code: SYNTAX }] };
   }
-  const end = literal ? " as const;\n" : ";\n";
+  // undefined and non-finite numbers already have their only possible type;
+  // their expressions cannot take a const assertion.
+  const end = (value: unknown) =>
+    literal && value !== undefined && (typeof value !== "number" || Number.isFinite(value))
+      ? " as const;\n"
+      : ";\n";
   const refs = findRefs(docs);
   const out: string[] = [];
   const done = new Set<object>();
@@ -66,13 +71,13 @@ function transform(text: string, literal: boolean): { text: string; diagnostics?
     open.delete(value);
     if (!name) return body;
     done.add(value);
-    out.push(`const ${name} = ${body}${end}`);
+    out.push(`const ${name} = ${body}${end(value)}`);
     return name;
   };
   try {
-    if (docs.length < 2) out.push(`const data = ${print(docs[0])}${end}`);
+    if (docs.length < 2) out.push(`const data = ${print(docs[0])}${end(docs[0])}`);
     else {
-      for (const [i, doc] of docs.entries()) out.push(`const doc_${i} = ${print(doc)}${end}`);
+      for (const [i, doc] of docs.entries()) out.push(`const doc_${i} = ${print(doc)}${end(doc)}`);
       out.push(`const data = [${docs.map((_, i) => `doc_${i}`).join(", ")}] as const;\n`);
     }
   } catch (error) {

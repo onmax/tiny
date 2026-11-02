@@ -54,7 +54,9 @@ function transform(text: string, literal: boolean): { text: string; diagnostics?
     const length = start < text.length ? 1 : 0;
     return { text: ANY, diagnostics: [{ messageText, start, length, code: SYNTAX }] };
   }
-  const end = literal ? " as const;\n" : ";\n";
+  // Non-finite numbers have no literal type and cannot take a const assertion.
+  const end =
+    literal && (typeof value !== "number" || Number.isFinite(value)) ? " as const;\n" : ";\n";
   return { text: `const data = ${print(value)}${end}export default data;\n` };
 }
 

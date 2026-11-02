@@ -51,7 +51,8 @@ const sections: Section[] = [
   {
     slug: "tinyini",
     icon: "settings-2",
-    blurb: "Replaces ini 7.0.0. The same 1.6 KB, and parses and stringifies 2 to 2.9 times faster.",
+    blurb:
+      "Replaces ini 7, 2 and 1.3.8 and @one-ini/wasm, one subpath each. 2.4× faster and 19% smaller than ini.",
     lists: [{ slugs: ["getting-started", "compatibility", "size-and-speed", "develop"] }],
   },
 ];
