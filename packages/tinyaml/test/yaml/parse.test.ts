@@ -370,6 +370,86 @@ describe("parse", () => {
     expect(parse("%YAML 1.2\n---\na", { version: undefined })).toBe("a");
   });
 
+  it("takes the version from the last %YAML directive yaml supports", () => {
+    const options = [{}, { version: "1.1" }, { version: "1.0" }];
+    for (const input of [
+      "﻿%YAML 1.1\n---\nyes",
+      "﻿# c\n%YAML 1.1\n---\nyes",
+      "%YAML 1.1\n%YAML 1.3\n---\nyes",
+      "%YAML 1.3\n%YAML 1.1\n---\nyes",
+      "%YAML 1.1\n%YAML 1.2\n---\nyes",
+      "%TAG ! !x\n%YAML\t1.1 # c\n---\nyes",
+      "%YAML 2.0\n---\nyes",
+      "%YAMLX 1.1\n---\nyes",
+    ])
+      for (const o of options) {
+        const read = (fn: Parse) => {
+          try {
+            return fn(input, { ...o, logLevel: "error" });
+          } catch (e) {
+            return (e as Error).message;
+          }
+        };
+        expect(read(parse), input).toEqual(read(yaml.parse));
+      }
+  });
+
+  it("reads its options in yaml's order and count", () => {
+    // Through a getter and every trap, with an option neither library knows.
+    const options = (log: string[], target: Record<string, unknown>) => {
+      Object.defineProperty(target, "version", {
+        get: () => (log.push("version"), "1.2"),
+        enumerable: true,
+      });
+      return new Proxy(Object.assign(target, { other: 0 }), {
+        get: (t, key, r) => (log.push(`get ${String(key)}`), Reflect.get(t, key, r)),
+        has: (t, key) => (log.push(`has ${String(key)}`), Reflect.has(t, key)),
+        ownKeys: (t) => (log.push("ownKeys"), Reflect.ownKeys(t)),
+        getOwnPropertyDescriptor: (t, key) => (
+          log.push(`descriptor ${String(key)}`),
+          Reflect.getOwnPropertyDescriptor(t, key)
+        ),
+      });
+    };
+    const runs: [string, Record<string, unknown>][] = [
+      ["a: &x 1\nb: *x", { maxAliasCount: 5, onAnchor: () => {} }],
+      ["%YAML 1.1\n---\nyes", { reviver: (_: unknown, v: unknown) => v }],
+      ["a\n---\nb", { logLevel: "error" }],
+      ["a\n---\nb", { logLevel: "silent" }],
+      ["a: [", { prettyErrors: false }],
+      ["", { schema: "core", merge: true }],
+    ];
+    for (const [input, target] of runs) {
+      const reads = (fn: Parse) => {
+        const log: string[] = [];
+        try {
+          fn(input, options(log, { ...target }));
+        } catch {}
+        return log;
+      };
+      expect(reads(parse), input).toEqual(reads(yaml.parse));
+    }
+    // yaml takes the version's default from its first read, and the schema's
+    // from its copy of the options for the document.
+    for (const [input, value] of [
+      ["yes", "yes"],
+      ["%YAML 1.3\n---\nyes", true],
+    ] as const) {
+      let n = 0;
+      const version = {
+        get version() {
+          return ++n === 1 ? "1.1" : "1.2";
+        },
+        logLevel: "error" as const,
+      };
+      expect(parse(input, version), input).toBe(value);
+      expect(n).toBe(3);
+      n = 0;
+      expect(yaml.parse(input, version as never), input).toBe(value);
+      expect(n).toBe(3);
+    }
+  });
+
   it("writes collection keys as flow YAML, with a warning", () => {
     const warned = warnings();
     expect(parse("[a, b]: 1\n{c: d}: 2")).toEqual({ "[ a, b ]": 1, "{ c: d }": 2 });

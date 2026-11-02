@@ -35,6 +35,8 @@ import {
   onPurpose,
   seedArg,
   withBreaks,
+  YAMLJS_ERROR_GROUPS,
+  yamljsError,
 } from "./support.ts";
 
 const yamljs = createRequire(import.meta.url)("yamljs") as {
@@ -239,12 +241,10 @@ function run(fn: () => unknown, type?: typeof ParseException): Outcome {
     return { ok: true, value: fn() };
   } catch (error) {
     const crash = !!type && !onPurpose(error, [type]);
-    const message = String((error as Error)?.message ?? error);
-    const { parsedLine, snippet } = error as Partial<ParseException>;
-    return { ok: false, error: message, fields: { message, parsedLine, snippet }, crash };
+    const fields = yamljsError(error);
+    return { ok: false, error: fields.message as string, fields, crash };
   }
 }
-const GROUPS = { message: ["message"], position: ["parsedLine"], snippet: ["snippet"] };
 
 // Known, deliberate differences: yamljs bugs tinyaml doesn't copy. A leaf
 // test accepts a pair of differing values or keys anywhere in the result; a
@@ -510,7 +510,7 @@ for (let n = 0; n < cases; n++) {
   if (!ours.ok && ours.crash) kind = "crash";
   else if (!theirs.ok && ours.ok) kind = "lenient";
   else if (!theirs.ok && !ours.ok) {
-    differs = errorDifference(GROUPS, theirs.fields, ours.fields);
+    differs = errorDifference(YAMLJS_ERROR_GROUPS, theirs.fields, ours.fields);
     if (differs) kind = `error ${differs.kind}`;
   } else if (!ours.ok) kind = "stricter";
   else if (theirs.ok && !equal(theirs.value, ours.value))

@@ -29,10 +29,10 @@ Globs skip `node_modules` and `dist`. `--format json` prints the problems as a J
 import { lint } from "tinyaml/linter";
 
 lint("draft: no\n");
-// [{ rule: "tinyaml/ambiguous-value", severity: "warn", line: 1, column: 8, message: "…", fix: "…" }]
+// [{ rule: "tinyaml/ambiguous-value", severity: "warn", line: 1, column: 8, offset: 7, message: "…", fix: "…" }]
 ```
 
-`lint` takes one YAML stream and never throws. `lintFiles(files, read)` lints several files, reading each one with `read`. `rules` maps each rule to its Vite Doctor code, title, and severity.
+`lint` takes one YAML stream and never throws. Lines and columns count from 1 and offsets from 0, in the text as given; as in ESLint, columns start past a byte order mark at the start of the text. `lintFiles(files, read)` lints several files, reading each one with `read`. `rules` maps each rule to its Vite Doctor code, title, and severity.
 
 ## Rules
 

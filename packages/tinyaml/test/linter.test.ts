@@ -19,6 +19,7 @@ describe("lint", () => {
         severity: "error",
         line: 2,
         column: 1,
+        offset: 5,
         message: "tinyaml can't load this YAML: duplicated mapping key.",
         fix: "Fix the YAML at this position.",
       },
@@ -121,6 +122,25 @@ describe("lint", () => {
     ["%YAML 1.2\n---\nyes\n", ["3:1"]],
   ])("recognizes plain scalar nodes in %j", (text, positions) => {
     expect(lint(text).map(({ line, column }) => `${line}:${column}`)).toEqual(positions);
+  });
+
+  // Each problem's line, column and offset in the input, past the byte order
+  // marks that start it or later documents, whatever its line breaks.
+  it.each([
+    ["\uFEFF@", "1:1 @"],
+    ["a\n...\n\uFEFF@", "3:2 @"],
+    ["a\n...\n\uFEFFx: [no, }", "3:10 }"],
+    ["a\n...\n\uFEFF{x: 1, x: 2}", "3:9 x"],
+    ["a\n...\n\uFEFFx: no", "3:5 no"],
+    ["\uFEFFx: no\n...\n\uFEFFz: [yes, no]", "1:4 no", "3:6 yes", "3:11 no"],
+  ])("places each problem in %j", (text, ...positions) => {
+    for (const lines of [text, text.replaceAll("\n", "\r\n"), text.replaceAll("\n", "\r")])
+      expect(
+        lint(lines).map(({ line, column, offset }, i) => {
+          const value = positions[i]?.split(" ")[1] ?? "";
+          return `${line}:${column} ${lines.slice(offset, offset + value.length)}`;
+        }),
+      ).toEqual(positions);
   });
 
   it("returns nothing for empty input", () => {

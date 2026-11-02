@@ -194,11 +194,7 @@ for (let i = 0; i < cases; i++) {
   const o = options();
   const expected = attempt(() => std.stringify(input, o));
   const actual = attempt(() => stringify(input, o));
-  // Both overflowing the stack on a cycle is agreement.
-  if (
-    expected === actual ||
-    (expected.startsWith("THROW RangeError") && actual.startsWith("THROW RangeError"))
-  ) {
+  if (expected === actual) {
     if (expected.startsWith("THROW")) thrown++;
     continue;
   }

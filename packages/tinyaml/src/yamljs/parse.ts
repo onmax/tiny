@@ -217,7 +217,7 @@ function requote(text: string): string {
       if (!body || head!.includes("-") || !next || indentOf(next) <= head!.length) out.push(line);
       continue;
     }
-    const entry = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^ '"[{].*?) *:(?:[ \t]+|$)/.exec(body);
+    const entry = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^ '"[{].*?) *:(?:\s+|$)/.exec(body);
     const key = entry && !entry[1]!.includes(" #") ? entry[1]! : undefined;
     const [, anchor = "", value = ""] = /^(&\S+(?: +|$))?(.*?)\s*$/s.exec(
       key === undefined ? body : body.slice(entry![0].length),

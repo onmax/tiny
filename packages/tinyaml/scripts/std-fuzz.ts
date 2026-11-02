@@ -27,7 +27,9 @@ import {
   onPurpose,
   seedArg,
   suiteCases,
-  template,
+  STD_ERROR_GROUPS,
+  stdError,
+  stdReason,
   withBreaks,
 } from "./support.ts";
 
@@ -83,23 +85,6 @@ const pieces = [
 ];
 const schemas = ["default", "failsafe", "json", "core", "extended"] as const;
 
-const strip = (e?: string) => e?.replace(/ at line [^]*/, "");
-// What a YamlSyntaxError, thrown or passed to onWarning, says, and the
-// template of its full message (see support.ts).
-function fields(error: unknown): Record<string, unknown> {
-  const { name, message, offset, line, column, snippet } = error as InstanceType<
-    typeof YamlSyntaxError
-  >;
-  const text = template(message, [strip(message), ` at line ${line}, column ${column}`, snippet]);
-  return { message: strip(message), offset, line, column, snippet, name, text };
-}
-const GROUPS = {
-  message: ["message"],
-  position: ["offset", "line", "column"],
-  snippet: ["snippet"],
-  "full message": ["name", "text"],
-};
-
 type Outcome =
   | { ok: true; value: unknown; warnings: unknown[] }
   | { ok: false; error: string; fields?: Record<string, unknown>; warnings: unknown[] };
@@ -110,13 +95,13 @@ function attempt(
   type: ErrorClass,
 ): Outcome {
   const warnings: unknown[] = [];
-  const onWarning = (warning: unknown) => void warnings.push(fields(warning));
+  const onWarning = (warning: unknown) => void warnings.push(stdError(warning));
   try {
     return { ok: true, value: parse(input, { ...options, onWarning }), warnings };
   } catch (error) {
     const message = String((error as Error)?.message ?? error);
     if (!onPurpose(error, [type])) return { ok: false, error: `CRASH ${message}`, warnings };
-    return { ok: false, error: message, fields: fields(error), warnings };
+    return { ok: false, error: message, fields: stdError(error), warnings };
   }
 }
 
@@ -199,7 +184,7 @@ for (let i = 0; i < iterations; i++) {
   else if (!expected.ok && !actual.ok) {
     counts.thrown++;
     if (expected.error === actual.error) counts.messages++;
-    if (strip(expected.error) === strip(actual.error)) counts.texts++;
+    if (stdReason(expected.error) === stdReason(actual.error)) counts.texts++;
     else if (process.env.MESSAGES) {
       const pair = `${expected.error.split("\n")[0]}\n    ${actual.error.split("\n")[0]}`;
       mismatched.set(pair, (mismatched.get(pair) ?? 0) + 1);
@@ -207,12 +192,12 @@ for (let i = 0; i < iterations; i++) {
     // Where std crashes, only the messages compare; alike, they agree.
     const differs =
       expected.fields && actual.fields
-        ? errorDifference(GROUPS, expected.fields, actual.fields)
+        ? errorDifference(STD_ERROR_GROUPS, expected.fields, actual.fields)
         : expected.error === actual.error
           ? undefined
           : {
               kind: "message",
-              sides: [{ message: strip(expected.error) }, { message: strip(actual.error) }],
+              sides: [{ message: stdReason(expected.error) }, { message: stdReason(actual.error) }],
             };
     if (differs) {
       errors.set(differs.kind, (errors.get(differs.kind) ?? 0) + 1);

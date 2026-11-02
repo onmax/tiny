@@ -2,7 +2,14 @@
 // difference, or a stream reader that splits a value, hides a regression.
 import { describe, expect, it, vi } from "vite-plus/test";
 import { describe as text } from "../scripts/baseline.ts";
-import { equal, expectCount, iterationsArg, jsonStream, seedArg } from "../scripts/support.ts";
+import {
+  equal,
+  expectCount,
+  fingerprint,
+  iterationsArg,
+  jsonStream,
+  seedArg,
+} from "../scripts/support.ts";
 
 // An array of `length` with only the given indexes set; the rest are holes.
 function holes(length: number, values: Record<number, unknown>): unknown[] {
@@ -43,10 +50,10 @@ describe("equal", () => {
         keyOrder: false,
       }),
     ).toBe(false);
-    expect(text({ a: 1, [s]: 1 })).toBe('{"a":1,Symbol(review.regression):1}');
-    expect(text(Object.assign([1], { [s]: 1 }))).toBe("[1,Symbol(review.regression):1]");
+    expect(text({ a: 1, [s]: 1 })).toBe('{"a":1,Symbol.for("review.regression"):1}');
+    expect(text(Object.assign([1], { [s]: 1 }))).toBe('[1,Symbol.for("review.regression"):1]');
     const shared = {};
-    expect(text({ [s]: shared, a: shared })).toBe('{"a":&1 {},Symbol(review.regression):*1}');
+    expect(text({ [s]: shared, a: shared })).toBe('{"a":&1 {},Symbol.for("review.regression"):*1}');
   });
 
   it("compares numbers as Object.is does", () => {
@@ -120,6 +127,118 @@ describe("equal", () => {
     expect(equal([aliased, aliased], [aliased, { ...aliased }])).toBe(false);
     expect(equal([shared, copy], [shared, copy])).toBe(true);
     expect(equal([aliased, aliased], [aliased, aliased])).toBe(true);
+  });
+});
+
+// A baseline record holds describe's text of each side's value, so a
+// difference equal() finds that describe doesn't write passes as recorded:
+// a Date given an extra key once did.
+describe("describe", () => {
+  const date = (time: number, extra?: object) => Object.assign(new Date(time), extra);
+  const s = Symbol("s");
+  const t = Symbol("s");
+  const global = Symbol.for("s");
+  const shared = { x: 1 };
+  const cycle = (): unknown[] => {
+    const a: unknown[] = [];
+    a.push(a);
+    return a;
+  };
+  const two = (): unknown[] => {
+    const a: unknown[] = [];
+    a.push([a]);
+    return a;
+  };
+  const f = () => 1;
+  const g = () => 1;
+  const [A1, A2] = [class A {}, class A {}];
+  const Anonymous = [class {}][0]!;
+  class Map2 extends Map {}
+  const proto = { a: 1 };
+  const pairs: [string, unknown, unknown][] = [
+    ["Dates", date(1), date(1)],
+    ["Dates at other times", date(1), date(2)],
+    ["invalid Dates", new Date(NaN), new Date(NaN)],
+    ["a Date with an extra key", date(1, { reviewSentinel: 1 }), date(1)],
+    ["a Date with an extra symbol", date(1, { [s]: 1 }), date(1)],
+    ["Dates with other extra values", date(1, { a: 1 }), date(1, { a: 2 })],
+    ["boxed numbers", new Number(1), new Number(2)],
+    ["boxed zeros", new Number(0), new Number(-0)],
+    ["a boxed number and a number", new Number(1), 1],
+    ["boxed strings", new String("ab"), new String("ac")],
+    ["a boxed string with an extra key", Object.assign(new String("a"), { x: 1 }), new String("a")],
+    ["boxed booleans", new Boolean(true), new Boolean(false)],
+    ["boxed bigints", Object(1n), Object(2n)],
+    ["boxed symbols", Object(s), Object(t)],
+    ["the same boxed symbol", Object(s), Object(s)],
+    ["buffers", new Uint8Array([1, 2]).buffer, new Uint8Array([1, 3]).buffer],
+    ["equal buffers", new Uint8Array([1, 2]).buffer, new Uint8Array([1, 2]).buffer],
+    ["a buffer and a view", new Uint8Array([1]).buffer, new Uint8Array([1])],
+    [
+      "a typed array with an extra key",
+      Object.assign(new Uint8Array([1]), { x: 1 }),
+      new Uint8Array([1]),
+    ],
+    [
+      "DataViews",
+      new DataView(new Uint8Array([1]).buffer),
+      new DataView(new Uint8Array([2]).buffer),
+    ],
+    ["Maps", new Map([[1, 2]]), new Map([[1, 3]])],
+    ["a Map with an extra key", Object.assign(new Map(), { x: 1 }), new Map()],
+    ["a Map subclass", new Map2(), new Map()],
+    ["Sets", new Set([1]), new Set(["1"])],
+    ["a Set with an extra key", Object.assign(new Set(), { x: 1 }), new Set()],
+    ["RegExps", /a/g, /a/i],
+    ["a RegExp with an extra key", Object.assign(/a/, { x: 1 }), /a/],
+    ["errors with an extra key", Object.assign(new Error("a"), { mark: 1 }), new Error("a")],
+    ["errors of another class", new TypeError("a"), new Error("a")],
+    ["two symbols of one description as keys", { [s]: 1 }, { [t]: 1 }],
+    ["a registered symbol and a local one", { [global]: 1 }, { [s]: 1 }],
+    ["the same symbol as keys", { [s]: 1 }, { [s]: 1 }],
+    ["two symbols of one description", s, t],
+    ["a symbol and a string", s, "Symbol(s)"],
+    ["two functions of one source", f, g],
+    ["the same function", f, f],
+    ["two classes of one name", new A1(), new A2()],
+    ["an anonymous class and an object", new Anonymous(), {}],
+    ["a prototype without a constructor", Object.create(proto), Object.create({ a: 1 })],
+    ["the same prototype without a constructor", Object.create(proto), Object.create(proto)],
+    ["a null prototype's child", Object.create(Object.create(null)), Object.create(null)],
+    ["an array's key that isn't an index", Object.assign([1], { "01": 2 }), [1]],
+    ["holes", holes(2, { 1: 1 }), [undefined, 1]],
+    ["-0", [-0], [0]],
+    ["key order", { a: 1, b: 2 }, { b: 2, a: 1 }],
+    ["shared objects", [shared, shared], [shared, { x: 1 }]],
+    ["the same shared objects", [shared, shared], [{ x: 1 }, { x: 1 }].fill(shared)],
+    ["cycles", cycle(), two()],
+    ["equal cycles", cycle(), cycle()],
+  ];
+
+  it.each(pairs)("writes the same text exactly where equal() agrees: %s", (_, a, b) => {
+    expect(text(a) === text(b)).toBe(equal(a, b));
+  });
+
+  it("writes an object's items or contents before its other keys", () => {
+    expect(text(Object.assign([shared], { x: shared }))).toBe('[&1 {"x":1},"x":*1]');
+    expect(text(Object.assign(new Set([shared]), { x: shared }))).toBe('Set[&1 {"x":1}]{"x":*1}');
+    expect(text(date(0, { a: 1 }))).toBe('Date(1970-01-01T00:00:00.000Z){"a":1}');
+  });
+});
+
+// The js-yaml replays count a call made in several tests once, by this.
+describe("fingerprint", () => {
+  it("tells apart callbacks inspect prints alike", () => {
+    const tag = (finalize: () => unknown) => ({ tags: [{ finalize }] });
+    expect(fingerprint(tag(() => 1))).not.toBe(fingerprint(tag(() => 2)));
+    expect(fingerprint(tag(() => 1))).toBe(fingerprint(tag(() => 1)));
+  });
+
+  it("reads the whole value", () => {
+    const deep = (leaf: number) => ({ a: { b: { c: { d: { e: { f: leaf } } } } } });
+    expect(fingerprint(deep(1))).not.toBe(fingerprint(deep(2)));
+    const long = (last: number) => [...Array.from({ length: 200 }, () => 0), last];
+    expect(fingerprint(long(1))).not.toBe(fingerprint(long(2)));
   });
 });
 

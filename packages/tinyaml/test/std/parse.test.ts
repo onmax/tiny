@@ -218,8 +218,33 @@ describe("parse", () => {
       "...\0",
       "a\n...\n# c\0",
       'a: "x\n---\ny"',
+      "a\n---\n!!int",
+      "a\n...\n # x: y\n\0x",
+      // A space, a tab or a line break ends a marker, and no other white space.
+      "a\n---\u00a0\nx: y",
+      '"\n---\u00a0',
+      "a\n...\u3000\nx",
+      '"\n--- ',
+      "'a\n--- b'",
     ])
       same(input);
+  });
+
+  it("rethrows what a warning handler throws, whatever it is", () => {
+    for (const thrown of [0, null, undefined, false, ""])
+      for (const input of ["%BAD\n---\na", "%YAML 1.3\n---\na"]) {
+        let caught: unknown = Symbol("none");
+        try {
+          parse(input, {
+            onWarning() {
+              throw thrown;
+            },
+          });
+        } catch (error) {
+          caught = error;
+        }
+        expect(caught).toBe(thrown);
+      }
   });
 
   it("reads a flow node's properties across lines, as std does", () => {
@@ -443,5 +468,51 @@ describe("where std's parser, js-yaml 3's, misreads", () => {
 
   it("ends a block scalar at a tab before a comment", () => {
     same("foo: |\n\t #\nbar: 1\n");
+  });
+
+  it("reads its options in std's order and count", () => {
+    // Through a getter and every trap, with an option neither library knows.
+    const options = (log: string[], target: Record<string, unknown>) => {
+      Object.defineProperty(target, "schema", {
+        get: () => (log.push("schema"), "core"),
+        enumerable: true,
+      });
+      return new Proxy(Object.assign(target, { other: 0 }), {
+        get: (t, key, r) => (log.push(`get ${String(key)}`), Reflect.get(t, key, r)),
+        has: (t, key) => (log.push(`has ${String(key)}`), Reflect.has(t, key)),
+        ownKeys: (t) => (log.push("ownKeys"), Reflect.ownKeys(t)),
+        getOwnPropertyDescriptor: (t, key) => (
+          log.push(`descriptor ${String(key)}`),
+          Reflect.getOwnPropertyDescriptor(t, key)
+        ),
+      }) as never;
+    };
+    const runs = [
+      [parse, std.parse],
+      [parseAll, std.parseAll],
+    ] as const;
+    for (const input of ["a: 1\na: 2", "a: &x 1\nb: *x\n---\nc", "a: ["])
+      for (const [tiny, real] of runs) {
+        const reads = (fn: (input: string, options: never) => unknown) => {
+          const log: string[] = [];
+          try {
+            fn(input, options(log, { allowDuplicateKeys: true, onWarning: () => {} }));
+          } catch {}
+          return log;
+        };
+        expect(reads(tiny), input).toEqual(reads(real));
+      }
+    // std reads the schema in its copy of the options, then again to use it.
+    let n = 0;
+    const schema = {
+      get schema() {
+        return ++n === 1 ? "core" : "failsafe";
+      },
+    };
+    expect(parse("a: true", schema)).toEqual({ a: "true" });
+    expect(n).toBe(2);
+    n = 0;
+    expect(std.parse("a: true", schema as never)).toEqual({ a: "true" });
+    expect(n).toBe(2);
   });
 });

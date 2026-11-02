@@ -396,7 +396,7 @@ function merger(
   ];
 }
 
-function engine(options: ParseOptions, version: unknown): Engine {
+function engine(options: ParseOptions, version: unknown, raw: ParseOptions): Engine {
   const [tags, compat, resolveKnownTags] = schemaOf(options, version);
   const knownTags = resolveKnownTags ? known : [];
   const max = options.maxAliasCount;
@@ -560,11 +560,13 @@ function engine(options: ParseOptions, version: unknown): Engine {
     document(position, ends) {
       if (!ends) {
         if (opened++ === 1) {
-          if (options.logLevel === "silent") return (opened = -Infinity);
           const { buffer } = where()!;
-          if (position < buffer.length - 1)
+          if (position < buffer.length - 1) {
+            // yaml reads its options again for the document.
+            Object.assign({}, raw);
             second = { buffer, position, directives: ends === false };
-          else opened--;
+          } else opened--;
+          if (options.logLevel === "silent") return (opened = -Infinity);
         }
       } else if (opened < 2) kept = warnings.length;
       else if (opened < 3 && !LONE.test(source)) throw multiple();
@@ -729,9 +731,14 @@ export function parse(src: string, reviver?: Reviver | ParseOptions, options?: P
   if (typeof reviver === "function") fn = reviver;
   else if (options === undefined && reviver && typeof reviver === "object") options = reviver;
   options ??= {};
-  const prettyErrors = options.prettyErrors;
+  const raw = options;
+  const prettyErrors = raw.prettyErrors;
+  void raw.lineCounter;
+  // The version a %YAML directive yaml doesn't support leaves in place.
+  const fallback = raw.version || "1.2";
   // yaml reads its own copy of the options over defaults, which an option
-  // set to undefined still replaces.
+  // set to undefined still replaces, for each document, and another one to
+  // convert the first.
   options = {
     intAsBigInt: false,
     keepSourceTokens: false,
@@ -743,7 +750,6 @@ export function parse(src: string, reviver?: Reviver | ParseOptions, options?: P
     version: "1.2",
     ...options,
   };
-  if ("reviver" in options) fn = options.reviver;
   const level = options.logLevel;
   // A custom tag may parse another document in the middle of this one.
   const outer = [
@@ -763,18 +769,18 @@ export function parse(src: string, reviver?: Reviver | ParseOptions, options?: P
     pretty = prettyErrors !== false;
     warnings = [];
     keyWarned = false;
-    const directive = /^(?:[ \t]*(?:#.*)?\r?\n|%.*\r?\n)*%YAML[ \t]+(\S+)/.exec(src)?.[1];
+    const directives = /^\uFEFF?((?:[ \t]*(?:#.*)?\r?\n|%.*\r?\n)*)/.exec(src)![1]!;
     let docs: unknown[];
     try {
-      // A %YAML directive yaml supports sets the version. Another one leaves
-      // it to the option, or 1.2 when that's unset.
-      const version =
-        directive === "1.1" || directive === "1.2"
-          ? directive
-          : directive
-            ? options.version || "1.2"
-            : options.version;
-      const use = engine(options, version);
+      // The last %YAML directive yaml supports sets the version, and one it
+      // doesn't keeps the one before. Without one, the option sets it.
+      const version = /^%YAML(?=\s|$)/m.test(directives)
+        ? (directives
+            .match(/^%YAML[ \t]+1\.[12](?=\s)/gm)
+            ?.pop()!
+            .slice(-3) ?? fallback)
+        : options.version;
+      const use = engine(options, version, raw);
       try {
         docs = parseDocs(src, use);
       } catch (error) {
@@ -800,7 +806,9 @@ export function parse(src: string, reviver?: Reviver | ParseOptions, options?: P
     }
     // After a lone carriage return the parser read every document.
     if (opened > 1) throw multiple();
-    // yaml converts the document in order, counting aliases as it goes.
+    // yaml converts the document in order, counting aliases as it goes, with
+    // a copy of the options over the reviver argument.
+    const { reviver: use, onAnchor } = Object.assign({ reviver: fn }, raw);
     const first = later[0];
     if (first) {
       counted(first[2]);
@@ -809,9 +817,8 @@ export function parse(src: string, reviver?: Reviver | ParseOptions, options?: P
     if (keyWarned) emit(level, keyWarned);
     counted();
     const value = docs.length ? docs[0] : null;
-    const { onAnchor } = options;
     if (typeof onAnchor === "function") for (const [res, count] of anchored) onAnchor(res, count);
-    return fn ? revive(fn, { "": value }, "", value) : value;
+    return typeof use === "function" ? revive(use, { "": value }, "", value) : value;
   } finally {
     [warnings, source, pretty, keyWarned, excess, anchored, later, opened, second, kept] = outer;
   }

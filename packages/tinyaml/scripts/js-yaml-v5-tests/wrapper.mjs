@@ -6,7 +6,7 @@ import { appendFileSync } from "node:fs";
 import { inspect } from "node:util";
 import * as real from "../../.cache/js-yaml/dist/js-yaml.mjs";
 import * as tiny from "../../src/js-yaml-v5/index.ts";
-import { equal } from "../support.ts";
+import { equal, fingerprint } from "../support.ts";
 
 export * from "../../.cache/js-yaml/dist/js-yaml.mjs";
 
@@ -73,9 +73,12 @@ function show(result) {
 }
 
 // A call's identity, for summary.ts to count each distinct call once: the
-// function, the whole input, and the options as inspect shows them.
-const identity = (fn, subject, options) =>
-  createHash("sha256").update(`${fn}\0${subject}\0${options}`).digest("hex").slice(0, 16);
+// function, and the whole input and options with their callbacks' source.
+const identity = (fn, input, options) =>
+  createHash("sha256")
+    .update(`${fn}\0${fingerprint(input)}\0${fingerprint(options)}`)
+    .digest("hex")
+    .slice(0, 16);
 
 function compare(fn, input, options, run) {
   try {
@@ -102,7 +105,7 @@ function compare(fn, input, options, run) {
     if (out)
       appendFileSync(
         out,
-        `${JSON.stringify({ fn, status, call: identity(fn, subject, opts), input: subject, options: opts, expected: show(expected), actual: show(actual) })}\n`,
+        `${JSON.stringify({ fn, status, call: identity(fn, input, options), input: subject, options: opts, expected: show(expected), actual: show(actual) })}\n`,
       );
   } catch (error) {
     if (out)

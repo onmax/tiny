@@ -385,9 +385,7 @@ for (let i = 0; i < cases; i++) {
   }
   const got = run(() => tiny.dump(input, mine as tiny.DumpOptions));
   const want = run(() => real.dump(input, theirs as real.DumpOptions));
-  // Both overflowing the stack on a cycle is agreement.
-  const agree =
-    got === want || (got.startsWith("ERROR RangeError") && want.startsWith("ERROR RangeError"));
+  const agree = got === want;
   if (agree && want.startsWith("ERROR")) thrown++;
   if (!agree) {
     if (++failures <= Number(process.env.SHOW ?? 5))

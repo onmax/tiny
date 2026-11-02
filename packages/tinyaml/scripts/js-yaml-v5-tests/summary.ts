@@ -4,7 +4,7 @@
 // what differs.
 import { readFileSync } from "node:fs";
 import { Baseline, shorten } from "../baseline.ts";
-import { expectCount } from "../support.ts";
+import { expectCount, fail } from "../support.ts";
 
 // Tests that pass, and tests that call the events/AST API tinyaml leaves out.
 const PASSING = 1023;
@@ -60,7 +60,7 @@ if (mode === "direct") {
   interface Entry {
     fn: string;
     status: string;
-    /** A hash of the function, the whole input and the options. */
+    /** A hash of the function, the whole input and the options, callbacks' source included. */
     call: string;
     input?: string;
     options?: string;
@@ -73,17 +73,28 @@ if (mode === "direct") {
     .filter(Boolean)
     .map((line) => JSON.parse(line));
   // The same call often appears in several tests; count it once. A call is
-  // the function, the whole input and the options (see wrapper.mjs), so the
-  // same input with other options counts again.
+  // the function, the whole input and the options, with the source of each
+  // callback in them (see wrapper.mjs), so the same input with other options
+  // counts again. Each time a call is made it must give the same outcome,
+  // for the one kept to stand for all.
   const unique = new Map<string, Entry>();
-  for (const entry of entries) unique.set(entry.call, entry);
+  const outcome = (entry: Entry) =>
+    `${entry.status}\n  js-yaml 5: ${entry.expected}\n  tinyaml:   ${entry.actual}`;
+  for (const entry of entries) {
+    const first = unique.get(entry.call);
+    if (!first) unique.set(entry.call, entry);
+    else if (outcome(entry) !== outcome(first))
+      fail(
+        `${entry.fn} ${JSON.stringify(entry.input)} ${entry.options}, made more than once, gives two outcomes:\n${outcome(first)}\n${outcome(entry)}`,
+      );
+  }
   const count: Record<string, number> = {};
   for (const entry of unique.values()) {
     const key = `${entry.fn === "dump" ? "dump" : "load"} ${entry.status}`;
     count[key] = (count[key] ?? 0) + 1;
   }
   console.log(
-    `calls recorded: ${entries.length}, ${unique.size} distinct by function, input and options`,
+    `calls recorded: ${entries.length}, ${unique.size} distinct by function, input and options (callbacks by source)`,
   );
   for (const [key, n] of Object.entries(count).sort((a, b) => a[0].localeCompare(b[0])))
     console.log(`  ${key}: ${n}`);
@@ -97,8 +108,8 @@ if (mode === "direct") {
           `\n--- ${entry.fn} ${entry.status}\n${entry.input}\n  js-yaml 5: ${entry.expected}\n  tinyaml:   ${entry.actual}`,
         );
   // Each distinct call that doesn't match exactly is a record in
-  // scripts/baselines/js-yaml-v5-tests.json with its function, options and
-  // both outcomes, so any change to one fails, as does a call that differs
+  // scripts/baselines/js-yaml-v5-tests.json with its function, options,
+  // identity and both outcomes, so any change to one fails, as does a call that differs
   // anew. (The one `fail`: an empty `!!merge` key is {} in js-yaml 5 and a
   // `<<` key in tinyaml.) Calls run in no fixed order, so each is at 0,
   // sorted by identity.
@@ -109,7 +120,7 @@ if (mode === "direct") {
         0,
         entry.status,
         entry.input ?? "",
-        { fn: entry.fn, options: shorten(entry.options ?? "") },
+        { fn: entry.fn, options: shorten(entry.options ?? ""), call: entry.call },
         { "js-yaml 5": shorten(entry.expected ?? ""), tinyaml: shorten(entry.actual ?? "") },
       );
   baseline.finish();

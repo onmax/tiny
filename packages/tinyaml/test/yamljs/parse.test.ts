@@ -160,6 +160,70 @@ describe("parse", () => {
     expect(() => parse("a: \u2028: b")).not.toThrow();
   });
 
+  it("separates and skips that white space where yamljs's line patterns do, and nowhere else", () => {
+    // Every other character `\s` matches, but a carriage return, which
+    // yamljs reads as a line break, and the line and paragraph separators,
+    // which its `.` doesn't match.
+    const spaces = Array.from({ length: 0x10000 }, (_, i) => String.fromCharCode(i)).filter(
+      (c) => /\s/.test(c) && !"\t\n\r \u2028\u2029".includes(c),
+    );
+    // Some of these throw in yamljs, so tinyaml must too.
+    const outcome = (read: (input: string) => unknown, input: string) => {
+      try {
+        return { value: read(input) };
+      } catch {
+        return "throws";
+      }
+    };
+    const alike = (...inputs: string[]) => {
+      for (const input of inputs)
+        expect(outcome(parse, input), input).toEqual(outcome(yamljs.parse, input));
+    };
+    for (const w of spaces)
+      alike(
+        ...[
+          "a:W[x]",
+          'a:W"x"',
+          "a:W'x'",
+          "a:W&x y",
+          "a:W!!str y",
+          "x: &r 1\na:W*r",
+          "a:W# c",
+          "a:W|\n  x",
+          "a:W\n  b: c",
+          "-W# c",
+          "-W[x]",
+          "-W&x y",
+          "-W- b",
+          "-Wa:Wb",
+          "-Wa: b\n  c: d",
+          "- -Wb: c",
+          "a:Wb: c",
+          "a: b:Wc",
+          "a:W%x",
+          "!!str a:Wb",
+          '"x: y":W[b]',
+          "[a]:Wb",
+          "[a:Wb]",
+          "{a:Wb}",
+          "{a: b:Wc}",
+          "a: ?Wb",
+          "a:\n- b\n-Wc",
+          "a:\n-Wb:Wc",
+          "a:\n  -Wb:Wc",
+        ].map((input) => input.replaceAll("W", w)),
+      );
+    alike(
+      "a:\u2028b",
+      "-\u2028a",
+      "-\u2028a:\u2028b",
+      "-\u2028-\u2028b",
+      "a:\n  -\u2028b:\u2028c",
+      "{a: b:\u2028c}",
+      "{-\u2029a: b}",
+    );
+  });
+
   it("gives null for empty documents", () => {
     expect(parse("")).toBeNull();
     expect(parse("# just a comment\n")).toBeNull();

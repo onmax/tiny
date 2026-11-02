@@ -40,14 +40,17 @@ export const positional = process.argv.slice(2).filter((arg) => !arg.startsWith(
 const update = process.argv.includes("--update");
 
 /**
- * Text for a value that tells apart what deep equality does: types,
- * prototypes, key order, holes, -0, bigints, Dates, Maps and Sets, and
- * which objects are the same: an object found at more than one place is
- * written once, after `&1`, and as `*1` at each place after. Longer than
- * 100 characters, it's cut to 80 and a hash of the whole.
+ * Text for a value that tells apart what equal() in support.ts does, so
+ * two values have the same text exactly when they're equal: types,
+ * prototypes, key order, holes, -0, bigints, symbols, functions, Dates,
+ * boxed primitives, RegExps and errors, buffers' bytes, Maps and Sets, the
+ * own enumerable keys of every object, and which objects are the same: an
+ * object found at more than one place is written once, after `&1`, and as
+ * `*1` at each place after. Longer than 100 characters, it's cut to 80 and
+ * a hash of the whole.
  */
 export function describe(value: unknown): string {
-  return shorten(serialize(value, 0, { shared: repeated(value), ids: new Map() }));
+  return shorten(serialize(value, { shared: repeated(value), ids: new Map() }));
 }
 
 interface Refs {
@@ -55,6 +58,18 @@ interface Refs {
   shared: Set<object>;
   /** Those written so far, by their number. */
   ids: Map<object, number>;
+}
+
+// An array's or typed array's own keys that are indexes, which its items cover.
+const index = (value: { length: number }, key: string | symbol) =>
+  typeof key === "string" && /^(?:0|[1-9]\d*)$/.test(key) && +key < value.length;
+
+// The own keys serialize writes after an object's items or contents.
+function extraKeys(value: object): (string | symbol)[] {
+  const keys = ownKeys(value);
+  if (Array.isArray(value) || ArrayBuffer.isView(value) || value instanceof String)
+    return keys.filter((key) => !index(value as { length: number }, key));
+  return keys;
 }
 
 // The objects reachable from `value` by more than one path.
@@ -72,9 +87,31 @@ function repeated(value: unknown): Set<object> {
     seen.add(x);
     if (x instanceof Map) for (const entry of x) stack.push(...entry);
     else if (x instanceof Set) stack.push(...x);
-    if (!ArrayBuffer.isView(x)) for (const key of ownKeys(x)) stack.push((x as never)[key]);
+    for (const key of extraKeys(x)) stack.push((x as never)[key]);
+    if (Array.isArray(x)) stack.push(...x);
   }
   return shared;
+}
+
+// Symbols, functions and prototypes, which only their identity tells apart,
+// by their text and, from the second of the same text this process
+// describes, a number: `Symbol("a")`, then `Symbol("a")#2`.
+const labels = new Map<string, unknown[]>();
+function label(thing: unknown, text: string, first?: unknown): string {
+  let things = labels.get(text);
+  if (!things) labels.set(text, (things = first === undefined ? [] : [first]));
+  let n = things.indexOf(thing);
+  if (n < 0) n = things.push(thing) - 1;
+  return n ? `${text}#${n + 1}` : text;
+}
+
+// A prototype by its constructor's name; a global's prototype comes first.
+function prototype(proto: object): string {
+  const constructor = Object.hasOwn(proto, "constructor") ? proto.constructor : undefined;
+  const name =
+    typeof constructor === "function" && constructor.name ? constructor.name : "(anonymous)";
+  const global: unknown = Reflect.get(globalThis, name);
+  return label(proto, name, typeof global === "function" ? global.prototype : undefined);
 }
 
 /**
@@ -92,44 +129,69 @@ export function shorten(text: string): string {
   return text.length > 100 ? `${text.slice(0, 80)}… #${hash(text).slice(0, 12)}` : text;
 }
 
-function serialize(value: unknown, depth: number, refs: Refs): string {
+function serialize(value: unknown, refs: Refs): string {
   if (typeof value === "string") return JSON.stringify(value);
   if (typeof value === "bigint") return `${value}n`;
   if (typeof value === "number") return Object.is(value, -0) ? "-0" : String(value);
+  if (typeof value === "symbol") {
+    const key = Symbol.keyFor(value);
+    if (key !== undefined) return `Symbol.for(${JSON.stringify(key)})`;
+    const text = value.description === undefined ? "" : JSON.stringify(value.description);
+    return label(value, `Symbol(${text})`);
+  }
+  if (typeof value === "function")
+    return label(value, `Function(${JSON.stringify(String(value))})`);
   if (typeof value !== "object" || value === null) return String(value);
   const id = refs.ids.get(value);
   if (id) return `*${id}`;
-  if (depth > 64) return "[Deep]";
   let anchor = "";
   if (refs.shared.has(value)) {
     refs.ids.set(value, refs.ids.size + 1);
     anchor = `&${refs.ids.size} `;
   }
   const proto = Object.getPrototypeOf(value) as object | null;
-  const name = proto === null ? "[null]" : proto === Object.prototype ? "" : proto.constructor.name;
-  const keys = (keys: (string | symbol)[]) =>
-    keys.map(
+  const name = proto === null ? "[null]" : proto === Object.prototype ? "" : prototype(proto);
+  // Written after the items or contents, so anchors number in reading order.
+  const fields = () =>
+    extraKeys(value).map(
       (key) =>
-        `${typeof key === "symbol" ? String(key) : JSON.stringify(key)}:${serialize((value as never)[key], depth + 1, refs)}`,
+        `${typeof key === "symbol" ? serialize(key, refs) : JSON.stringify(key)}:${serialize((value as never)[key], refs)}`,
     );
   let text: string;
-  if (value instanceof Date)
-    text = `Date(${Number.isNaN(+value) ? "Invalid" : value.toISOString()})`;
-  else if (value instanceof RegExp || value instanceof Error) text = `${name}(${String(value)})`;
-  else if (ArrayBuffer.isView(value))
-    text = `${name}(${Buffer.from(value.buffer, value.byteOffset, value.byteLength).toString("hex")})`;
-  else if (value instanceof Map)
-    text = `Map{${[...value].map(([k, v]) => `${serialize(k, depth + 1, refs)}=>${serialize(v, depth + 1, refs)}`).join(",")}}`;
-  else if (value instanceof Set)
-    text = `Set[${[...value].map((v) => serialize(v, depth + 1, refs)).join(",")}]`;
-  else if (Array.isArray(value)) {
+  if (Array.isArray(value)) {
     const items = Array.from({ length: value.length }, (_, i) =>
-      i in value ? serialize(value[i], depth + 1, refs) : "<hole>",
+      i in value ? serialize(value[i], refs) : "<hole>",
     );
-    const extra = ownKeys(value).filter((key) => !/^\d+$/.test(String(key)));
-    text = `${name === "Array" ? "" : name}[${[...items, ...keys(extra)].join(",")}]`;
-  } else text = `${name}{${keys(ownKeys(value)).join(",")}}`;
-  return anchor + text;
+    return `${anchor}${proto === Array.prototype ? "" : name}[${[...items, ...fields()].join(",")}]`;
+  }
+  if (
+    value instanceof Date ||
+    value instanceof Number ||
+    value instanceof String ||
+    value instanceof Boolean ||
+    value instanceof BigInt ||
+    value instanceof Symbol
+  ) {
+    const primitive = value.valueOf();
+    text =
+      value instanceof Date
+        ? Number.isNaN(primitive)
+          ? "Invalid"
+          : value.toISOString()
+        : serialize(primitive, refs);
+  } else if (value instanceof RegExp || value instanceof Error)
+    text = JSON.stringify(String(value));
+  else if (ArrayBuffer.isView(value))
+    text = Buffer.from(value.buffer, value.byteOffset, value.byteLength).toString("hex");
+  else if (value instanceof ArrayBuffer) text = Buffer.from(value).toString("hex");
+  else if (value instanceof Map)
+    text = `{${[...value].map(([k, v]) => `${serialize(k, refs)}=>${serialize(v, refs)}`).join(",")}}`;
+  else if (value instanceof Set) text = `[${[...value].map((v) => serialize(v, refs)).join(",")}]`;
+  else return `${anchor}${name}{${fields().join(",")}}`;
+  // Maps and Sets write their contents in brackets of their own.
+  if (!(value instanceof Map || value instanceof Set)) text = `(${text})`;
+  const extra = fields();
+  return `${anchor}${name}${text}${extra.length ? `{${extra.join(",")}}` : ""}`;
 }
 
 /**
@@ -150,10 +212,20 @@ export class Baseline {
     this.file = new URL(`baselines/${name}.json`, import.meta.url).pathname;
   }
 
-  /** Records a difference at iteration `at`. An input seen before is skipped. */
+  /**
+   * Records a difference at iteration `at`. An input seen before is skipped,
+   * and fails the run if this time it differs in another way.
+   */
   add(at: number, kind: string, input: string, options: unknown, sides: Record<string, string>) {
     const id = hash(`${input}\0${JSON.stringify(options ?? null)}`).slice(0, 12);
-    if (this.found.has(id)) return;
+    const before = this.found.get(id);
+    if (before) {
+      if (before.kind !== kind || JSON.stringify(before.sides) !== JSON.stringify(sides))
+        fail(
+          `${JSON.stringify(input)} ${JSON.stringify(options)} differs in two ways, at ${before.at} and ${at}: ${before.kind} ${JSON.stringify(before.sides)}, then ${kind} ${JSON.stringify(sides)}`,
+        );
+      return;
+    }
     this.inputs.set(id, input);
     const preview = JSON.stringify(input.slice(0, 40)) + (input.length > 40 ? "…" : "");
     this.found.set(id, {

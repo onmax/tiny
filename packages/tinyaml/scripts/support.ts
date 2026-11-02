@@ -3,6 +3,7 @@
 // the check of a run against the differences a script expects.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { inspect } from "node:util";
 
 export const SUITE = ".cache/yaml-test-suite";
 
@@ -229,6 +230,46 @@ export const YAML_ERROR_GROUPS = {
   message: ["message"],
 };
 
+// A std or tinyaml/std error's message without its position and snippet.
+export const stdReason = (message: string) => message.replace(/ at line [^]*/, "");
+
+/**
+ * What a YamlSyntaxError from @std/yaml or tinyaml/std says, thrown or
+ * passed to onWarning, field by field: its name, its message without the
+ * position and snippet, its offset, line and column, its snippet, and the
+ * template of its full message with those in it.
+ */
+export function stdError(error: unknown): Record<string, unknown> {
+  const { name, message, offset, line, column, snippet } = error as Record<string, string>;
+  const reason = stdReason(message!);
+  const text = template(message!, [reason, ` at line ${line}, column ${column}`, snippet]);
+  return { message: reason, offset, line, column, snippet, name, text };
+}
+
+/** The groups errorDifference compares stdError's fields in. */
+export const STD_ERROR_GROUPS = {
+  message: ["message"],
+  position: ["offset", "line", "column"],
+  snippet: ["snippet"],
+  "full message": ["name", "text"],
+};
+
+/**
+ * What an error yamljs or tinyaml/yamljs throws says, field by field: its
+ * message, and a ParseException's line and snippet.
+ */
+export function yamljsError(error: unknown): Record<string, unknown> {
+  const { parsedLine, snippet } = Object(error) as Record<string, unknown>;
+  return { message: String((error as Error)?.message ?? error), parsedLine, snippet };
+}
+
+/** The groups errorDifference compares yamljsError's fields in. */
+export const YAMLJS_ERROR_GROUPS = {
+  message: ["message"],
+  position: ["parsedLine"],
+  snippet: ["snippet"],
+};
+
 /**
  * How two errors that both sides threw differ, as records of the fields
  * their library exposes: `groups` names sets of fields, such as
@@ -303,7 +344,14 @@ export function equal(a: unknown, b: unknown, { keyOrder = true, identity = true
     }
     if (Object.getPrototypeOf(x) !== Object.getPrototypeOf(y)) return false;
     if (Array.isArray(x) && x.length !== (y as unknown[]).length) return false;
-    if (x instanceof Date || x instanceof Number || x instanceof String || x instanceof Boolean) {
+    if (
+      x instanceof Date ||
+      x instanceof Number ||
+      x instanceof String ||
+      x instanceof Boolean ||
+      x instanceof BigInt ||
+      x instanceof Symbol
+    ) {
       if (!Object.is(x.valueOf(), y.valueOf())) return false;
     } else if (x instanceof RegExp || x instanceof Error) {
       if (String(x) !== String(y as RegExp | Error)) return false;
@@ -333,6 +381,37 @@ export function equal(a: unknown, b: unknown, { keyOrder = true, identity = true
     }
   }
   return true;
+}
+
+/**
+ * Text for an argument of a call the js-yaml replays record, to tell calls
+ * apart by: the whole value as inspect shows it, however deep or long, then
+ * the source of each function in it, since inspect shows every callback
+ * named `finalize` as `[Function: finalize]`. Without this checkout's path,
+ * which a `filename` option may hold.
+ */
+export function fingerprint(value: unknown): string {
+  const text = inspect(value, {
+    depth: Infinity,
+    breakLength: Infinity,
+    maxArrayLength: Infinity,
+    maxStringLength: Infinity,
+  });
+  const sources: string[] = [];
+  const seen = new Set<unknown>();
+  const stack = [value];
+  while (stack.length) {
+    const x = stack.pop();
+    if ((typeof x !== "object" && typeof x !== "function") || x === null || seen.has(x)) continue;
+    seen.add(x);
+    if (typeof x === "function") sources.push(String(x));
+    if (x instanceof Map) for (const entry of x) stack.push(...entry);
+    else if (x instanceof Set) stack.push(...x);
+    // Values only: a getter, as inspect leaves it, isn't called.
+    if (!ArrayBuffer.isView(x))
+      for (const key of ownKeys(x)) stack.push(Object.getOwnPropertyDescriptor(x, key)!.value);
+  }
+  return [text, ...sources].join("\0").replaceAll(process.cwd(), ".");
 }
 
 /**

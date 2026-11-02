@@ -1,6 +1,6 @@
 import { MESSAGES } from "./core/messages.ts";
-import { at as position, parse, where } from "./core/parse.ts";
-import { parseAll } from "./index.ts";
+import { at as position, parse, type Engine } from "./core/parse.ts";
+import { parseAll, YAMLError } from "./index.ts";
 
 export type Rule = "tinyaml/invalid-yaml" | "tinyaml/ambiguous-value";
 
@@ -9,6 +9,8 @@ export interface Diagnostic {
   severity: "error" | "warn";
   line: number;
   column: number;
+  /** 0-based, in the text. */
+  offset: number;
   message: string;
   fix: string;
 }
@@ -87,25 +89,66 @@ function reading(token: string) {
   }
 }
 
-// Each plain scalar without a tag that some reader reads as something else,
-// as the parser reads it, with where it starts.
-function plainScalars(text: string) {
-  const found: { token: string; line: number; column: number; read: Reading }[] = [];
+// Reads `text` with the parser, which passes each plain scalar to `implicit`.
+function scan(
+  text: string,
+  implicit: Engine["implicit"],
+  error: Engine["error"] = (reason) => new Error(reason),
+) {
+  try {
+    parse(text, {
+      tag: "",
+      messages: MESSAGES,
+      spec: true,
+      json: true,
+      implicit,
+      explicit: (value) => value,
+      key: String,
+      verbatim() {},
+      error,
+    });
+  } catch {}
+}
+
+// The parser's copy of `text`, which has \n for each line break and drops
+// the byte order marks that start documents, and what maps positions in it,
+// each no earlier than the last, to lines, columns and offsets in `text`,
+// whose columns start past a byte order mark at its start, as ESLint's do.
+function locator(text: string) {
   let source = "";
-  // How far the line count got, in the parser's copy, which has \n for each
-  // line break and drops the byte order marks that start documents, and in
-  // `text`, whose columns start past a byte order mark at its start, as
-  // ESLint's do.
+  // The parser makes its copy before it fails on a null byte.
+  scan(`${text}\0`, String, (reason, mark) => new Error((source = mark.buffer)));
+  // How far the line count got, in the copy and in `text`.
   let scanned = 0;
   let offset = text.charCodeAt(0) === 0xfeff ? 1 : 0;
   let line = 1;
   let lineStart = offset;
   const dropped = () => text[offset] === "\uFEFF" && source[scanned] !== "\uFEFF";
-  const implicit = (token: string | null) => {
+  const locate = (to: number) => {
+    for (; scanned < to || dropped(); offset++) {
+      if (dropped()) continue;
+      if (text[offset] === "\r" && text[offset + 1] === "\n") offset++;
+      if (source[scanned++] === "\n") {
+        line++;
+        lineStart = offset + 1;
+      }
+    }
+    return { line, column: offset - lineStart + 1, offset };
+  };
+  return [source, locate] as const;
+}
+
+// Each plain scalar without a tag that some reader reads as something else,
+// as the parser reads it, with where it starts.
+function plainScalars(text: string) {
+  const found: ({ token: string; read: Reading } & Pick<
+    Diagnostic,
+    "line" | "column" | "offset"
+  >)[] = [];
+  const [source, locate] = locator(text);
+  scan(text, (token) => {
     const read = token && reading(token);
     if (!read) return token;
-    // Where the parser reads, in its copy of the input.
-    source ||= where()!.buffer;
     // The parser is past the scalar, and maybe the blanks after it. The
     // scalar is the source's text with only the blanks inside it folded.
     let from = position();
@@ -117,30 +160,9 @@ function plainScalars(text: string) {
         while (blank(token[i - 1])) i--;
         while (blank(source[from - 1])) from--;
       }
-    for (; scanned < from || dropped(); offset++) {
-      if (dropped()) continue;
-      if (text[offset] === "\r" && text[offset + 1] === "\n") offset++;
-      if (source[scanned++] === "\n") {
-        line++;
-        lineStart = offset + 1;
-      }
-    }
-    found.push({ token, line, column: offset - lineStart + 1, read });
+    found.push({ token, read, ...locate(from) });
     return token;
-  };
-  try {
-    parse(text, {
-      tag: "",
-      messages: MESSAGES,
-      spec: true,
-      json: true,
-      implicit,
-      explicit: (value) => value,
-      key: String,
-      verbatim() {},
-      error: (reason) => new Error(reason),
-    });
-  } catch {}
+  });
   return found;
 }
 type Reading = NonNullable<ReturnType<typeof reading>>;
@@ -150,15 +172,20 @@ export function lint(text: string): Diagnostic[] {
   try {
     parseAll(text);
   } catch (error) {
+    const [source, locate] = locator(text);
+    // The error's line and column are in the parser's copy.
+    let at = 0;
+    if (error instanceof YAMLError) {
+      for (let line = error.line; --line;) at = source.indexOf("\n", at) + 1;
+      at += error.column - 1;
+    }
     const message = error instanceof Error ? error.message : String(error);
-    const at = /^(.*) \((\d+):(\d+)\)$/.exec(message);
     return [
       {
         rule: "tinyaml/invalid-yaml",
         severity: "error",
-        line: at ? Number(at[2]) : 1,
-        column: at ? Number(at[3]) : 1,
-        message: `tinyaml can't load this YAML: ${at?.[1] ?? message}.`,
+        ...locate(at),
+        message: `tinyaml can't load this YAML: ${/^(.*) \(\d+:\d+\)$/.exec(message)?.[1] ?? message}.`,
         fix: "Fix the YAML at this position.",
       },
     ];
@@ -172,11 +199,12 @@ export function lint(text: string): Diagnostic[] {
     : [];
   return found
     .filter((_, i) => typeof values[i] === "string")
-    .map(({ token, line, column, read: { name, fix, readers } }) => ({
+    .map(({ token, line, column, offset, read: { name, fix, readers } }) => ({
       rule: "tinyaml/ambiguous-value",
       severity: "warn",
       line,
       column,
+      offset,
       message: `\`${token}\` loads as the string "${token}", but ${names.format(readers)} read${readers.length > 1 ? "" : "s"} it as a ${name}.`,
       fix,
     }));

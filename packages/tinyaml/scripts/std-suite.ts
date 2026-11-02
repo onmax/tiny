@@ -3,13 +3,25 @@
 // tinyaml/std is meant as a drop-in: whatever std parses, tinyaml/std should
 // parse to the same value, and whatever std rejects it should reject with a
 // YamlSyntaxError. The cases where they differ are listed below, exactly; a
-// new one, or a listed one that's gone, fails the run. Each side's outcome
-// on them is recorded in scripts/baselines/std-suite.json (see baseline.ts),
-// and one that changes fails the run too.
+// new one, or a listed one that's gone, fails the run. Errors are compared
+// on every case both reject, name, message, position, snippet and full
+// message. Each side's outcome on the cases that differ, and both errors
+// where they differ, are recorded in scripts/baselines/std-suite.json (see
+// baseline.ts), and one that changes, turns up or goes fails the run too.
 // Usage: node scripts/std-suite.ts [-v] [--update]
 import * as std from "@std/yaml";
 import { Baseline, describe, describeError } from "./baseline.ts";
-import { equal, type ErrorClass, expectList, onPurpose, suiteCases } from "./support.ts";
+import {
+  equal,
+  errorDifference,
+  type ErrorClass,
+  expectList,
+  onPurpose,
+  STD_ERROR_GROUPS,
+  stdError,
+  stdReason,
+  suiteCases,
+} from "./support.ts";
 
 const { parseAll, YamlSyntaxError } = await import("../src/std/index.ts");
 
@@ -64,13 +76,16 @@ const LENIENT = [
   "ZH7C",
 ];
 
-type Outcome = { ok: true; value: unknown } | { ok: false; error: string; crash: boolean };
+type Outcome =
+  | { ok: true; value: unknown }
+  | { ok: false; error: string; crash: boolean; fields?: Record<string, unknown> };
 function run(fn: () => unknown, type: ErrorClass): Outcome {
   try {
     return { ok: true, value: fn() };
   } catch (error) {
     const crash = !onPurpose(error, [type]);
-    return { ok: false, error: String((error as Error).message), crash };
+    const fields = crash ? undefined : stdError(error);
+    return { ok: false, error: String((error as Error).message), crash, fields };
   }
 }
 
@@ -78,6 +93,8 @@ const verbose = process.argv.includes("-v");
 const cases = suiteCases();
 let same = 0;
 let messages = 0;
+// Cases both reject, by how the errors differ.
+const errors = new Map<string, number>();
 const lenient: string[] = [];
 const diffs: string[] = [];
 const baseline = new Baseline("std-suite", "suite", cases.length);
@@ -91,7 +108,24 @@ for (const [i, { id, input }] of cases.entries()) {
   else if (!expected.ok && actual.ok) lenient.push(id);
   else if (expected.ok && actual.ok ? equal(expected.value, actual.value) : !expected.ok) {
     same++;
-    if (!expected.ok && !actual.ok && expected.error === actual.error) messages++;
+    if (expected.ok || actual.ok) continue;
+    if (expected.error === actual.error) messages++;
+    // Where std crashes, only the messages compare.
+    const differs =
+      expected.fields && actual.fields
+        ? errorDifference(STD_ERROR_GROUPS, expected.fields, actual.fields)
+        : expected.error === actual.error
+          ? undefined
+          : {
+              kind: "message",
+              sides: [{ message: stdReason(expected.error) }, { message: stdReason(actual.error) }],
+            };
+    if (!differs) continue;
+    errors.set(differs.kind, (errors.get(differs.kind) ?? 0) + 1);
+    baseline.add(i, `${id} ${differs.kind}`, input, undefined, {
+      std: describe(differs.sides[0]),
+      tinyaml: describe(differs.sides[1]),
+    });
     continue;
   } else diffs.push(id);
   baseline.add(i, `${id} ${lenient.at(-1) === id ? "lenient" : "differ"}`, input, undefined, {
@@ -102,6 +136,9 @@ for (const [i, { id, input }] of cases.entries()) {
 }
 console.log(
   `${same}/${cases.length} cases match @std/yaml (${messages} with the same error message), ${lenient.length} parse where std throws, ${diffs.length} differ`,
+);
+console.log(
+  `errors: ${[...errors].map(([kind, n]) => `${n} with another ${kind}`).join(", ") || "all alike"}`,
 );
 expectList("cases that differ from std", diffs, DIFFER);
 expectList("cases only tinyaml/std parses", lenient, LENIENT);

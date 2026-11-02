@@ -31,9 +31,9 @@ tinyaml ships drop-in replacements for js-yaml 4 and 5, yaml, yamljs and @std/ya
 | --------- | -------------------- | --------------: | -----------: | ----------: |
 | js-yaml 4 | `tinyaml/js-yaml`    | 14.4 → 11.7 KiB |  1.5× faster | 1.6× faster |
 | js-yaml 5 | `tinyaml/js-yaml-v5` | 17.1 → 16.1 KiB |  1.5× faster | 1.8× faster |
-| yaml      | `tinyaml/yaml`       | 29.9 → 16.7 KiB | 12.6× faster | 2.8× faster |
-| yamljs    | `tinyaml/yamljs`     |   8.8 → 7.8 KiB |  5.0× faster | 1.1× faster |
-| @std/yaml | `tinyaml/std`        | 11.3 → 10.7 KiB |  2.0× faster | 1.6× faster |
+| yaml      | `tinyaml/yaml`       | 29.9 → 16.8 KiB | 12.6× faster | 2.8× faster |
+| yamljs    | `tinyaml/yamljs`     |   8.8 → 8.0 KiB |  5.0× faster | 1.1× faster |
+| @std/yaml | `tinyaml/std`        | 11.3 → 10.6 KiB |  2.0× faster | 1.6× faster |
 
 Starting fresh with YAML? The root `tinyaml` API is 7.8 KiB, 1.8× smaller than js-yaml 4 and 3.8× smaller than yaml. It parses 19.3× faster than yaml and stringifies 12.5× faster.
 

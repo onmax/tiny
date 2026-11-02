@@ -98,4 +98,39 @@ describe("Doctor rules", () => {
       await fixture.dispose();
     }
   });
+
+  it("point at each problem past the byte order marks that start documents, whatever the line breaks", async () => {
+    const fixture = createProjectFixture({ framework: "vite" });
+    const files: Record<string, string> = {};
+    for (const [name, lines] of Object.entries({ lf: "\n", crlf: "\r\n", cr: "\r" })) {
+      files[`ambiguous-${name}.yaml`] = "\uFEFFa: no\n...\n\uFEFFx: no\n".replaceAll("\n", lines);
+      files[`invalid-${name}.yaml`] = "a\n...\n\uFEFFx: [no, }\n".replaceAll("\n", lines);
+    }
+    try {
+      const { diagnostics } = await fixture.run({
+        files,
+        extensions: [tinyaml()],
+        config: { extends: ["tinyaml/recommended"] },
+      });
+      expect(
+        diagnostics
+          .map(({ code, sources, range }) => {
+            const [, file, line, column] = /([^/]*):(\d+):(\d+)$/.exec(sources![0]!)!;
+            const at = files[file!]!.slice(range!.start, range!.start + 2).trim();
+            return `${code} ${file}:${line}:${column} ${range!.line}:${range!.column} ${at}`;
+          })
+          .sort(),
+      ).toEqual(
+        ["lf", "crlf", "cr"]
+          .flatMap((name) => [
+            `TINYAML0001 invalid-${name}.yaml:3:10 3:10 }`,
+            `TINYAML0002 ambiguous-${name}.yaml:1:4 1:4 no`,
+            `TINYAML0002 ambiguous-${name}.yaml:3:5 3:5 no`,
+          ])
+          .sort(),
+      );
+    } finally {
+      await fixture.dispose();
+    }
+  });
 });

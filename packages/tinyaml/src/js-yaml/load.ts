@@ -27,8 +27,12 @@ export interface LoadOptions {
 const plainObject = (value: unknown) => (kindOf(value) === "Object" ? "[object Object]" : value);
 
 function engine(input: string, options: LoadOptions): Engine {
-  const schema = options.schema ?? DEFAULT_SCHEMA;
-  const { compiledImplicit, compiledTypeMap } = schema;
+  // js-yaml 4 reads each option once, in this order, but a number twice.
+  const { filename, schema, onWarning, legacy, json, listener } = options as LoadOptions & {
+    listener?: unknown;
+  };
+  void listener;
+  const { compiledImplicit, compiledTypeMap } = schema || DEFAULT_SCHEMA;
   const builtinsOnly = builtin(compiledImplicit);
   const exception = (reason: string, mark: Mark, code?: number) => {
     const buffer = sanitize(input);
@@ -39,7 +43,7 @@ function engine(input: string, options: LoadOptions): Engine {
     if (code === NULL_BYTE)
       mark = { ...mark, buffer: buffer.slice(0, -1), line: 0, column: mark.position };
     return new YAMLException(reason, {
-      name: (options.filename || null)!,
+      name: (filename || null)!,
       ...mark,
       snippet: snippet(mark)!,
     });
@@ -49,11 +53,11 @@ function engine(input: string, options: LoadOptions): Engine {
     messages: MESSAGES,
     lenient: true,
     lines: true,
-    json: options.json,
-    maxDepth: options.maxDepth,
-    maxMergeKeys: options.maxTotalMergeKeys,
+    json,
+    maxDepth: typeof options.maxDepth === "number" ? options.maxDepth : 100,
+    maxMergeKeys: typeof options.maxTotalMergeKeys === "number" ? options.maxTotalMergeKeys : 10000,
     mergeSize: true,
-    legacy: options.legacy,
+    legacy,
     implicit(text) {
       // js-yaml 4 leaves an empty node null without asking the types.
       if (text !== null && (!builtinsOnly || maybeTyped(text)))
@@ -86,9 +90,7 @@ function engine(input: string, options: LoadOptions): Engine {
       return String(plainObject(key));
     },
     error: exception,
-    warn:
-      options.onWarning &&
-      ((reason, mark) => options.onWarning!.call(null, exception(reason, mark))),
+    warn: onWarning && ((reason, mark) => onWarning.call(null, exception(reason, mark))),
   };
   return self;
 }

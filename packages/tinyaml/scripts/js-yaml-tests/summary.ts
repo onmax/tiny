@@ -38,6 +38,8 @@ if (mode === "direct") {
   const entries: {
     fn: string;
     status: string;
+    /** A hash of the function, the whole input and the options, callbacks' source included. */
+    call: string;
     input: string;
     options?: string;
     expected: string;
@@ -63,19 +65,34 @@ if (mode === "direct") {
           `\n--- ${entry.fn} ${entry.status}\n${entry.input}\n  js-yaml: ${entry.expected}\n  tinyaml: ${entry.actual}`,
         );
   expectCount("calls recorded", entries.length, 1, Infinity);
+  // A call is the function, the whole input and the options, with the
+  // source of each callback in them (see wrapper.cjs). Made more than once,
+  // it must give the same outcome each time, so that its one record holds
+  // for all.
+  const outcome = (entry: (typeof entries)[number]) =>
+    `${entry.status}\n  js-yaml: ${entry.expected}\n  tinyaml: ${entry.actual}`;
+  const calls = new Map<string, (typeof entries)[number]>();
+  for (const entry of entries) {
+    const first = calls.get(entry.call);
+    if (!first) calls.set(entry.call, entry);
+    else if (outcome(entry) !== outcome(first))
+      fail(
+        `${entry.fn} ${JSON.stringify(entry.input)} ${entry.options}, made more than once, gives two outcomes:\n${outcome(first)}\n${outcome(entry)}`,
+      );
+  }
   // Each call that doesn't match exactly is a record in
-  // scripts/baselines/js-yaml-tests.json with its function, options and both
-  // outcomes, so any change to one fails, as does a call that differs anew.
-  // Calls run in no fixed order, so each is at 0, sorted by what it is.
+  // scripts/baselines/js-yaml-tests.json with its function, options,
+  // identity and both outcomes, so any change to one fails, as does a call
+  // that differs anew. Calls run in no fixed order, so each is at 0, sorted
+  // by identity.
   const baseline = new Baseline("js-yaml-tests", "replay", entries.length);
-  const call = (entry: (typeof entries)[number]) => `${entry.fn}\0${entry.input}\0${entry.options}`;
-  for (const entry of entries.sort((a, b) => (call(a) < call(b) ? -1 : 1)))
+  for (const entry of [...calls.values()].sort((a, b) => (a.call < b.call ? -1 : 1)))
     if (entry.status !== "pass")
       baseline.add(
         0,
         entry.status,
         entry.input,
-        { fn: entry.fn, options: shorten(entry.options ?? "") },
+        { fn: entry.fn, options: shorten(entry.options ?? ""), call: entry.call },
         { "js-yaml": shorten(entry.expected), tinyaml: shorten(entry.actual ?? "") },
       );
   baseline.finish();

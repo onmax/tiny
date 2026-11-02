@@ -17,6 +17,18 @@ describe("eslint plugin", () => {
     ]);
   });
 
+  // yaml-eslint-parser fails on a byte order mark past the start, and reads
+  // a lone CR as text.
+  it("reports each rule past a byte order mark, in CRLF lines", () => {
+    expect(check("\uFEFFx: no\r\nw: [false, no]\r\n[a, b]: c\r\n")).toEqual([
+      "tinyaml/invalid-yaml 2 3:10",
+    ]);
+    expect(check("\uFEFFx: no\r\nw: [false, no]\r\n")).toEqual([
+      "tinyaml/ambiguous-value 1 1:4",
+      "tinyaml/ambiguous-value 1 2:12",
+    ]);
+  });
+
   it("reports nothing for clean YAML", () => {
     expect(check('draft: false\ntitle: "no"\n')).toEqual([]);
   });

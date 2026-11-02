@@ -3,7 +3,9 @@
 // so each difference is sorted by which side agrees with the suite's own
 // expected JSON (in.json, first document; yamljs merges documents):
 //
-//   same          both load the same value, or both throw
+//   same          both load the same value, or throw the same error
+//   error ...     both throw, with another message, position (parsedLine)
+//                 or snippet, as the kind says
 //   lenient       tinyaml loads what yamljs rejects
 //   yamljs bug    the values differ and only tinyaml matches the suite
 //   tinyaml bug   the values differ and only yamljs matches the suite, or
@@ -13,8 +15,8 @@
 //   tinyaml crash tinyaml throws something other than a ParseException
 //
 // A tinyaml bug or crash fails the run, and so does a case that moves into
-// or out of NEITHER. Each side's outcome on every case that isn't the same
-// is recorded in scripts/baselines/yamljs-suite.json (see baseline.ts), with
+// or out of NEITHER. Each side's outcome on every case that isn't the same,
+// or for errors the fields that differ, is recorded in scripts/baselines/yamljs-suite.json (see baseline.ts), with
 // its kind, and a case that changes, turns up or goes fails the run too.
 // Usage: node scripts/yamljs-suite.ts [-v] [--update]
 import { createRequire } from "node:module";
@@ -22,11 +24,14 @@ import { parse, ParseException } from "../src/yamljs/index.ts";
 import { Baseline, describe, describeError } from "./baseline.ts";
 import {
   equal,
+  errorDifference,
   expectCount,
   expectList,
   onPurpose,
   suiteCases,
   type SuiteCase,
+  YAMLJS_ERROR_GROUPS,
+  yamljsError,
 } from "./support.ts";
 
 const yamljs = createRequire(import.meta.url)("yamljs") as { parse(input: string): unknown };
@@ -69,14 +74,17 @@ const NEITHER = [
   "ZVH3",
 ];
 
-type Outcome = { ok: true; value: unknown } | { ok: false; error: string; crash: boolean };
+type Outcome =
+  | { ok: true; value: unknown }
+  | { ok: false; error: string; fields: Record<string, unknown>; crash: boolean };
 // yamljs throws whatever it throws; tinyaml/yamljs must throw a ParseException.
 function run(fn: () => unknown, type?: typeof ParseException): Outcome {
   try {
     return { ok: true, value: fn() };
   } catch (error) {
     const crash = !!type && !onPurpose(error, [type]);
-    return { ok: false, error: String((error as Error)?.message ?? error), crash };
+    const fields = yamljsError(error);
+    return { ok: false, error: fields.message as string, fields, crash };
   }
 }
 
@@ -114,9 +122,12 @@ for (const [i, c] of cases.entries()) {
   const theirs = run(() => yamljs.parse(c.input));
   const ours = run(() => parse(c.input), ParseException);
   let kind: string;
+  let differs: ReturnType<typeof errorDifference>;
   if (!ours.ok && ours.crash) kind = "tinyaml crash";
-  else if (theirs.ok && ours.ok ? equal(theirs.value, ours.value) : !theirs.ok && !ours.ok)
-    kind = "same";
+  else if (!theirs.ok && !ours.ok) {
+    differs = errorDifference(YAMLJS_ERROR_GROUPS, theirs.fields, ours.fields);
+    kind = differs ? `error ${differs.kind}` : "same";
+  } else if (theirs.ok && ours.ok && equal(theirs.value, ours.value)) kind = "same";
   else if (!theirs.ok) kind = "lenient";
   else {
     const spec = expected(c);
@@ -124,11 +135,11 @@ for (const [i, c] of cases.entries()) {
       spec.known && o.ok && equal(json(o.value), spec.value, { keyOrder: false, identity: false });
     kind = right(theirs) ? "tinyaml bug" : right(ours) ? "yamljs bug" : "neither";
   }
-  counts[kind]!++;
+  counts[kind] = (counts[kind] ?? 0) + 1;
   if (kind !== "same")
     baseline.add(i, `${c.id} ${kind}`, c.input, undefined, {
-      yamljs: record(theirs),
-      tinyaml: record(ours),
+      yamljs: differs ? describe(differs.sides[0]) : record(theirs),
+      tinyaml: differs ? describe(differs.sides[1]) : record(ours),
     });
   if (kind === "neither") neither.push(c.id);
   report[kind]?.push(`${c.id}\n  yamljs:  ${show(theirs)}\n  tinyaml: ${show(ours)}`);

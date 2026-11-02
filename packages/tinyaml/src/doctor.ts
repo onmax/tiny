@@ -62,24 +62,16 @@ export default function tinyaml(options: DoctorOptions = {}) {
       create(ctx) {
         return {
           async onProjectEnd() {
-            for (const { file, text = "", diagnostics: found } of await lintProject(ctx)) {
-              // The linter's columns start past a byte order mark.
-              const starts = [text.charCodeAt(0) === 0xfeff ? 1 : 0];
-              for (const match of text.matchAll(/\r\n?|\n/g))
-                starts.push(match.index + match[0].length);
-              for (const diagnostic of found) {
-                if (diagnostic.rule !== id) continue;
-                const start = (starts[diagnostic.line - 1] ?? 0) + diagnostic.column - 1;
+            for (const { file, diagnostics: found } of await lintProject(ctx)) {
+              for (const { rule, line, column, offset, message, fix } of found) {
+                if (rule !== id) continue;
                 ctx.report(
                   diagnostics.diagnostics[rules[id].code]!({
-                    why: diagnostic.message,
-                    fix: diagnostic.fix,
-                    sources: [`${file}:${diagnostic.line}:${diagnostic.column}`],
+                    why: message,
+                    fix,
+                    sources: [`${file}:${line}:${column}`],
                   }),
-                  {
-                    file,
-                    range: { start, end: start, line: diagnostic.line, column: diagnostic.column },
-                  },
+                  { file, range: { start: offset, end: offset, line, column } },
                 );
               }
             }

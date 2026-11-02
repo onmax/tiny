@@ -100,6 +100,11 @@ export interface Engine {
    */
   document?: ((at: number, ends?: boolean) => unknown) | undefined;
   /**
+   * Read only in `repeats` mode: called where the input goes on after the
+   * first document, before the parser reads any more of it.
+   */
+  second?: ((at: number) => void) | undefined;
+  /**
    * Read only in `yaml` mode: called on each anchor, with the depth
    * and whether its node `starts`. A collection's comes as it starts and
    * again, a level up, as it ends; a scalar's once. Each alias comes too,
@@ -252,6 +257,11 @@ let maxDepth = 100;
 let lastTag = "";
 // Where the last block mapping key started; duplicate key errors point there.
 let keyAt = 0;
+// In yamljs mode, a flow mapping's key is being read.
+let mapKey = false;
+// In yamljs mode, the block sequence about to be read sits at the column of
+// the mapping it's a value in.
+let flush = false;
 let engine: Engine;
 // `engine.implicit`, read once per call: each entry's engine has its own
 // shape, so in a process that uses several, reading it per node is slow.
@@ -364,17 +374,39 @@ function isFlowIndicator(ch: number): boolean {
 }
 
 // Whether the character after `pos` is white space, or in flow context a flow
-// indicator, so the indicator at `pos` stands alone. yamljs takes any white
-// space JavaScript matches as `\s`. std's input ends in a line break, so where
-// it ends after an indicator, the input was cut at a null byte, which std
-// doesn't take for white space.
+// indicator, so the indicator at `pos` stands alone. yamljs takes other white
+// space `\s` matches where its patterns do: see `loose`. In flow, its
+// mappings take it after a key, and nothing reads past a line or paragraph
+// separator. std's input ends in a line break, so where it ends after an
+// indicator, the input was cut at a null byte, which std doesn't take for
+// white space.
 function separated(flow?: boolean): boolean {
   const next = src.charCodeAt(pos + 1);
   return (
     (first
-      ? isBlank(next) || /\s/.test(src.charAt(pos + 1))
+      ? isBlank(next) ||
+        (/\s/.test(src.charAt(pos + 1)) &&
+          (flow ? (next | 1) === 0x2029 || (mapKey && src[pos] === ":") : loose()))
       : !(repeats && pos + 1 === len) && isBlank(next)) ||
     (!!flow && isFlowIndicator(next))
+  );
+}
+
+// Whether yamljs's line patterns take any white space `\s` matches after the
+// indicator at `pos`, as its flow mappings do after a key: after the `-` that
+// starts a line or the entry of a `-` before it that holds a key, and after
+// the `:` of a key that starts the line or such an entry. Their `.` stops at
+// a line or paragraph separator, which may only end the line.
+function loose(): boolean {
+  const dash = src[pos] === "-";
+  const at = dash ? pos : keyAt;
+  const before = src.slice(lineStart, at);
+  const rest = src.slice(pos + 1, lineEnd(pos));
+  return (
+    (dash
+      ? /^ *(-\s+)*$/.test(before) && (!before.trim() || /:(\s|$)/.test(rest))
+      : src[pos] === ":" && /^ *(-\s*)*([!&]\S*\s+)*$/.test(before) && !/[[{]/.test(src[at]!)) &&
+    !/[\n\u2028\u2029]/.test(src.slice(at, pos) + rest.trim())
   );
 }
 
@@ -516,6 +548,8 @@ export function parse(input: string, use: Engine): unknown[] {
     let start = 0;
     for (;;) {
       let col = skipLines();
+      // The input goes on past a null byte, where the parser's copy ends.
+      if (repeats && docs.length && (col >= 0 || nul >= 0)) use.second?.(pos);
       if (lenient && warns && start < 0) start = pos;
       let directives = false;
       let directiveEnd = -1;
@@ -809,6 +843,18 @@ function parseValue(indent: number, inSeq: boolean, compact = inSeq, outer?: Pro
   // finds the input ends there.
   if (!spec && !inSeq) frame(pos);
   skipSpace();
+  // yamljs's line patterns skip any white space `\s` matches before a node,
+  // all of it below a space or past ASCII. Where YAML reads what follows as
+  // an indicator or no plain scalar, the white space begins a plain scalar
+  // instead, which yamljs's trim makes the same.
+  if (first) {
+    const at = pos;
+    const ch = src.charCodeAt(at);
+    if (ch > 159 || (ch < SPACE && ch !== LF)) {
+      while (/[^\S\n]/.test(src.charAt(pos))) pos++;
+      if (/[-?:,\]}%@`]/.test(src.charAt(pos))) pos = at;
+    }
+  }
   const col = pos - lineStart;
   // Something before us on this line: block collections can't start here,
   // except in a compact `- ` entry. Where that matters, the node follows an
@@ -855,6 +901,7 @@ function parseValue(indent: number, inSeq: boolean, compact = inSeq, outer?: Pro
         pos = lineStart + indent;
         fail(E.TAB_INDENT);
       }
+      if (first) flush = true;
       return finish(parseBlockSeq(next), merged);
     }
     // js-yaml tries an empty document as a key where the next one starts.
@@ -1290,10 +1337,16 @@ function parseNextKey(allowTab: boolean, indent: number): unknown {
 
 function parseBlockSeq(col: number): unknown[] {
   const seq: unknown[] = claim([]);
+  const unindented = first && flush;
+  if (first) flush = false;
   for (;;) {
     const line = lineStart;
+    // yamljs ends a sequence at its mapping's column at a line that doesn't
+    // start with `- ` or is `-`, and fails at it.
+    if (unindented && !" \n".includes(src.charAt(pos + 1))) fail(E.MAP_INDENT);
     pos++;
-    if (lenient && afterEmpty(col)) {
+    // yamljs ends a block at a line indented less.
+    if (lenient && !first && afterEmpty(col)) {
       seq.push(finish(null));
       continue;
     }
@@ -1664,6 +1717,7 @@ function parseFlowCollection(indent: number): unknown {
     }
     const at = pos;
     const line = lineStart;
+    if (first) mapKey = isMap;
     const empty = (explicit && (ch === COMMA || ch === close)) || indicator(COLON, true);
     if (empty) plain = true;
     else if (ch === COMMA) fail(E.EMPTY_ENTRY);
@@ -1671,6 +1725,7 @@ function parseFlowCollection(indent: number): unknown {
     crossed = false;
     if (!spec) frame(at);
     const node = empty ? finish(null) : parseFlowNode(indent);
+    if (first) mapKey = false;
     const broken = skipFlowSpace(indent);
     const multiline = broken || (crossed as boolean | 1) === true;
     if (yaml) crossed ||= was;

@@ -68,6 +68,7 @@ site.yaml:2:1 tinyaml/invalid-yaml tinyaml can't load this YAML: duplicated mapp
         severity: "warn",
         line: 1,
         column: 8,
+        offset: 7,
         message: NO,
         fix: BOOLEAN,
       },

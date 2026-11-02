@@ -585,4 +585,50 @@ folded: >
   it("reads no compact mapping after a key with properties but no content", () => {
     expect(outcome(() => load("&a : b: c"))).toEqual(outcome(() => jsYaml.load("&a : b: c")));
   });
+
+  it("reads its options in js-yaml 4's order and count", () => {
+    // Through a getter and every trap, with options neither library knows.
+    const options = (log: string[], target: Record<string, unknown>) => {
+      Object.defineProperty(target, "maxDepth", {
+        get: () => (log.push("maxDepth"), 50),
+        enumerable: true,
+      });
+      return new Proxy(Object.assign(target, { other: 0 }), {
+        get: (t, key, r) => (log.push(`get ${String(key)}`), Reflect.get(t, key, r)),
+        has: (t, key) => (log.push(`has ${String(key)}`), Reflect.has(t, key)),
+        ownKeys: (t) => (log.push("ownKeys"), Reflect.ownKeys(t)),
+        getOwnPropertyDescriptor: (t, key) => (
+          log.push(`descriptor ${String(key)}`),
+          Reflect.getOwnPropertyDescriptor(t, key)
+        ),
+      }) as never;
+    };
+    const runs: [(input: string, options: never) => unknown, Record<string, unknown>][] = [
+      [load, { filename: "f", json: true, maxTotalMergeKeys: 5, onWarning: () => {} }],
+      [loadAll, { schema: CORE_SCHEMA, legacy: true, listener: undefined }],
+    ];
+    for (const input of ["a: 1\na: 1", "%YAML 1.1\n---\na", "a: [", "a\0"])
+      for (const [i, [run, target]] of runs.entries()) {
+        const reads = (fn: typeof run) => {
+          const log: string[] = [];
+          try {
+            fn(input, options(log, { ...target }));
+          } catch {}
+          return log;
+        };
+        expect(reads(run), input).toEqual(reads([jsYaml.load, jsYaml.loadAll][i] as never));
+      }
+    // js-yaml 4 reads a number twice, and keeps the second.
+    let n = 0;
+    const maxDepth = {
+      get maxDepth() {
+        return ++n === 1 ? 1 : 100;
+      },
+    };
+    expect(load("[[a]]", maxDepth)).toEqual([["a"]]);
+    expect(n).toBe(2);
+    n = 0;
+    expect(jsYaml.load("[[a]]", maxDepth as never)).toEqual([["a"]]);
+    expect(n).toBe(2);
+  });
 });

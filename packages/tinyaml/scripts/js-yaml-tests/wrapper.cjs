@@ -1,13 +1,22 @@
 // Stands in for js-yaml while its test suite runs, and appends each call's
 // outcome to $TINYAML_RESULTS. diff.mjs points `js-yaml` here.
+const { createHash } = require("node:crypto");
 const { appendFileSync } = require("node:fs");
 const { inspect } = require("node:util");
 const path = require("node:path");
 const real = require(path.resolve(__dirname, "../../.cache/js-yaml4/index.js"));
 const lite = require("../../src/js-yaml/index.ts");
-const { equal } = require("../support.ts");
+const { equal, fingerprint } = require("../support.ts");
 
 const out = process.env.TINYAML_RESULTS;
+
+// A call's identity, which summary.ts tells calls apart by: the function,
+// and the whole input and options with their callbacks' source.
+const identity = (fn, input, options) =>
+  createHash("sha256")
+    .update(`${fn}\0${fingerprint(input)}\0${fingerprint(options)}`)
+    .digest("hex")
+    .slice(0, 16);
 
 // A crash is an error that isn't the library's own YAMLException.
 function attempt(fn, lib) {
@@ -58,13 +67,13 @@ function compare(fn, input, options, run) {
     if (out)
       appendFileSync(
         out,
-        `${JSON.stringify({ fn, status, input: subject, options: inspect(options, { depth: 4, breakLength: Infinity }).replaceAll(process.cwd(), "."), expected: show(expected), actual: show(actual) })}\n`,
+        `${JSON.stringify({ fn, status, call: identity(fn, input, options), input: subject, options: inspect(options, { depth: 4, breakLength: Infinity }).replaceAll(process.cwd(), "."), expected: show(expected), actual: show(actual) })}\n`,
       );
   } catch (error) {
     if (out)
       appendFileSync(
         out,
-        `${JSON.stringify({ fn, status: "harness", input: String(input).slice(0, 200), expected: String(error) })}\n`,
+        `${JSON.stringify({ fn, status: "harness", call: `harness ${String(input).slice(0, 200)}`, input: String(input).slice(0, 200), expected: String(error) })}\n`,
       );
   }
 }
