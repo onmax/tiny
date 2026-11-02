@@ -15,6 +15,11 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # CI makes no commits. Without the hook dispatcher, the packages' `vp config`
+  # prepare scripts don't race each other for .git/config during install.
+  VP_GIT_HOOKS: "0"
+
 jobs:
   check:
     uses: ./.github/workflows/ci.yml
