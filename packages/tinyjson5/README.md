@@ -248,11 +248,11 @@ Parses JSON5 and returns the value. `parse(text, options)` works too. The revive
 
 Writes JSON5. The replacer is a function or a list of keys. `space` is a number of spaces, rounded down and at most 10, or a string, of which the first 10 characters are used; with no indent, as for 0, 0.5 or `""`, the output is on one line.
 
-| Option     | Default | What it does                                                                                                                                                          |
-| ---------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `replacer` | none    | A function that changes each value, or a list of the keys to keep.                                                                                                    |
-| `space`    | none    | Spaces per level, rounded down and at most 10, or a string, its first 10 characters. With an indent, each object and array that isn't empty ends in a trailing comma. |
-| `quote`    | auto    | `'` or `"`. Omitted or `null`: `'`, or `"` when the string has more `'` than `"`. Anything else throws a `TypeError`.                                                 |
+| Option     | Default | What it does                                                                                                                                                                         |
+| ---------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `replacer` | none    | A function that changes each value, or a list of the keys to keep.                                                                                                                   |
+| `space`    | none    | Spaces per level, rounded down and at most 10, or a string, its first 10 characters. With an indent, each object or array written with at least one member ends in a trailing comma. |
+| `quote`    | auto    | `'` or `"`. Omitted or `null`: `'`, or `"` when the string has more `'` than `"`. Anything else throws a `TypeError`.                                                                |
 
 Keys that are identifiers are written bare. `NaN`, `Infinity` and `-Infinity` are written as such, `-0` as `0`. `toJSON5()` is used before `toJSON()`. A cycle throws `TypeError: Converting circular structure to JSON5`.
 
