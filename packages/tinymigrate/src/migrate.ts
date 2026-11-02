@@ -62,17 +62,28 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
   for (const file of project.files) {
     const before = readFileSync(join(project.root, file), "utf8");
     if (!picked.some(({ library }) => before.includes(library.name))) continue;
+    // An original the file may import without tinymigrate reading it stays,
+    // everywhere if no one package.json owns its imports.
+    const keep = ({ library, manifest }: Found) => {
+      const owner = ownerOf(declared, library.name, file);
+      blocked.add(`${owner?.manifest ?? manifest}\0${library.name}`);
+    };
     const result = findSpecifiers(before, file);
     if ("error" in result) {
       skipped.push({ file, reason: `can't parse it: ${result.error}` });
-      // Any original it may import stays, everywhere if no one package.json
-      // owns its imports.
-      for (const { library, manifest } of picked) {
-        if (!before.includes(library.name)) continue;
-        const owner = ownerOf(declared, library.name, file);
-        blocked.add(`${owner?.manifest ?? manifest}\0${library.name}`);
-      }
+      for (const found of picked) if (before.includes(found.library.name)) keep(found);
       continue;
+    }
+    // A component's markup can import too, as in Svelte's `{#await import("yaml")}`.
+    for (const found of new Map(picked.map((found) => [found.library.name, found])).values()) {
+      const name = found.library.name.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+      if (!result.markup || !new RegExp(`["'\`]${name}(?:/[^"'\`]*)?["'\`]`).test(result.markup))
+        continue;
+      skipped.push({
+        file,
+        reason: `it names ${found.library.name} outside its <script> blocks, which tinymigrate doesn't rewrite`,
+      });
+      keep(found);
     }
     const decisions = new Map<Specifier, { target?: string; reason?: string }>();
     for (const specifier of result.specifiers) {

@@ -194,6 +194,27 @@ describe("plan", () => {
     });
   });
 
+  it("keeps an original a component's markup names", () => {
+    const root = project({
+      "package.json": { dependencies: { "js-yaml": "^4.1.0" } },
+      "a.svelte": `<script>\n  import { load } from "js-yaml";\n</script>\n{#await import("js-yaml") then yaml}{/await}\n`,
+      "b.vue": `<script setup>\nimport { load } from "js-yaml";\n</script>\n<template><p>js-yaml</p></template>\n`,
+    });
+    const result = migrate(root, ["js-yaml"]);
+    expect(read(root, "a.svelte")).toContain(`import { load } from "tinyaml/js-yaml";`);
+    expect(read(root, "b.vue")).toContain(`import { load } from "tinyaml/js-yaml";`);
+    expect(result.skipped).toEqual([
+      {
+        file: "a.svelte",
+        reason: "it names js-yaml outside its <script> blocks, which tinymigrate doesn't rewrite",
+      },
+    ]);
+    expect(JSON.parse(read(root, "package.json")).dependencies).toEqual({
+      "js-yaml": "^4.1.0",
+      tinyaml: "^1.2.0",
+    });
+  });
+
   it("reports a file it can't parse, and leaves it", () => {
     const root = project({
       "package.json": { dependencies: { ini: "^7.0.0" } },

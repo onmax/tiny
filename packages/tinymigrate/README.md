@@ -64,7 +64,7 @@ Some imports are reported and left as they are:
 - A `require()` of a drop-in whose only export is its default, such as strip-json-comments: `require()` of an ES module gives `{ default }`, where the original gave the function.
 - Every import of a library in a file that mocks it with `vi.mock` or `jest.mock`, when one of those imports has to stay, since the mock stands in for all of them.
 
-The original then stays in package.json too, so those imports still resolve. So does an original whose command a package.json script runs, such as `json5` or `js-yaml`, since the drop-ins have no command-line tools. A file the parser can't read is reported and left as it is, and so are the originals it may import.
+The original then stays in package.json too, so those imports still resolve. So does an original whose command a package.json script runs, such as `json5` or `js-yaml`, since the drop-ins have no command-line tools. A file the parser can't read is reported and left as it is, and so are the originals it may import. An original a component names outside its scripts, as in Svelte's `{#await import("js-yaml")}`, stays too, since only the scripts are rewritten.
 
 In a workspace, an import takes the version of the nearest package.json above it that depends on the library.
 

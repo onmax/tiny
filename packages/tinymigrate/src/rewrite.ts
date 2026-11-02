@@ -28,20 +28,27 @@ const MOCKS = new Map([
   ["jest", new Set(["mock", "doMock", "unmock", "dontMock", "requireActual", "requireMock"])],
 ]);
 
-/** The module specifiers in a file, or the parser's first error. */
+/**
+ * The module specifiers in a file, or the parser's first error. For a
+ * component, `markup` is the file outside its scripts, which isn't read.
+ */
 export function findSpecifiers(
   code: string,
   file: string,
-): { specifiers: Specifier[] } | { error: string } {
+): { specifiers: Specifier[]; markup?: string } | { error: string } {
   if (!COMPONENT.test(file)) return parseBlock(code, file, 0, langOf(file));
   const specifiers: Specifier[] = [];
+  let markup = "";
+  let last = 0;
   for (const block of scriptBlocks(code, file)) {
     const found = parseBlock(block.code, file, block.offset, block.lang);
     if ("error" in found) return found;
     specifiers.push(...found.specifiers);
+    markup += code.slice(last, block.offset);
+    last = block.offset + block.code.length;
   }
   for (const specifier of specifiers) specifier.line = lineOf(code, specifier.start);
-  return { specifiers };
+  return { specifiers, markup: markup + code.slice(last) };
 }
 
 /** `code` with each specifier's text replaced by `replace`'s result, where it gives one. */

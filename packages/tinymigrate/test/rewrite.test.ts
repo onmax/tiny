@@ -194,11 +194,14 @@ describe("components", () => {
     expect(migrate(code, "a.astro")).toBe(code);
   });
 
-  it("gives lines in the whole file", () => {
+  it("gives lines in the whole file, and the markup outside the scripts", () => {
     const found = findSpecifiers(
       `<template/>\n<script>\nimport y from "js-yaml";\n</script>`,
       "a.vue",
     );
-    expect(found).toEqual({ specifiers: [expect.objectContaining({ value: "js-yaml", line: 3 })] });
+    expect(found).toEqual({
+      specifiers: [expect.objectContaining({ value: "js-yaml", line: 3 })],
+      markup: "<template/>\n<script></script>",
+    });
   });
 });
