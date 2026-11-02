@@ -18,11 +18,13 @@ Smaller, faster, dependency-free parsers you can drop in for the libraries you a
 
 ## Packages
 
-| Package | Reads and writes | Replaces |
-| --- | --- | --- |
-| [tinyaml](./packages/tinyaml) | YAML | js-yaml 4 and 5, yaml, yamljs, @std/yaml |
-| [tinyjson5](./packages/tinyjson5) | JSON5 | json5 2.2.3 |
-| [tinyini](./packages/tinyini) | INI | ini 1.3.8, 2 to 4.0 and 4.1.3 to 7, @one-ini/wasm 0.1.1 to 0.2 |
+| Package                           | Reads and writes |                                 Bundle, gzip | Replaces                                                       |
+| --------------------------------- | ---------------- | -------------------------------------------: | -------------------------------------------------------------- |
+| [tinyaml](./packages/tinyaml)     | YAML             | [7.7 KiB](./packages/tinyaml#size-and-speed) | js-yaml 4 and 5, yaml, yamljs, @std/yaml                       |
+| [tinyjson5](./packages/tinyjson5) | JSON5            |         [3.4 KiB](./packages/tinyjson5#size) | json5 2.2.3                                                    |
+| [tinyini](./packages/tinyini)     | INI              |           [1.3 KiB](./packages/tinyini#size) | ini 1.3.8, 2 to 4.0 and 4.1.3 to 7, @one-ini/wasm 0.1.1 to 0.2 |
+
+Bundle sizes include every export of each package's root API, minified and gzipped. See [Size and speed](#size-and-speed) for the drop-in replacements.
 
 Each package is published on its own, so install only the ones you use:
 
