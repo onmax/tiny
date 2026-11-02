@@ -94,7 +94,7 @@ async function parsePage(slug: string, section?: Section) {
   const document = { nodes: parsed.nodes, frontmatter: parsed.data, meta: parsed.meta };
   const field = (key: string) => text(document.frontmatter[key]);
   const [title, label, description] = [field("title"), field("label"), field("description")];
-  const [headline, tagline, install] = [field("headline"), field("tagline"), field("install")];
+  const [headline, tagline, command] = [field("headline"), field("tagline"), field("command")];
   if (!title || !description) throw new Error(`${file} needs a title and a description.`);
   return {
     slug,
@@ -106,7 +106,7 @@ async function parsePage(slug: string, section?: Section) {
     description,
     headline,
     tagline,
-    install,
+    command,
     toc: toc(document.nodes),
   };
 }
@@ -206,26 +206,10 @@ const pageActions = (slug: string) =>
   `<a href="https://claude.ai/new?q=${askAbout(slug)}" target="_blank" rel="noopener">${pageMenuIcons.claude}Open in Claude</a>` +
   `</div></details></div>`;
 
-// The install command for each package manager, copied on click.
-function installer(install: string) {
-  const packages = install.replace(/^pnpm add /, "");
-  const commands = {
-    pnpm: `pnpm add ${packages}`,
-    npm: `npm install ${packages}`,
-    yarn: `yarn add ${packages}`,
-    bun: `bun add ${packages}`,
-  };
-  return `<div class="installer" data-commands='${escapeHtml(JSON.stringify(commands))}'>
-<div class="installer-bar"><div class="seg installer-pm" role="group" aria-label="Package manager">${Object.keys(
-    commands,
-  )
-    .map(
-      (pm, i) => `<button type="button" data-pm="${pm}" aria-pressed="${i === 0}">${pm}</button>`,
-    )
-    .join("")}</div></div>
-<button type="button" class="install" data-copy="${escapeHtml(commands.pnpm)}" title="Copy the install command"><span aria-hidden="true">$</span><code>${escapeHtml(commands.pnpm)}</code><span class="install-hint">${copyIcon}${checkIcon}</span></button>
-</div>`;
-}
+// The command that moves a project to the drop-ins, copied on click.
+const migrate = (command: string) =>
+  `<div class="installer"><button type="button" class="install" data-copy="${escapeHtml(command)}" title="Copy the command"><span aria-hidden="true">$</span><code>${escapeHtml(command)}</code><span class="install-hint">${copyIcon}${checkIcon}</span></button>
+<p class="installer-note">Rewrites your imports and package.json. Run it in your project.</p></div>`;
 
 // The packages as tiles, each a link to its first page.
 const packageGrid = () =>
@@ -238,8 +222,8 @@ const packageGrid = () =>
 
 const footer = `<footer><span>Built on <a href="https://comark.dev">Comark</a>.</span><span>Made by <a href="https://onmax.me">Maxi García</a></span></footer>`;
 
-// The tabs' and switches' sliding indicator, the copy buttons, the package manager switch, the outline's current
-// heading, and the rail's Escape. A block, so the docs app can run it again for each page it navigates to.
+// The tabs' and switches' sliding indicator, the copy buttons, the outline's current heading, and the rail's Escape.
+// A block, so the docs app can run it again for each page it navigates to.
 const script = `{
 const reduce = matchMedia("(prefers-reduced-motion: reduce)");
 const indicate = (group, selector) => {
@@ -266,15 +250,7 @@ if (!window.comarkPageMenu) {
     if (menu) { menu.open = false; menu.querySelector("summary").focus() }
   });
 }
-for (const box of document.querySelectorAll(".installer")) {
-  const commands = JSON.parse(box.dataset.commands), field = box.querySelector(".install");
-  box.querySelector(".installer-pm").addEventListener("click", e => {
-    const b = e.target.closest("[data-pm]"); if (!b) return;
-    for (const x of box.querySelectorAll("[data-pm]")) x.setAttribute("aria-pressed", x === b);
-    field.dataset.copy = commands[b.dataset.pm]; field.querySelector("code").textContent = commands[b.dataset.pm];
-  });
-  field.addEventListener("click", () => copied(field, field.dataset.copy));
-}
+for (const field of document.querySelectorAll(".install")) field.addEventListener("click", () => copied(field, field.dataset.copy));
 const links = [...document.querySelectorAll(".toc a")];
 const spy = new IntersectionObserver(entries => {
   for (const e of entries) if (e.isIntersecting) for (const a of links) a.toggleAttribute("data-active", a.hash === "#" + e.target.id);
@@ -503,8 +479,8 @@ shell({
   title: `${landing.title} · ${landing.description}`,
   description: landing.tagline,
   body: `<div class="landing">
-<div class="landing-hero"><div><img class="hero-mark" src="/logo.svg" alt="" width="72" height="72"><h1>${escapeHtml(landing.headline)}</h1><p>${escapeHtml(landing.tagline)}</p>${pageActions("")}</div>
-<div>${installer(landing.install)}<div class="actions"><a class="button primary" href="/tinyaml/guide/getting-started/">Get started${siteIcon("arrow-right", 15)}</a><a class="button" href="${github}">${githubIcon}GitHub</a></div></div></div>
+<div class="landing-hero"><div><img class="hero-mark" src="/logo.svg" alt="" width="72" height="72"><h1>${escapeHtml(landing.headline)}</h1><p>${escapeHtml(landing.tagline)}</p></div>
+<div>${migrate(landing.command)}<div class="actions"><a class="button primary" href="/tinyaml/guide/getting-started/">Get started${siteIcon("arrow-right", 15)}</a><a class="button" href="${github}">${githubIcon}GitHub</a></div></div></div>
 <main>${await render(landing, { packages: packageGrid })}</main>
 ${footer}
 </div>

@@ -1104,19 +1104,9 @@ nav > .nav-group:first-child {
   margin-top: 1.75rem;
 }
 
-.installer-bar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.installer .seg button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.7rem;
+.landing-hero .installer-note {
+  margin: 0.5rem 0 0;
+  color: var(--muted);
   font-size: 0.8125rem;
 }
 

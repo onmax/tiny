@@ -3,7 +3,7 @@ title: tiny
 description: Smaller, faster drop-ins for js-yaml, yaml, yamljs, @std/yaml, json5 and ini.
 headline: Smaller, faster parsers. Same API.
 tagline: Drop-in replacements for the YAML, JSON5 and INI libraries you already use, with no dependencies. Change one import and keep your code.
-install: pnpm add tinyaml tinyjson5 tinyini
+command: npx tinyswap
 ---
 
 ::code-group
