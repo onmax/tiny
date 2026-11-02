@@ -3,6 +3,8 @@ title: ESLint
 description: Run the tinyaml linter rules from ESLint with tinyaml/eslint.
 ---
 
+![VS Code with ESLint and tinyaml/eslint: draft: no and published: 2026-11-01 are underlined, and the hover says other YAML readers load no as a boolean](/demos/linter.png)
+
 `tinyaml/eslint` runs the [linter's rules](/tinyaml/linter/overview/#rules) as ESLint rules, so YAML problems show up wherever ESLint runs, in your editor and in CI.
 
 ## Setup

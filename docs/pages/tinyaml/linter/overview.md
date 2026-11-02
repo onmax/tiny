@@ -3,6 +3,8 @@ title: Linter
 description: Check YAML the way tinyaml loads it, from the command line, as a library, in ESLint or in Vite Doctor.
 ---
 
+![VS Code with ESLint and tinyaml/eslint: draft: no and published: 2026-11-01 are underlined, and the hover says other YAML readers load no as a boolean](/demos/linter.png)
+
 The linter checks YAML files the way tinyaml loads them. It reports YAML tinyaml can't load, with the line and column, and plain values that load as strings here but that other YAML readers take for a boolean, a number, or a date.
 
 It runs from the command line, as a library, as an [ESLint](/tinyaml/linter/eslint/) plugin, or as a [Vite Doctor](/tinyaml/linter/vite-doctor/) extension, and all four ship with tinyaml. The ESLint plugin needs ESLint installed and the Vite Doctor extension needs Vite Doctor. The command line and the library need nothing else.

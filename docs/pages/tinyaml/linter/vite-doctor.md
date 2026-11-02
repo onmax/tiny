@@ -3,6 +3,8 @@ title: Vite Doctor
 description: Add the tinyaml linter rules to a Vite Doctor run with tinyaml/doctor.
 ---
 
+![A terminal running Vite Doctor with tinyaml/doctor: two TINYAML0002 warnings for site.yaml, each with its fix, location and docs link](/demos/doctor.png)
+
 `tinyaml/doctor` adds the [linter's rules](/tinyaml/linter/overview/#rules) to a [Vite Doctor](https://github.com/onmax/vite-doctor) run, so one report covers your code and your YAML.
 
 ## Setup

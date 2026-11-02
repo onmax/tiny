@@ -76,6 +76,8 @@ The rules are ini's, minus what ini keeps only for compatibility. [`scripts/root
 
 ## Typed imports
 
+![VS Code with config.ini beside app.ts, which imports it: hovering config shows the type TypeScript gives the INI file, and a misspelled key is an error](./.github/typed-imports.png)
+
 tinyini is also a TypeScript 7.1 [content mapper](https://devblogs.microsoft.com/typescript/announcing-typescript-7-1-beta/). Register it in `tsconfig.json`, and TypeScript types an import of an INI file as it types a `.json` one under `resolveJsonModule`:
 
 ```jsonc

@@ -59,6 +59,8 @@ Keys that are identifiers are written bare. `NaN`, `Infinity` and `-Infinity` ar
 
 ## Typed imports
 
+![VS Code with config.json5 beside app.ts, which imports it: hovering config shows the type TypeScript gives the JSON5 file, and a misspelled key is an error](/demos/tinyjson5-typed-imports.png)
+
 tinyjson5 is also a TypeScript 7.1 [content mapper](https://devblogs.microsoft.com/typescript/announcing-typescript-7-1-beta/). Register it in `tsconfig.json`, and TypeScript types an import of a JSON5 file as it types a `.json` one under `resolveJsonModule`:
 
 ```jsonc
