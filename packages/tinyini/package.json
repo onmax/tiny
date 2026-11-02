@@ -1,6 +1,6 @@
 {
   "name": "tinyini",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Tiny, fast INI parser and stringifier, with drop-in replacements for ini and @one-ini/wasm",
   "keywords": [
     "config",
