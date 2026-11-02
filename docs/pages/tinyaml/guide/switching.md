@@ -5,7 +5,7 @@ description: Change one import to move from js-yaml, yaml, yamljs or @std/yaml, 
 
 Each subpath exports the functions, options and types of the library it replaces, apart from the gaps listed below, so switching is a change to the import line. The sizes are esbuild bundles of the published files, minified, then gzip -9. The last column is that library's own test suite, run with tinyaml in its place.
 
-`npx tinymigrate` makes this change for you: it rewrites the imports and swaps the dependency in package.json.
+`npx tinyswap` makes this change for you: it rewrites the imports and swaps the dependency in package.json.
 
 | Library         | Change the import to   | Size, gzip      | Its own tests on tinyaml |
 | --------------- | ---------------------- | --------------- | ------------------------ |

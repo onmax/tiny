@@ -92,7 +92,7 @@ The rules are ini's, minus what ini keeps only for compatibility. [`scripts/root
 
 Each subpath exports the functions of the library it replaces, so switching is a change to the import line. The last column is that library's own test suite, run with tinyini in its place.
 
-`npx tinymigrate` makes this change for you: it rewrites the imports and swaps the dependency in package.json.
+`npx tinyswap` makes this change for you: it rewrites the imports and swaps the dependency in package.json.
 
 | Library                   | Change the import to     | Size, gzip      | Its own tests on tinyini                    |
 | ------------------------- | ------------------------ | --------------- | ------------------------------------------- |
