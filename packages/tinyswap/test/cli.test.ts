@@ -1,11 +1,17 @@
 // Runs tinyswap as a user would. Without a terminal it only runs with
 // --yes or --dry-run, which is how these tests drive it.
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import { installed, project, read, write, type Files } from "./fixture.ts";
 
 const cli = resolve("src/cli.ts");
+
+// tinyswap asks for its own version of the tiny packages, or the latest
+// before the first release.
+const { version } = JSON.parse(readFileSync("package.json", "utf8")) as { version: string };
+const range = version === "0.0.0" ? "latest" : `^${version}`;
 
 const run = (cwd: string, ...args: string[]) => {
   const { status, stdout, stderr } = spawnSync(process.execPath, [cli, ...args], {
@@ -66,8 +72,8 @@ describe("tinyswap", () => {
     );
     expect(output).toContain(`     "js-yaml": "^4.1.0",
 -    "ini": "^7.0.0"
-+    "tinyaml": "latest",
-+    "tinyini": "latest"`);
++    "tinyaml": "${range}",
++    "tinyini": "${range}"`);
     expect(output).toContain("Dry run: nothing was written.");
     expect(read(root, "src/config.ts")).toBe(
       `import yaml from "js-yaml";\nimport ini from "ini";\n`,
@@ -89,7 +95,7 @@ describe("tinyswap", () => {
     );
     expect(JSON.parse(read(root, "package.json"))).toEqual({
       name: "app",
-      dependencies: { "js-yaml": "^4.1.0", tinyaml: "latest", tinyini: "latest" },
+      dependencies: { "js-yaml": "^4.1.0", tinyaml: range, tinyini: range },
     });
     expect(output).toContain("Found 3 imports to change in 2 files");
     expect(output).toContain("= js-yaml (kept: an import of it couldn't move)");
@@ -106,7 +112,7 @@ describe("tinyswap", () => {
     );
     expect(JSON.parse(read(root, "package.json")).dependencies).toEqual({
       "js-yaml": "^4.1.0",
-      tinyini: "latest",
+      tinyini: range,
     });
   });
 
