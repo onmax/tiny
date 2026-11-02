@@ -237,7 +237,7 @@ const config: {| name: string |} = { name: "app" };`,
     expect(result.skipped).toEqual([
       {
         file: "a.svelte",
-        reason: "it names js-yaml outside its <script> blocks, which tinymigrate doesn't rewrite",
+        reason: "it names js-yaml outside its <script> blocks, which tinyswap doesn't rewrite",
       },
     ]);
     expect(JSON.parse(read(root, "package.json")).dependencies).toEqual({

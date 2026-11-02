@@ -19,7 +19,7 @@ export type Files = Record<string, string | object>;
 
 /** A project with these files, JSON for objects, committed to git if `git` is set. */
 export function project(files: Files, { git = false } = {}): string {
-  const root = mkdtempSync(join(cache, "tinymigrate-"));
+  const root = mkdtempSync(join(cache, "tinyswap-"));
   made.push(root);
   write(root, files);
   if (git) {

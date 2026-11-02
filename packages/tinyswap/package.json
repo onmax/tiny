@@ -1,5 +1,5 @@
 {
-  "name": "tinymigrate",
+  "name": "tinyswap",
   "version": "0.0.0",
   "description": "Moves a project from js-yaml, yaml, json5, ini and the other libraries tinyaml, tinyjson5 and tinyini replace, by rewriting its imports and package.json",
   "keywords": [
@@ -12,17 +12,17 @@
     "tinyjson5",
     "yaml"
   ],
-  "homepage": "https://github.com/onmax/tiny/tree/main/packages/tinymigrate#readme",
+  "homepage": "https://github.com/onmax/tiny/tree/main/packages/tinyswap#readme",
   "bugs": "https://github.com/onmax/tiny/issues",
   "license": "MIT",
   "author": "onmax",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/onmax/tiny.git",
-    "directory": "packages/tinymigrate"
+    "directory": "packages/tinyswap"
   },
   "bin": {
-    "tinymigrate": "./dist/cli.mjs"
+    "tinyswap": "./dist/cli.mjs"
   },
   "files": [
     "dist"

@@ -1,12 +1,12 @@
-# tinymigrate
+# tinyswap
 
 Moves a project to the [tinyaml](../tinyaml), [tinyjson5](../tinyjson5) and [tinyini](../tinyini) drop-ins. It finds which of the libraries they replace your package.json files depend on, picks the subpath for the version you have installed, rewrites the imports, and swaps the dependencies.
 
 ```sh
-npx tinymigrate [dir]
+npx tinyswap [dir]
 ```
 
-`dir` defaults to the current directory. tinymigrate isn't on npm until the first release. Until then, clone this repository, run `pnpm install` and `pnpm build`, and run `node packages/tinymigrate/dist/cli.mjs`.
+`dir` defaults to the current directory. tinyswap isn't on npm until the first release. Until then, clone this repository, run `pnpm install` and `pnpm build`, and run `node packages/tinyswap/dist/cli.mjs`.
 
 ## What it does
 
@@ -60,7 +60,7 @@ Only the text between the quotes changes, so quotes, spacing and comments stay a
 Some imports are reported and left as they are:
 
 - A subpath the drop-in has no equivalent for, such as `yaml/util` or `js-yaml/dist/js-yaml.mjs`.
-- A name the drop-in doesn't export, such as `import { parseDocument } from "yaml"` or `import jju from "jju"`. tinymigrate checks the names an `import`, an `export … from`, a destructured `require()` or a `require().name` reads. It can't check what code does with a namespace import or a whole `require()` result, nor type-only imports.
+- A name the drop-in doesn't export, such as `import { parseDocument } from "yaml"` or `import jju from "jju"`. tinyswap checks the names an `import`, an `export … from`, a destructured `require()` or a `require().name` reads. It can't check what code does with a namespace import or a whole `require()` result, nor type-only imports.
 - A `require()` of a drop-in whose only export is its default, such as strip-json-comments: `require()` of an ES module gives `{ default }`, where the original gave the function.
 - Every import of a library in a file that mocks it with `vi.mock` or `jest.mock`, when one of those imports has to stay, since the mock stands in for all of them.
 
@@ -72,7 +72,7 @@ In a workspace, an import takes the version of the nearest package.json above it
 
 Each library moved is removed, along with its `@types` package if there is one, and the tiny package is added to the same field. When one tiny package replaces libraries in different fields, it goes in the first of `dependencies`, `optionalDependencies` and `devDependencies`. If the tiny package is already there, its range stays. The file keeps its indentation and line endings, and a new key goes where it sorts if the keys were sorted.
 
-The range added is the version of tinymigrate that ran, since tinyaml, tinyjson5, tinyini and tinymigrate are released together at one version.
+The range added is the version of tinyswap that ran, since tinyaml, tinyjson5, tinyini and tinyswap are released together at one version.
 
 ## Options
 
@@ -84,14 +84,14 @@ The range added is the version of tinymigrate that ran, since tinyaml, tinyjson5
 | `--force`        | Write even if the git tree has uncommitted changes, or there is no git repository. |
 | `--help`, `-h`   | Print the usage.                                                                   |
 
-tinymigrate won't write to a project with uncommitted changes, so `git diff` shows exactly what it did and `git checkout .` undoes it. Without a terminal it needs `--yes` or `--dry-run`.
+tinyswap won't write to a project with uncommitted changes, so `git diff` shows exactly what it did and `git checkout .` undoes it. Without a terminal it needs `--yes` or `--dry-run`.
 
 ## API
 
 The CLI's steps are exported too:
 
 ```ts
-import { apply, plan, scan } from "tinymigrate";
+import { apply, plan, scan } from "tinyswap";
 
 const project = scan("."); // package.json files, source files, and the libraries found
 const changes = plan(project, ["js-yaml"], {
