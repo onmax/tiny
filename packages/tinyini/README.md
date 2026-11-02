@@ -94,11 +94,11 @@ Each subpath exports the functions of the library it replaces, so switching is a
 
 | Library                   | Change the import to     | Size, gzip      | Its own tests on tinyini                    |
 | ------------------------- | ------------------------ | --------------- | ------------------------------------------- |
-| ini 4.1.3 to 7.0.0        | `"tinyini/ini"`          | 1.64 → 1.54 KiB | 40 of 40 pass                               |
-| ini 2.0.0, 3.x and 4.0.0  | `"tinyini/ini-v2"`       | 1.40 → 1.37 KiB | 60 of 60 pass (2.0.0's and 4.0.0's)         |
-| ini 1.3.8                 | `"tinyini/ini-v1"`       | 1.42 → 1.37 KiB | 30 of 30 pass                               |
-| @one-ini/wasm 0.2.x       | `"tinyini/one-ini"`      | 36.2 → 1.69 KiB | editorconfig-core-test: 202 of 203, as WASM |
-| @one-ini/wasm 0.1.1–0.1.3 | `"tinyini/one-ini-v0.1"` | 32.5 → 1.69 KiB | editorconfig-core-test: 201 of 203, as WASM |
+| ini 4.1.3 to 7.0.0        | `"tinyini/ini"`          | 1.64 → 1.53 KiB | 40 of 40 pass                               |
+| ini 2.0.0, 3.x and 4.0.0  | `"tinyini/ini-v2"`       | 1.40 → 1.36 KiB | 60 of 60 pass (2.0.0's and 4.0.0's)         |
+| ini 1.3.8                 | `"tinyini/ini-v1"`       | 1.40 → 1.37 KiB | 30 of 30 pass                               |
+| @one-ini/wasm 0.2.x       | `"tinyini/one-ini"`      | 36.0 → 1.68 KiB | editorconfig-core-test: 202 of 203, as WASM |
+| @one-ini/wasm 0.1.1–0.1.3 | `"tinyini/one-ini-v0.1"` | 32.3 → 1.68 KiB | editorconfig-core-test: 201 of 203, as WASM |
 
 ```ts
 // before
@@ -113,13 +113,13 @@ Which ini you have decides the subpath, and `npm ls ini` shows it. `rc` pins 1.3
 
 ### Bugs tinyini doesn't copy
 
-| Library               | Bug                                                                                                                                                                          | tinyini                                                            |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| ini 1.3.5 and earlier | A `[__proto__]` section writes its keys onto `Object.prototype`, so every object in the program gets them (CVE-2020-7788).                                                   | The root and the ini subpaths drop `__proto__` sections and keys.  |
-| ini 1.3.8             | A section named after an inherited property writes its keys onto the built-in function: `[constructor]` followed by `keys = 1` replaces `Object.keys` for the whole program. | tinyini/ini-v1 starts a new object for the section, as ini 2 does. |
-| ini 4.1.0 to 4.1.2    | With `bracketedArray: false`, a key that repeats loses its last two characters.                                                                                              | tinyini/ini keeps the key, as ini 4.1.3 does.                      |
-| ini 4.1.0             | Throws where there is no `process`, as in a browser.                                                                                                                         | tinyini/ini checks that `process` exists, as ini 4.1.1 does.       |
-| @one-ini/wasm         | The WASM memory grows on every call and is never freed. At 4 GiB every call throws `RuntimeError: unreachable`; with 0.2.1 that takes 65,504 calls on an 800-byte file.      | Keeps nothing between calls.                                       |
+| Library               | Bug                                                                                                                                                                     | tinyini                                                           |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| ini 1.3.5 and earlier | A `[__proto__]` section writes its keys onto `Object.prototype`, so every object in the program gets them (CVE-2020-7788).                                              | The root and the ini subpaths drop `__proto__` sections and keys. |
+| ini 1.3.8             | 2.89 KiB                                                                                                                                                                | 1.40 KiB                                                          |
+| ini 4.1.0 to 4.1.2    | With `bracketedArray: false`, a key that repeats loses its last two characters.                                                                                         | tinyini/ini keeps the key, as ini 4.1.3 does.                     |
+| ini 4.1.0             | Throws where there is no `process`, as in a browser.                                                                                                                    | tinyini/ini checks that `process` exists, as ini 4.1.1 does.      |
+| @one-ini/wasm         | The WASM memory grows on every call and is never freed. At 4 GiB every call throws `RuntimeError: unreachable`; with 0.2.1 that takes 65,504 calls on an 800-byte file. | Keeps nothing between calls.                                      |
 
 The subpaths share one core, built once per library; the root has its own smaller parser and stringifier. The details below list each known difference from the original.
 
@@ -129,7 +129,7 @@ The subpaths share one core, built once per library; the root has its own smalle
 - Strict mode. ini is CommonJS in sloppy mode, where a write to a primitive or a frozen object does nothing. tinyini is an ES module, so it checks for those cases and does nothing too: `parse("a=1\n[a]\nb=2")` returns `{ a: "1" }` in both. The copy of ini that confbox bundles is an ES module and throws `Cannot create property 'b' on string '1'` there.
 - Replaced built-ins. tinyini reads options and values in ini's order, so getters and proxies see the same reads, but it doesn't call `JSON.parse` or string methods everywhere ini does, so a program that replaces one of them, for instance from inside an option's getter, can see a different result.
 - Arguments that are neither strings nor `String` objects but have their own `split` or `trim` method, passed to `parse` or `unsafe`, can give a different result.
-- Stack depth. Both write nested objects recursively and run out of stack at different depths: on Node 24, ini writes 5,632 nested objects and tinyini/ini 5,888.
+- Stack depth. Both write nested objects recursively and run out of stack at different depths: on Node 26, ini writes 5,680 nested objects and tinyini/ini 5,664.
 - ini 4.1.0 to 4.1.2: with `bracketedArray: false`, they cut the last two characters off a key that repeats, a bug 4.1.3 fixed. tinyini/ini doesn't. ini 4.1.0 also throws where there is no `process`, as in a browser.
 - Packaging. ESM only, with named exports next to the default. The types are the signatures of `@types/ini` 4.1.1, plus exported `DecodeOptions` and `EncodeOptions`.
 
@@ -139,7 +139,7 @@ The subpaths share one core, built once per library; the root has its own smalle
 <summary>ini 2: what's different</summary>
 
 - Windows. ini 2.0.0 to 4.0.0 pick the line ending from `process.platform` when they load; tinyini/ini-v2 reads it each time it writes.
-- Stack depth: on Node 24, ini 2.0.0 writes 6,072 nested objects and tinyini/ini-v2 5,918.
+- Stack depth: on Node 26, ini 2.0.0 writes 5,948 nested objects and tinyini/ini-v2 5,647.
 - Strict mode, replaced built-ins, arguments with their own `split` or `trim`, and packaging, as for ini 7. The types take only `section` and `whitespace`, the options ini 2 reads.
 
 </details>
@@ -148,7 +148,7 @@ The subpaths share one core, built once per library; the root has its own smalle
 <summary>ini 1.3.8: what's different</summary>
 
 - A section named after a property every object inherits, such as `[constructor]`, `[toString]` or `[hasOwnProperty]`. ini 1.3.8 looks the name up on its plain result object, finds the built-in function, and writes the section's keys onto it, so `[constructor]` followed by `keys = 1` replaces `Object.keys` for the whole program. tinyini/ini-v1 starts a new object for the section instead, as later versions do. The fuzzer checks those inputs against ini 1.3.8 with that one line changed.
-- Windows, strict mode, replaced built-ins, arguments with their own `split` or `trim`, and packaging, as for ini 2. Stack depth: ini 1.3.8 writes 2,559 nested objects and tinyini/ini-v1 5,453.
+- Windows, strict mode, replaced built-ins, arguments with their own `split` or `trim`, and packaging, as for ini 2. Stack depth: ini 1.3.8 writes 2,303 nested objects and tinyini/ini-v1 4,808.
 - Versions before 1.3.8 differ from it: 1.3.5 and earlier write a `[__proto__]` section's keys to `Object.prototype`, and 1.3.7 returns null-prototype objects.
 
 </details>
@@ -165,67 +165,67 @@ The subpaths share one core, built once per library; the root has its own smalle
 
 ## Size
 
-Each entry as npm ships it in `dist/`, bundled with esbuild, minified ESM, then gzip -9, from [`scripts/size.ts`](./scripts/size.ts). An entry counts its named exports and its default export. @one-ini/wasm counts its JavaScript and its `.wasm` file, each gzipped. A KiB is 1,024 bytes.
+Each entry as npm ships it in `dist/`, bundled with esbuild, minified ESM, then gzip -9, from [`scripts/size.ts`](./scripts/size.ts). An entry counts its named exports and its default export. @one-ini/wasm counts its JavaScript and its `.wasm` file, each gzipped. A KiB is 1,024 bytes. Measured on an Apple M4 with Node 26.13.0; Node on Linux gzips a few bytes larger, 1,360 B for the root rather than 1,352 B.
 
 | Entry                  | Minified  | Gzip      |
 | ---------------------- | --------- | --------- |
-| `tinyini`              | 2.49 KiB  | 1.33 KiB  |
-| `tinyini/ini`          | 3.15 KiB  | 1.54 KiB  |
+| `tinyini`              | 2.49 KiB  | 1.32 KiB  |
+| `tinyini/ini`          | 3.15 KiB  | 1.53 KiB  |
 | ini 7.0.0              | 3.46 KiB  | 1.64 KiB  |
-| `tinyini/ini-v2`       | 2.78 KiB  | 1.37 KiB  |
+| `tinyini/ini-v2`       | 2.78 KiB  | 1.36 KiB  |
 | ini 2.0.0              | 2.89 KiB  | 1.40 KiB  |
 | `tinyini/ini-v1`       | 2.75 KiB  | 1.37 KiB  |
 | ini 1.3.8              | 2.89 KiB  | 1.42 KiB  |
-| `tinyini/one-ini`      | 3.38 KiB  | 1.69 KiB  |
-| @one-ini/wasm 0.2.1    | 91.68 KiB | 36.18 KiB |
-| `tinyini/one-ini-v0.1` | 3.39 KiB  | 1.69 KiB  |
-| @one-ini/wasm 0.1.1    | 87.60 KiB | 32.52 KiB |
+| `tinyini/one-ini`      | 3.38 KiB  | 1.68 KiB  |
+| @one-ini/wasm 0.2.1    | 91.68 KiB | 36.00 KiB |
+| `tinyini/one-ini-v0.1` | 3.39 KiB  | 1.68 KiB  |
+| @one-ini/wasm 0.1.1    | 87.60 KiB | 32.35 KiB |
 
-ini is already small, so the ini subpaths save little: they look at character codes where ini runs a regular expression per line, and that takes about as much code. Importing one function leaves the rest out: `parse` alone is 0.75 KiB from `tinyini` and 0.92 KiB from `tinyini/ini`.
+ini is already small, so the ini subpaths save little: they look at character codes where ini runs a regular expression per line, and that takes about as much code. Importing one function leaves the rest out: `parse` alone gzips to 770 B from `tinyini` and 937 B from `tinyini/ini`, measured on Linux.
 
 Each subpath is built with the branches of one core mode only: ini 4.1 for `tinyini/ini`, ini 1.x to 4.0 for `tinyini/ini-v2`, ini 1.x for `tinyini/ini-v1`, and one-ini 0.2 or 0.1 for the one-ini entries. `scripts/size.ts` fails if an entry outgrows its budget or the library it replaces, if it still holds another mode's code or behaves as another mode, if a package specifier such as `tinyini/ini-v2` loads the wrong mode, if importing one function keeps the others, or if the root stops being the smallest entry.
 
 ## Speed
 
-Median time per call over seven rounds, from [`bench/index.ts`](./bench/index.ts), on the built `dist/` (AMD Ryzen 7 255, Node 24.21.0, on a machine other jobs share, so runs vary: the table at the top comes from another run, where ini 7's large parse is 1.4x faster rather than 1.9x). The two sides' rounds interleave, and which runs first alternates. The inputs are ini's `foo.ini` fixture, a `.gitconfig`, and about 100 KB of generated sections, comments, quoted values, escapes and arrays; stringify writes what ini 7 reads from each, with `whitespace: true`. For @one-ini/wasm, "parse" is `parse_to_uint32array` on the file's bytes, which is what `editorconfig` calls, and the inputs are an `.editorconfig` and 100 KB of generated EditorConfig sections.
+Median time per call over seven rounds, from [`bench/index.ts`](./bench/index.ts), on the built `dist/` (Apple M4, Node 26.13.0; the table at the top comes from another run on the same machine, where ini 7's large stringify is 2.9x faster rather than 2.5x). The two sides' rounds interleave, and which runs first alternates. The inputs are ini's `foo.ini` fixture, a `.gitconfig`, and about 100 KB of generated sections, comments, quoted values, escapes and arrays; stringify writes what ini 7 reads from each, with `whitespace: true`. For @one-ini/wasm, "parse" is `parse_to_uint32array` on the file's bytes, which is what `editorconfig` calls, and the inputs are an `.editorconfig` and 100 KB of generated EditorConfig sections.
 
 | Library                                      | Operation                   |  Library |  tinyini | Speedup |
 | -------------------------------------------- | --------------------------- | -------: | -------: | ------: |
-| ini 7.0.0 → `tinyini/ini`                    | parse foo.ini               |  53.5 µs |  24.9 µs |    2.1x |
-|                                              | parse .gitconfig            |  35.0 µs |  14.5 µs |    2.4x |
-|                                              | parse large                 |  2.82 ms |  1.48 ms |    1.9x |
-|                                              | stringify foo.ini           |  20.2 µs |   9.6 µs |    2.1x |
-|                                              | stringify .gitconfig        |  29.0 µs |  15.1 µs |    1.9x |
-|                                              | stringify large             |  2.89 ms |  1.01 ms |    2.9x |
-| ini 2.0.0 → `tinyini/ini-v2`                 | parse foo.ini               |  64.1 µs |  26.4 µs |    2.4x |
-|                                              | parse .gitconfig            |  36.8 µs |  14.6 µs |    2.5x |
-|                                              | parse large                 |  2.71 ms |  1.62 ms |    1.7x |
-|                                              | stringify foo.ini           |  14.1 µs |  10.4 µs |    1.4x |
-|                                              | stringify .gitconfig        |  25.9 µs |  20.8 µs |    1.2x |
-|                                              | stringify large             |  1.81 ms |  1.22 ms |    1.5x |
-| ini 1.3.8 → `tinyini/ini-v1`                 | parse foo.ini               |  62.6 µs |  27.1 µs |    2.3x |
-|                                              | parse .gitconfig            |  38.7 µs |  15.3 µs |    2.5x |
-|                                              | parse large                 |  2.86 ms |  1.64 ms |    1.7x |
-|                                              | stringify foo.ini           |  14.4 µs |   9.9 µs |    1.5x |
-|                                              | stringify .gitconfig        |  22.8 µs |  17.6 µs |    1.3x |
-|                                              | stringify large             |  1.70 ms |  1.20 ms |    1.4x |
-| @one-ini/wasm 0.2.1 → `tinyini/one-ini`      | parse .editorconfig         | 197.2 µs |  10.0 µs |   19.7x |
-|                                              | parse large                 | 13.53 ms |  1.02 ms |   13.2x |
-|                                              | parse_to_json .editorconfig | 172.9 µs |   7.0 µs |   24.8x |
-|                                              | parse_to_json large         | 17.50 ms |  1.22 ms |   14.4x |
-| @one-ini/wasm 0.1.1 → `tinyini/one-ini-v0.1` | parse .editorconfig         | 196.1 µs |  10.4 µs |   18.8x |
-|                                              | parse large                 | 14.06 ms | 912.9 µs |   15.4x |
-|                                              | parse_to_json .editorconfig | 186.2 µs |   6.8 µs |   27.2x |
-|                                              | parse_to_json large         | 16.53 ms |  1.17 ms |   14.1x |
+| ini 7.0.0 → `tinyini/ini`                    | parse foo.ini               |  20.3 µs |  10.5 µs |    1.9x |
+|                                              | parse .gitconfig            |  18.4 µs |   7.6 µs |    2.4x |
+|                                              | parse large                 |  1.36 ms | 781.2 µs |    1.7x |
+|                                              | stringify foo.ini           |  10.6 µs |   4.9 µs |    2.2x |
+|                                              | stringify .gitconfig        |  14.9 µs |   7.3 µs |    2.0x |
+|                                              | stringify large             |  1.17 ms | 471.2 µs |    2.5x |
+| ini 2.0.0 → `tinyini/ini-v2`                 | parse foo.ini               |  22.4 µs |  11.2 µs |    2.0x |
+|                                              | parse .gitconfig            |  20.0 µs |   7.9 µs |    2.5x |
+|                                              | parse large                 |  1.40 ms | 878.2 µs |    1.6x |
+|                                              | stringify foo.ini           |   7.6 µs |   4.9 µs |    1.5x |
+|                                              | stringify .gitconfig        |  11.3 µs |   8.5 µs |    1.3x |
+|                                              | stringify large             | 846.6 µs | 525.3 µs |    1.6x |
+| ini 1.3.8 → `tinyini/ini-v1`                 | parse foo.ini               |  20.3 µs |  11.3 µs |    1.8x |
+|                                              | parse .gitconfig            |  20.4 µs |   8.0 µs |    2.6x |
+|                                              | parse large                 |  1.40 ms | 854.9 µs |    1.6x |
+|                                              | stringify foo.ini           |   7.7 µs |   5.0 µs |    1.6x |
+|                                              | stringify .gitconfig        |  11.5 µs |   8.5 µs |    1.3x |
+|                                              | stringify large             | 884.3 µs | 534.3 µs |    1.7x |
+| @one-ini/wasm 0.2.1 → `tinyini/one-ini`      | parse .editorconfig         | 107.6 µs |   4.7 µs |   22.9x |
+|                                              | parse large                 |  7.18 ms | 576.6 µs |   12.4x |
+|                                              | parse_to_json .editorconfig | 141.9 µs |   4.1 µs |   34.9x |
+|                                              | parse_to_json large         |  9.18 ms | 685.4 µs |   13.4x |
+| @one-ini/wasm 0.1.1 → `tinyini/one-ini-v0.1` | parse .editorconfig         |  77.1 µs |   4.6 µs |   16.8x |
+|                                              | parse large                 |  6.89 ms | 560.1 µs |   12.3x |
+|                                              | parse_to_json .editorconfig | 102.4 µs |   4.1 µs |   24.7x |
+|                                              | parse_to_json large         |  9.08 ms | 718.0 µs |   12.7x |
 
 The root, tinyini's own API, against ini 7.0.0 and against each ini subpath, on the same inputs:
 
 | Against          | parse foo.ini | parse .gitconfig | parse large | stringify foo.ini | stringify .gitconfig | stringify large |
 | ---------------- | ------------: | ---------------: | ----------: | ----------------: | -------------------: | --------------: |
-| ini 7.0.0        |          3.1x |             3.2x |        2.5x |              2.8x |                 2.4x |            3.3x |
-| `tinyini/ini`    |          1.2x |             1.2x |        1.5x |              1.5x |                 1.3x |            1.5x |
-| `tinyini/ini-v2` |          1.4x |             1.2x |        1.5x |              1.3x |                 1.4x |            1.6x |
-| `tinyini/ini-v1` |          1.3x |             1.4x |        1.4x |              1.7x |                 1.4x |            1.5x |
+| ini 7.0.0        |          2.6x |             3.2x |        2.3x |              2.9x |                 2.5x |            3.4x |
+| `tinyini/ini`    |          1.3x |             1.3x |        1.3x |              1.4x |                 1.3x |            1.4x |
+| `tinyini/ini-v2` |          1.3x |             1.2x |        1.3x |              1.4x |                 1.5x |            1.6x |
+| `tinyini/ini-v1` |          1.3x |             1.2x |        1.3x |              1.4x |                 1.5x |            1.6x |
 
 ## How it's checked
 
