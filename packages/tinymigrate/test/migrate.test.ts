@@ -49,6 +49,37 @@ describe("plan", () => {
     expect(result.skipped).toEqual([]);
   });
 
+  it("migrates escaped specifiers and import.meta.resolve before removing the original", () => {
+    const root = project({
+      "package.json": { dependencies: { "js-yaml": "^4.1.0" } },
+      "escaped.js": String.raw`import { load } from 'js\u002dyaml';`,
+      "resolved.mjs": `export const yaml = await import(import.meta.resolve("js-yaml"));`,
+    });
+    const result = migrate(root, ["js-yaml"]);
+    expect(read(root, "escaped.js")).toBe(`import { load } from 'tinyaml/js-yaml';`);
+    expect(read(root, "resolved.mjs")).toBe(
+      `export const yaml = await import(import.meta.resolve("tinyaml/js-yaml"));`,
+    );
+    expect(result.skipped).toEqual([]);
+    expect(JSON.parse(read(root, "package.json")).dependencies).toEqual({ tinyaml: "^1.2.0" });
+  });
+
+  it("keeps escaped imports when the source cannot be parsed", () => {
+    const root = project({
+      "package.json": { dependencies: { "js-yaml": "^4.1.0" } },
+      "flow.js": String.raw`// @flow
+import yaml from "js\u002dyaml";
+const config: {| name: string |} = { name: "app" };`,
+    });
+    const result = migrate(root, ["js-yaml"]);
+    expect(result.edits).toEqual([]);
+    expect(result.manifests).toEqual([]);
+    expect(result.skipped).toEqual([
+      { file: "flow.js", reason: expect.stringContaining("can't parse it:") },
+    ]);
+    expect(JSON.parse(read(root, "package.json")).dependencies).toEqual({ "js-yaml": "^4.1.0" });
+  });
+
   it("migrates only the libraries picked", () => {
     const root = project({
       "package.json": { dependencies: { yaml: "^2.0.0", jju: "^1.4.0" } },

@@ -13,24 +13,31 @@ export const run = (script: string, ...args: string[]): string =>
     stdio: ["ignore", "pipe", "pipe"],
   });
 
-// How much longer reading the text for 8n takes than for n, after a warm-up
-// run and the best of five: about 8 when the work is linear, 64 when it's
-// quadratic. Tests check it stays under 32, since a busy CI runner can
-// slow one side two or three times.
+// How much longer reading the text for 8n takes than for n, after warming
+// both and taking the best of five: about 8 when the work is linear, 64
+// when it's quadratic. Interleave the sizes, small first, so optimization
+// during sampling doesn't compare a cold large read with a hot small one.
+// Tests check it stays under 32, since a busy CI runner can slow one side
+// two or three times.
 export function growth(
   text: (n: number) => string,
   read: (text: string) => unknown,
   n: number,
 ): number {
-  const best = (input: string) => {
+  const small = text(n);
+  const large = text(8 * n);
+  read(small);
+  read(large);
+  const time = (input: string) => {
+    const start = performance.now();
     read(input);
-    let fastest = Infinity;
-    for (let run = 0; run < 5; run++) {
-      const start = performance.now();
-      read(input);
-      fastest = Math.min(fastest, performance.now() - start);
-    }
-    return fastest;
+    return performance.now() - start;
   };
-  return best(text(8 * n)) / best(text(n));
+  let fastestSmall = Infinity;
+  let fastestLarge = Infinity;
+  for (let run = 0; run < 5; run++) {
+    fastestSmall = Math.min(fastestSmall, time(small));
+    fastestLarge = Math.min(fastestLarge, time(large));
+  }
+  return fastestLarge / fastestSmall;
 }

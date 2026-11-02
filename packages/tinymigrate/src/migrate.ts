@@ -61,7 +61,11 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
 
   for (const file of project.files) {
     const before = readFileSync(join(project.root, file), "utf8");
-    if (!picked.some(({ library }) => before.includes(library.name))) continue;
+    // Escapes can spell a library without its name appearing in the source.
+    const mentioned = picked.filter(
+      ({ library }) => before.includes(library.name) || before.includes("\\"),
+    );
+    if (!mentioned.length) continue;
     // An original the file may import without tinymigrate reading it stays,
     // everywhere if no one package.json owns its imports.
     const keep = ({ library, manifest }: Found) => {
@@ -71,7 +75,7 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
     const result = findSpecifiers(before, file);
     if ("error" in result) {
       skipped.push({ file, reason: `can't parse it: ${result.error}` });
-      for (const found of picked) if (before.includes(found.library.name)) keep(found);
+      for (const found of mentioned) keep(found);
       continue;
     }
     // A component's markup can import too, as in Svelte's `{#await import("yaml")}`.

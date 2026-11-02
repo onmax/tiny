@@ -49,6 +49,11 @@ describe("rewriting", () => {
     ["require", `const yaml = require('js-yaml');`, `const yaml = require('tinyaml/js-yaml');`],
     ["require.resolve", `require.resolve("js-yaml")`, `require.resolve("tinyaml/js-yaml")`],
     [
+      "import.meta.resolve",
+      `await import(import.meta.resolve("js-yaml"))`,
+      `await import(import.meta.resolve("tinyaml/js-yaml"))`,
+    ],
+    [
       "import = require",
       `import yaml = require("js-yaml");`,
       `import yaml = require("tinyaml/js-yaml");`,

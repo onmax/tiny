@@ -179,6 +179,13 @@ function parseBlock(
           const object = callee.object as Node;
           const property = (callee.property as Node).name as string;
           if (isIdentifier(object, "require") && property === "resolve") add(argument, "other");
+          else if (
+            object.type === "MetaProperty" &&
+            isIdentifier(object.meta as Node, "import") &&
+            isIdentifier(object.property as Node, "meta") &&
+            property === "resolve"
+          )
+            add(argument, "other");
           else if (object.type === "Identifier" && MOCKS.get(object.name as string)?.has(property))
             add(argument, "mock");
         }
