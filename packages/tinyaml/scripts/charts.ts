@@ -20,7 +20,7 @@ const row = (...cells: (string | number)[]) => `| ${cells.join(" | ")} |`;
 // series: the first in 🤏's amber, with dark labels, the second in gray, with
 // white ones. Each label goes with the bar its baseline sits in.
 const SERIES: Record<string, [bar: string, label: string]> = {
-  "#3b82f6": ["#ef9645", "#110f0c"],
+  "#3b82f6": ["#faa700", "#110f0c"],
   "#f97316": ["#747474", "#ffffff"],
 };
 const brand = (svg: string) => {
