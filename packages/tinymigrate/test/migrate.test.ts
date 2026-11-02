@@ -132,6 +132,28 @@ describe("plan", () => {
     ]);
   });
 
+  it("keeps an original a package.json script runs", () => {
+    const root = project({
+      "package.json": {
+        scripts: { build: "json5 -c config.json5 && vite build", test: "vitest" },
+        devDependencies: { json5: "^2.2.3" },
+      },
+      "a.mjs": `import JSON5 from "json5";\n`,
+    });
+    const result = migrate(root, ["json5"]);
+    expect(read(root, "a.mjs")).toBe(`import JSON5 from "tinyjson5/json5";\n`);
+    expect(result.skipped).toEqual([
+      {
+        file: "package.json",
+        reason: `the "build" script runs json5, and tinyjson5 has no command-line tool for it`,
+      },
+    ]);
+    expect(JSON.parse(read(root, "package.json")).devDependencies).toEqual({
+      json5: "^2.2.3",
+      tinyjson5: "^1.2.0",
+    });
+  });
+
   it("reports a file it can't parse, and leaves it", () => {
     const root = project({
       "package.json": { dependencies: { ini: "^7.0.0" } },

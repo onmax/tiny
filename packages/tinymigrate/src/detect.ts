@@ -4,7 +4,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
-import { byName, parseVersion, type Library } from "./libraries.ts";
+import { byName, parseVersion, pickRange, type Library } from "./libraries.ts";
 import { COMPONENT, SCRIPT } from "./rewrite.ts";
 
 // peerDependencies stay: the package's users install the original.
@@ -55,8 +55,10 @@ export function scan(root: string): Project {
         const linked = fromNodeModules(dir, name);
         const installed =
           linked ?? (lockfile ? fromLockfile(lockfile, dir, name, range) : undefined);
-        const parsed = parseVersion(installed ?? range);
-        const target = parsed && library.pick(parsed);
+        const parsed = installed === undefined ? undefined : parseVersion(installed);
+        // null when the range allows versions with different drop-ins.
+        const picked = parsed ? library.pick(parsed) : pickRange(library, range);
+        const target = picked ?? undefined;
         found.push({
           library,
           manifest,
@@ -67,7 +69,7 @@ export function scan(root: string): Project {
           target,
           reason: target
             ? undefined
-            : parsed
+            : picked === undefined
               ? `${name} ${installed ?? range} has no drop-in: ${library.tiny} covers ${library.covers}`
               : `can't tell which ${name} "${range}" is: install the dependencies first`,
         });
@@ -122,10 +124,11 @@ function fromNodeModules(dir: string, name: string): string | undefined {
   }
 }
 
+// In the order a package manager reads them: npm prefers its shrinkwrap.
 const LOCKFILES = {
   "pnpm-lock.yaml": "pnpm",
-  "package-lock.json": "npm",
   "npm-shrinkwrap.json": "npm",
+  "package-lock.json": "npm",
   "yarn.lock": "yarn",
   "bun.lock": "bun",
   "bun.lockb": "bun",
@@ -237,10 +240,12 @@ export function fromYarn(text: string, name: string, range: string): string | un
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     if (/^\s|^#/.test(line) || !line.endsWith(":")) continue;
+    // yarn 2 quotes the whole key, `"a@npm:^1.0.0, a@npm:^1.1.0":`, and
+    // yarn 1 each descriptor that needs it.
     const descriptors = line
       .slice(0, -1)
       .split(",")
-      .map((descriptor) => descriptor.trim().replace(/^"(.*)"$/, "$1"));
+      .map((descriptor) => descriptor.trim().replace(/^"|"$/g, ""));
     const ranges = descriptors
       .filter((descriptor) => descriptor.startsWith(`${name}@`))
       .map((descriptor) => descriptor.slice(name.length + 1).replace(/^npm:/, ""));

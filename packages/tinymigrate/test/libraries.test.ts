@@ -1,6 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
-import { byName, EXPORTS, LIBRARIES, libraryOf, parseVersion } from "../src/libraries.ts";
+import {
+  byName,
+  EXPORTS,
+  LIBRARIES,
+  libraryOf,
+  parseVersion,
+  pickRange,
+} from "../src/libraries.ts";
 
 describe("EXPORTS", () => {
   // Each drop-in's entry is src/<subpath>/index.ts in its package.
@@ -85,6 +92,34 @@ describe("pick", () => {
     ["@one-ini/wasm", "0.2.1", "tinyini/one-ini"],
   ])("%s %s → %s", (name, version, target) => {
     expect(pick(name, version)).toBe(target);
+  });
+});
+
+describe("pickRange", () => {
+  const range = (name: string, text: string) => pickRange(byName.get(name)!, text);
+
+  it.each([
+    ["js-yaml", "^4.1.0", "tinyaml/js-yaml"],
+    ["js-yaml", "~5.0.0", "tinyaml/js-yaml-v5"],
+    ["js-yaml", "4.x", "tinyaml/js-yaml"],
+    ["js-yaml", "4", "tinyaml/js-yaml"],
+    ["js-yaml", "=4.1.0", "tinyaml/js-yaml"],
+    ["js-yaml", ">=4.0.0 <5.0.0", "tinyaml/js-yaml"],
+    ["js-yaml", "npm:js-yaml@^4.1.0", "tinyaml/js-yaml"],
+    ["js-yaml", "^3.14.0", undefined],
+    ["js-yaml", "<4", null],
+    ["js-yaml", ">=4", null],
+    ["js-yaml", "^4.0.0 || ^5.0.0", null],
+    ["js-yaml", "latest", null],
+    ["ini", "^4.0.0", null],
+    ["ini", "~4.0.0", "tinyini/ini-v2"],
+    ["ini", "^4.1.3", "tinyini/ini"],
+    ["ini", ">=1.3.8 <2", "tinyini/ini-v1"],
+    ["yamljs", "^0.3.0", "tinyaml/yamljs"],
+    ["@one-ini/wasm", "^0.2.0", "tinyini/one-ini"],
+    ["@std/yaml", "jsr:^1.0.5", "tinyaml/std"],
+  ])("%s %s → %s", (name, text, target) => {
+    expect(range(name, text)).toBe(target);
   });
 });
 

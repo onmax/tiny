@@ -3,7 +3,7 @@
 // dependencies swapped. Nothing here writes until `apply`.
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { FIELDS, type Field, type Found, type Project } from "./detect.ts";
+import { FIELDS, readJson, type Field, type Found, type Project } from "./detect.ts";
 import { EXPORTS, libraryOf, type Tiny } from "./libraries.ts";
 import { findSpecifiers, replaceSpecifiers } from "./rewrite.ts";
 
@@ -65,10 +65,12 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
     const result = findSpecifiers(before, file);
     if ("error" in result) {
       skipped.push({ file, reason: `can't parse it: ${result.error}` });
-      // Any original it may import stays.
-      for (const { library } of picked) {
-        const owner = before.includes(library.name) && ownerOf(declared, library.name, file);
-        if (owner) blocked.add(`${owner.manifest}\0${library.name}`);
+      // Any original it may import stays, everywhere if no one package.json
+      // owns its imports.
+      for (const { library, manifest } of picked) {
+        if (!before.includes(library.name)) continue;
+        const owner = ownerOf(declared, library.name, file);
+        blocked.add(`${owner?.manifest ?? manifest}\0${library.name}`);
       }
       continue;
     }
@@ -113,6 +115,19 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
 
   const manifests: ManifestEdit[] = [];
   for (const manifest of new Set(picked.map((found) => found.manifest))) {
+    // The drop-ins have no command-line tools, so a script that runs an
+    // original's keeps it.
+    const scripts = readJson(join(project.root, manifest))?.scripts ?? {};
+    for (const { library } of picked.filter((found) => found.manifest === manifest))
+      for (const [script, command] of Object.entries(scripts as Record<string, unknown>))
+        for (const bin of library.bins ?? [])
+          if (typeof command === "string" && runs(command, bin)) {
+            skipped.push({
+              file: manifest,
+              reason: `the "${script}" script runs ${bin}, and ${library.tiny} has no command-line tool for it`,
+            });
+            blocked.add(`${manifest}\0${library.name}`);
+          }
     const edit = editManifest(
       project.root,
       manifest,
@@ -125,6 +140,12 @@ export function plan(project: Project, names: string[], ranges: Record<Tiny, str
   }
   return { edits, manifests, skipped };
 }
+
+// Whether a shell command runs `bin`, as a command of its own.
+const runs = (command: string, bin: string) =>
+  new RegExp(`(?:^|[\\s;&|(])${bin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=$|[\\s;&|)])`).test(
+    command,
+  );
 
 // The dependency an import resolves to: the one in the nearest package.json
 // above the file, or the only drop-in every package.json picks.

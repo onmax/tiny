@@ -21,6 +21,8 @@ export interface Library {
   subpaths?: string[];
   /** The package with its types, which goes when the original does. */
   types?: string;
+  /** The commands it installs, which the drop-ins have no equivalent of. */
+  bins?: string[];
 }
 
 export const LIBRARIES: Library[] = [
@@ -31,12 +33,14 @@ export const LIBRARIES: Library[] = [
     pick: ({ major }) =>
       major === 4 ? "tinyaml/js-yaml" : major === 5 ? "tinyaml/js-yaml-v5" : undefined,
     types: "@types/js-yaml",
+    bins: ["js-yaml"],
   },
   {
     name: "yaml",
     tiny: "tinyaml",
     covers: "2",
     pick: ({ major }) => (major === 2 ? "tinyaml/yaml" : undefined),
+    bins: ["yaml"],
   },
   {
     name: "yamljs",
@@ -44,6 +48,7 @@ export const LIBRARIES: Library[] = [
     covers: "0.3",
     pick: ({ major, minor }) => (major === 0 && minor === 3 ? "tinyaml/yamljs" : undefined),
     types: "@types/yamljs",
+    bins: ["yaml2json", "json2yaml"],
   },
   {
     name: "@std/yaml",
@@ -61,6 +66,7 @@ export const LIBRARIES: Library[] = [
     pick: ({ major }) =>
       major === 2 ? "tinyjson5/json5" : major === 1 ? "tinyjson5/json5-v1" : undefined,
     types: "@types/json5",
+    bins: ["json5"],
   },
   {
     name: "strip-json-comments",
@@ -195,4 +201,63 @@ export function parseVersion(text: string): Version | undefined {
   if (!match) return undefined;
   const number = (part: string | undefined) => (part && /^\d+$/.test(part) ? Number(part) : 0);
   return { major: number(match[1]), minor: number(match[2]), patch: number(match[3]) };
+}
+
+/**
+ * The drop-in for every version a range allows, or `null` if they'd get
+ * different ones or the range is one this can't bound. "^4.1.0" allows 4.1.0
+ * to 4.x, so for ini it gives tinyini/ini, and "^4.0.0" gives null.
+ */
+export function pickRange(library: Library, range: string): string | undefined | null {
+  const targets = new Set<string | undefined>();
+  for (const alternative of range.replace(/^npm:(?:@?[^@]+@)?|^jsr:/, "").split("||")) {
+    const bounds = boundsOf(alternative.trim());
+    if (!bounds) return null;
+    for (const version of bounds) targets.add(library.pick(version));
+  }
+  return targets.size === 1 ? [...targets][0] : null;
+}
+
+const ANY = Number.MAX_SAFE_INTEGER;
+
+// The lowest and highest version a range allows, for a range of one
+// comparator, or of `>=a <b`.
+function boundsOf(range: string): [Version, Version] | undefined {
+  const parts = range.split(/\s+/);
+  if (parts.length === 2 && parts[0]!.startsWith(">=") && parts[1]!.startsWith("<")) {
+    const low = partsOf(parts[0]!.slice(2));
+    const inclusive = parts[1]!.startsWith("<=");
+    const high = partsOf(parts[1]!.slice(inclusive ? 2 : 1));
+    if (low?.major === undefined || high?.major === undefined) return undefined;
+    const { major, minor = 0, patch = 0 } = high;
+    const below = inclusive
+      ? { major, minor: high.minor ?? ANY, patch: high.patch ?? ANY }
+      : patch > 0
+        ? { major, minor, patch: patch - 1 }
+        : minor > 0
+          ? { major, minor: minor - 1, patch: ANY }
+          : { major: major - 1, minor: ANY, patch: ANY };
+    return [{ major: low.major, minor: low.minor ?? 0, patch: low.patch ?? 0 }, below];
+  }
+  const match = parts.length === 1 && /^(\^|~|=)?(.*)$/.exec(parts[0]!);
+  const version = match ? partsOf(match[2]!) : undefined;
+  if (!match || version?.major === undefined) return undefined;
+  const { major, minor, patch } = version;
+  const low = { major, minor: minor ?? 0, patch: patch ?? 0 };
+  // A missing part, or an x, allows any value there.
+  let high = { major, minor: minor ?? ANY, patch: patch ?? ANY };
+  if (match[1] === "~") high = { major, minor: minor ?? ANY, patch: ANY };
+  if (match[1] === "^" && major > 0) high = { major, minor: ANY, patch: ANY };
+  else if (match[1] === "^" && minor) high = { major, minor, patch: ANY };
+  return [low, high];
+}
+
+// "4.1.0", "4.x" and "4" as their numbers, with an x or a missing part as undefined.
+function partsOf(text: string) {
+  const match = /^v?(\d+|[xX*])(?:\.(\d+|[xX*]))?(?:\.(\d+|[xX*]))?(?:[-+][\w.-]*)?$/.exec(text);
+  if (!match) return undefined;
+  const [major, minor, patch] = [match[1], match[2], match[3]].map((part) =>
+    part === undefined || !/^\d+$/.test(part) ? undefined : Number(part),
+  );
+  return { major, minor, patch };
 }

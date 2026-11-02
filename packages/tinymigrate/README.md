@@ -11,7 +11,7 @@ npx tinymigrate [dir]
 ## What it does
 
 1. Reads every package.json in the project that git doesn't ignore, workspace packages included, and lists the libraries below in `dependencies`, `devDependencies` and `optionalDependencies`. It leaves `peerDependencies` alone.
-2. Finds the version of each: the one in `node_modules`, then the one in the lockfile (pnpm, npm, yarn or bun), then the lowest version the range in package.json allows. A version with no drop-in is listed and left alone.
+2. Finds the version of each: the one in `node_modules`, then the one in the lockfile (pnpm, npm, yarn or bun), then the range in package.json, if every version it allows gets the same drop-in. A version with no drop-in, or a range it can't decide, is listed and left alone.
 3. Asks which libraries to move, all of them ticked to start with.
 4. Shows each import it will change and each package.json edit, and asks before writing.
 5. Rewrites the imports and package.json files, then offers to run your package manager's install.
@@ -63,7 +63,7 @@ Some imports are reported and left as they are:
 - A name the drop-in doesn't export, such as `import { parseDocument } from "yaml"` or `import jju from "jju"`. tinymigrate checks the names an `import`, an `export … from`, a destructured `require()` or a `require().name` reads. It can't check what code does with a namespace import or a whole `require()` result, nor type-only imports.
 - A `require()` of a drop-in whose only export is its default, such as strip-json-comments: `require()` of an ES module gives `{ default }`, where the original gave the function.
 
-The original then stays in package.json too, so those imports still resolve. A file the parser can't read is reported and left as it is.
+The original then stays in package.json too, so those imports still resolve. So does an original whose command a package.json script runs, such as `json5` or `js-yaml`, since the drop-ins have no command-line tools. A file the parser can't read is reported and left as it is, and so are the originals it may import.
 
 In a workspace, an import takes the version of the nearest package.json above it that depends on the library.
 

@@ -190,6 +190,22 @@ describe("lockfiles", () => {
     expect(fromYarn(v1, "js-yaml", "^3.13.1")).toBe("3.14.1");
     const berry = `__metadata:\n  version: 8\n\n"ini@npm:^1.3.8":\n  version: 1.3.8\n  resolution: "ini@npm:1.3.8"\n`;
     expect(fromYarn(berry, "ini", "^1.3.8")).toBe("1.3.8");
+    const combined = `"ini@npm:^1.3.0, ini@npm:^1.3.8":\n  version: 1.3.8\n\n"ini@npm:^4.1.0":\n  version: 4.1.3\n`;
+    expect(fromYarn(combined, "ini", "^1.3.0")).toBe("1.3.8");
+    expect(fromYarn(combined, "ini", "^1.3.8")).toBe("1.3.8");
+  });
+
+  it("reads npm-shrinkwrap.json over package-lock.json, as npm does", () => {
+    const lock = (version: string) => ({
+      lockfileVersion: 3,
+      packages: { "node_modules/js-yaml": { version } },
+    });
+    const root = project({
+      "package.json": { dependencies: { "js-yaml": "*" } },
+      "package-lock.json": lock("4.1.0"),
+      "npm-shrinkwrap.json": lock("5.0.0"),
+    });
+    expect(found(root)).toEqual([expect.objectContaining({ version: "5.0.0", from: "lockfile" })]);
   });
 });
 
