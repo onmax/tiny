@@ -95,7 +95,7 @@ pnpm readme   # rewrite the badges and drop-in tables in every README with autom
 pnpm brand    # redraw the logo, favicons and banners from .github/scripts/brand.ts
 ```
 
-The logo is the 🤏 emoji as [Twemoji](https://github.com/jdecked/twemoji) draws it, under CC-BY 4.0.
+The logo is the 🤏 emoji as [Noto Emoji](https://github.com/googlefonts/noto-emoji) draws it, under the Apache License 2.0.
 
 All packages share one version and release together.
 
