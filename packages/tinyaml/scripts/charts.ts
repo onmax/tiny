@@ -53,9 +53,12 @@ const pairs = [
   ["@std/yaml", "tinyaml/std", "@std/yaml"],
   ["yamljs", "tinyaml/yamljs", "yamljs"],
 ] as const;
+// size.ts, bench/index.ts and correctness.ts name yaml without its major
+// version; the charts give it, as the tables do.
+const shown = (library: string) => (library === "yaml" ? "yaml 2" : library);
 // Each row names the subpath that replaces the library, so a reader knows
 // which import the numbers belong to.
-const label = (ours: string, theirs: string) => `${ours} vs ${theirs}`;
+const label = (ours: string, theirs: string) => `${ours} vs ${shown(theirs)}`;
 
 // SIZE=<file> reuses a saved `node scripts/size.ts --json` run, as BENCH does
 // below: gzip sizes shift about 1% with the zlib Node is built with.
@@ -107,7 +110,7 @@ await draw("correctness.svg", 'horizontal labels title="yaml-test-suite cases ri
   row("---", "--:", "--:"),
   ...Object.entries(scores).map(([name, s]) =>
     row(
-      name === "yamljs" ? "yamljs, one document" : name,
+      name === "yamljs" ? "yamljs, one document" : shown(name),
       percent(s.validRight, s.valid - s.unknownTag),
       percent(s.invalidRejected, s.invalid),
     ),

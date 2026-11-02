@@ -61,7 +61,7 @@ const data: DropIns = {
   dropIns: [
     yaml("js-yaml 4", "tinyaml/js-yaml", "js-yaml 4", "js-yaml"),
     yaml("js-yaml 5", "tinyaml/js-yaml-v5", "js-yaml 5", "js-yaml 5"),
-    yaml("yaml", "tinyaml/yaml", "yaml", "yaml"),
+    yaml("yaml 2", "tinyaml/yaml", "yaml", "yaml"),
     yaml("yamljs", "tinyaml/yamljs", "yamljs", "yamljs"),
     yaml("@std/yaml", "tinyaml/std", "@std/yaml", "@std/yaml"),
     // Each tinyjson5 subpath, by the names its size.ts and bench/index.ts use.
@@ -85,7 +85,7 @@ const data: DropIns = {
     ini("@one-ini/wasm 0.2.1", "tinyini/one-ini"),
     ini("@one-ini/wasm 0.1.1", "tinyini/one-ini-v0.1"),
   ],
-  root: yaml("yaml", "tinyaml", "yaml", "yaml (tinyaml root)"),
+  root: yaml("yaml 2", "tinyaml", "yaml", "yaml (tinyaml root)"),
   // The other packages' own APIs, each against the library its users switch from.
   roots: [
     compare(

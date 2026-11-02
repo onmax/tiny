@@ -93,7 +93,7 @@ const banners: Banner[] = [
     tagline: "Smaller, faster parsers. Same API.",
     stats: [
       [String(dropIns.length), "drop-in replacements"],
-      [times(row("yaml").parse), "faster than yaml"],
+      [times(row("yaml 2").parse), "faster than yaml 2"],
       ["0", "dependencies"],
     ],
   },

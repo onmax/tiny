@@ -32,8 +32,6 @@ For yamljs and @std/yaml the swap saves about 0.7 KiB and 0.5 KiB. The bigger ch
 | --- | --- | --- |
 | js-yaml 4.1.0 and earlier | A `<<` merge of a mapping that has a `__proto__` key replaces the merged object's prototype (CVE-2025-64718). | tinyaml/js-yaml keeps `__proto__` as an ordinary key, as js-yaml 4.1.1 and later do. |
 | js-yaml 4.3.2 | Loads `key: &x\n!!map\n  a: b`, which is invalid YAML (yaml-test-suite H7J7), as `{ key: { a: "b" } }`. | tinyaml/js-yaml throws. |
-| yaml 2.9.1 | A lone carriage return isn't a line break, so `- a\r- b` loads as `["a\r- b"]`. The YAML spec makes it a line break. | tinyaml/yaml gives `["a", "b"]`. |
-| yaml 2.9.1 | Warnings on one long line take quadratic time: 60,000 unknown tags in one flow sequence take about 15 seconds on a Ryzen 7 laptop. | tinyaml/yaml takes about half a second. |
 | yamljs 0.3.0 | Drops keys named like `Object.prototype` members: `constructor: 1` and `__proto__: {x: 1}` load as `null`. | tinyaml/yamljs keeps them. |
 | yamljs 0.3.0 | `- - a` loads as `["- a"]`. | tinyaml/yamljs gives `[["a"]]`. |
 | yamljs 0.3.0 | A plain value over two lines keeps the line break: `a: x\n  y` gives `"x\ny"`. | tinyaml/yamljs gives `"x y"`. |
@@ -64,11 +62,11 @@ Every subpath runs the same parser code as the root. The sections below list eac
 - On the yaml-test-suite, all 402 cases give the same result as js-yaml 5. Both reject 126, and 109 of those throw the same message.
 - Of 5,000 randomly edited suite inputs, none load to a different value, and none load where js-yaml 5 throws. Of 5,000 random values, 3,584 dump to the same text and 1,416 throw the same error.
 
-## yaml
+## yaml 2
 
 - Only `parse` and `stringify`. There is no `parseDocument`, `parseAllDocuments`, Document, CST, Lexer, Parser, Composer, LineCounter or visitor API.
 - `parse` doesn't support `mapAsMap`, `stringKeys`, `strict: false` (which `strict: undefined` also means to yaml), or recovering from errors with `logLevel: "silent"`. Collection keys are turned into strings that don't always match yaml's.
-- A lone carriage return is a line break, as the YAML spec has it. yaml reads it as text, so `- a\r- b` is `["a", "b"]` where yaml gives `["a\r- b"]`. Error positions count such input as one line, as yaml's do.
+- A lone carriage return is a line break, as the YAML 1.2 spec has it. yaml reads it as text by design, and its maintainer would rather see lone carriage returns dropped as line breaks from the spec ([eemeli/yaml#595](https://github.com/eemeli/yaml/issues/595)). So `- a\r- b` is `["a", "b"]`, where yaml gives `["a\r- b"]`. Error positions count such input as one line, as yaml's do.
 - `stringify` doesn't take Document or Node values, writes no comments, and doesn't use `customTags` or the YAML 1.1 `!!set`, `!!omap` and `!!binary` tags.
 - A collection tag's `resolve` gets a stand-in for yaml's YAMLMap or YAMLSeq node. It has `items`, with Scalar, Pair and collection nodes in them, `get`, `has`, `toJSON` and `toString`, and nothing else of yaml's node API. An alias in it is a node of the alias's value, `toJSON` returns the collection as tinyaml parsed it, and `nodeClass` isn't used. Its scalars have no `tag`, so `!!set` takes a value tagged `!!null` as null, where yaml rejects it. When `resolve` returns a node from inside the collection, `onAnchor` still hears of the anchors elsewhere in it. When it returns something else, a later alias to an anchor in the collection reads the anchor's value, where yaml throws.
 - A `<<` that merges a `!!set` merges nothing. yaml splits each member into a key and a value, so `{<<: !!set {abc}}` gives `{ a: "b" }`, and throws a TypeError on a member it can't split, like a number.

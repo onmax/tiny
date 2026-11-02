@@ -3,7 +3,7 @@ title: How it compares
 description: Schema, merge keys, tags, documents, errors, dependencies and size, library by library.
 ---
 
-|                        | tinyaml          | js-yaml 4           | js-yaml 5                      | yaml                   | yamljs               | @std/yaml                      |
+|                        | tinyaml          | js-yaml 4           | js-yaml 5                      | yaml 2                 | yamljs               | @std/yaml                      |
 | ---------------------- | ---------------- | ------------------- | ------------------------------ | ---------------------- | -------------------- | ------------------------------ |
 | YAML 1.2 core schema   | ✅               | ✅                  | ✅                             | ✅                     | ❌ `0o17` reads as 0 | partial, `0o17` stays a string |
 | Merge keys (`<<`)      | ✅ on by default | ✅                  | ✅ `mergeTag`                  | ✅ `merge: true`       | ✅                   | ✅                             |

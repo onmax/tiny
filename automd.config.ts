@@ -136,8 +136,8 @@ export default {
           lines.push(
             "",
             `For new code, the root \`tinyaml\` API is ${kib(root.gzip.ours)} KiB, ` +
-              `${smaller(jsYaml.gzip.theirs)}× smaller than js-yaml 4 and ${smaller(root.gzip.theirs)}× smaller than yaml. ` +
-              `It parses ${times(root.parse)} faster than yaml and stringifies ${times(root.stringify!)} faster.`,
+              `${smaller(jsYaml.gzip.theirs)}× smaller than js-yaml 4 and ${smaller(root.gzip.theirs)}× smaller than ${root.library}. ` +
+              `It parses ${times(root.parse)} faster than ${root.library} and stringifies ${times(root.stringify!)} faster.`,
           );
         }
         // Another package's own API, from `roots`, against the library its users switch from.

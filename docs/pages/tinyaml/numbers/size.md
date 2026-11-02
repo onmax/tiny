@@ -17,7 +17,7 @@ description: Bundle size of each tinyaml entry and the library it replaces, mini
 | `tinyaml/js-yaml-v5` | 39.5 KiB | 16.2 KiB |
 | js-yaml 5            | 56.4 KiB | 17.1 KiB |
 | `tinyaml/yaml`       | 39.9 KiB | 17.0 KiB |
-| yaml                 | 95.8 KiB | 29.9 KiB |
+| yaml 2               | 95.8 KiB | 29.9 KiB |
 | `tinyaml/yamljs`     | 18.2 KiB | 8.1 KiB  |
 | yamljs               | 28.4 KiB | 8.8 KiB  |
 | `tinyaml/std`        | 24.6 KiB | 10.8 KiB |
