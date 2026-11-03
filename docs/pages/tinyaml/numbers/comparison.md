@@ -12,6 +12,9 @@ description: Schema, merge keys, tags, documents, errors, dependencies and size,
 | Anchors and aliases    | ✅               | ✅                  | ✅                             | ✅                     | ✅                   | ✅                             |
 | Multiple documents     | ✅ `parseAll`    | ✅ `loadAll`        | ✅ `loadAll`                   | ✅ `parseAllDocuments` | ❌ merged into one   | ✅ `parseAll`                  |
 | Error line and column  | ✅ 1-based       | ✅ 0-based `mark`   | ✅ 0-based `mark`              | ✅ `linePos`           | partial, line only   | ✅                             |
+| Keeps comments         | ❌               | ❌                  | ❌                             | ✅                     | ❌                   | ❌                             |
+| Document, AST and CST  | ❌ values only   | ❌                  | ❌                             | ✅ `parseDocument`     | ❌                   | ❌                             |
+| Edits keep formatting  | ❌               | ❌                  | ❌                             | ✅                     | ❌                   | ❌                             |
 | Dependencies           | 0                | 1, argparse         | 1, argparse                    | 0                      | 2, argparse and glob | 0                              |
 | ESM                    | ✅ ESM only      | ✅ and CommonJS     | ✅ and CommonJS                | ✅ and CommonJS        | ❌ CommonJS only     | ✅ ESM only                    |
 | TypeScript types       | ✅ built in      | `@types/js-yaml`    | ✅ built in                    | ✅ built in            | `@types/yamljs`      | ✅ built in                    |
@@ -20,3 +23,7 @@ description: Schema, merge keys, tags, documents, errors, dependencies and size,
 | Size, gzip             | 7.8 KiB          | 14.4 KiB            | 17.1 KiB                       | 29.9 KiB               | 8.8 KiB              | 11.3 KiB                       |
 
 The schema, merge, tag, document and error rows come from parsing the same inputs with each library's default options. A cell that names an option, like `mergeTag` or `merge: true`, needs that option. The others are defaults. The suite row is the first column of the [correctness table](/tinyaml/numbers/correctness/), which leaves out cases refused for an unknown tag and, for yamljs, streams without exactly one document. yaml's size is `parse` and `stringify` only, and js-yaml 5's is `load`, `loadAll`, `dump`, `Schema` and `YAMLException`.
+
+## When to use yaml instead
+
+tinyaml turns YAML into plain values and back, and never builds a syntax tree. That is most of why it's small and fast. If you need comments, the position of each node in the source, or to change a file and write it back with its formatting intact, use [yaml](https://eemeli.org/yaml/). It keeps all of that, and tinyaml doesn't try to.

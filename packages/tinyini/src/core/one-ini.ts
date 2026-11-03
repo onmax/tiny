@@ -35,6 +35,17 @@ export const TokenTypes = Object.freeze({
   "4": "CommentValue",
 });
 
+/**
+ * A token's type, as in the `TokenTypes` enum of @one-ini/wasm, so code that
+ * writes `parsed[i] as TokenTypes` still compiles.
+ */
+export type TokenTypes = (typeof TokenTypes)[
+  | "Key"
+  | "Value"
+  | "Section"
+  | "CommentIndicator"
+  | "CommentValue"];
+
 /** The version one-ini reports. */
 export const version = (): string => (emptyValues ? "0.2.1" : "0.1.1");
 
