@@ -41,6 +41,8 @@ Size is the minified bundle, gzipped. Speed is the median time to parse and stri
 
 <!-- /automd -->
 
+yaml 3.0.0-2, a prerelease, parses 3 to 4 times faster than yaml 2.9.1. Against it, the root API parses 4–5× faster and stringifies 11–13× faster, measured on another machine. The [speed page](https://tiny.onmax.me/tinyaml/numbers/speed) has the numbers.
+
 ### Bugs tinyaml doesn't copy
 
 | Library                   | Bug                                                                                                           | tinyaml                                                                              |

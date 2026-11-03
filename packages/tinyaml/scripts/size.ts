@@ -24,6 +24,8 @@ const entries: [string, string][] = [
   ["  js-yaml 5", "export { load, loadAll, dump, Schema, YAMLException } from 'js-yaml5'"],
   ["tinyaml/yaml", "yaml"],
   ["  yaml", "export { parse, stringify } from 'yaml'"],
+  // yaml 3, still a prerelease, for comparison only: tinyaml/yaml follows yaml 2.
+  ["  yaml 3", "export { parse, stringify } from 'yaml3'"],
   ["tinyaml/yamljs", "yamljs"],
   ["  yamljs", "export { default } from 'yamljs'"],
   ["tinyaml/std", "std"],
