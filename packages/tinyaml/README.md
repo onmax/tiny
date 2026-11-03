@@ -14,6 +14,8 @@
 
 **YAML for JavaScript in 7.8 KiB.** No dependencies, 12–19× faster than yaml 2, and right on all 373 [yaml-test-suite](https://github.com/yaml/yaml-test-suite) cases with an expected result: every valid document read, every invalid one rejected. js-yaml 4, yamljs and @std/yaml each get some wrong, and yaml 2.9.1 differs on 5, 2 of them by choice.
 
+tinyaml reads and writes plain data. For comments, a syntax tree or editing files in place, use [yaml](https://eemeli.org/yaml/).
+
 Already on another YAML library? Change one import and keep your code:
 
 ```diff
