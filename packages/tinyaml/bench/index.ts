@@ -11,6 +11,7 @@ import * as std from "@std/yaml";
 import * as jsYaml from "js-yaml";
 import * as jsYaml5 from "js-yaml5";
 import * as yaml from "yaml";
+import * as yaml3 from "yaml3";
 import yamljs from "yamljs";
 import { build } from "../scripts/dist.ts";
 
@@ -58,11 +59,14 @@ const pairs: [string, Codec, Codec][] = [
     { parse: tinyJsYaml5.load, stringify: tinyJsYaml5.dump },
   ],
   ["yaml", codec(yaml), codec(tinyYaml)],
+  // yaml 3, still a prerelease, for comparison only: tinyaml/yaml follows yaml 2.
+  ["yaml 3", codec(yaml3), codec(tinyYaml)],
   ["yamljs", codec(yamljs), codec(tinyYamljs)],
   ["@std/yaml", codec(std), codec(tinyStd)],
 ];
 // tinyaml's own API, against the library closest to its rules.
 pairs.push(["yaml (tinyaml root)", { parse: yaml.parse, stringify: yaml.stringify }, tinyaml]);
+pairs.push(["yaml 3 (tinyaml root)", { parse: yaml3.parse, stringify: yaml3.stringify }, tinyaml]);
 
 function time(fn: () => unknown): number {
   let iterations = 1;
