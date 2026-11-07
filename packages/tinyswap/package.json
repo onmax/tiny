@@ -1,6 +1,6 @@
 {
   "name": "tinyswap",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Moves a project from js-yaml, yaml, json5, ini and the other libraries tinyaml, tinyjson5 and tinyini replace, by rewriting its imports and package.json",
   "keywords": [
     "codemod",
