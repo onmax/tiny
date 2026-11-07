@@ -30,8 +30,10 @@ export const LINEAR = 1.5;
 // quadratic; tests check it stays under LINEAR. It reads the n that makes
 // about `chars` characters, and 16 times as many, enough for quadratic work
 // to show over the linear, each up to ten times, while they take less than
-// 100 ms in all, and keeps the fastest. On the way it reads 4 times as many, and stops
-// there when the slope is already over 1.8, so a quadratic reader fails soon.
+// 100 ms in all, and keeps the fastest. On the way it reads 4 times as many,
+// and when the slope there is already over 1.8 it reads 16 times as many just
+// once more, so a quadratic reader fails soon; a linear one on CI once came
+// out at 1.87 there.
 // A slope over its limit is measured up to twice more, with the fastest runs
 // of all rounds, since a busy machine may hold up the compiler or share a
 // core's caches for one. It counts CPU time, which a busy machine stretches
@@ -65,8 +67,8 @@ export function slope(
   const limit = Error.stackTraceLimit;
   Error.stackTraceLimit = 0;
   try {
-    const middle = growth(4, 1.8);
-    return middle > 1.8 ? middle : growth(16, LINEAR);
+    if (growth(4, 1.8) > 1.8) return Math.log(best(16) / best(1)) / Math.log(16);
+    return growth(16, LINEAR);
   } finally {
     Error.stackTraceLimit = limit;
   }
