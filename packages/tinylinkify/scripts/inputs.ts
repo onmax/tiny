@@ -11,8 +11,6 @@ export const rng = { next: Math.random };
 export const pick = <T>(list: readonly T[]): T => list[Math.floor(rng.next() * list.length)]!;
 export const int = (n: number): number => Math.floor(rng.next() * n);
 
-
-
 // Instances set up the same way on each side: [name, setup].
 const twitter = (make: Make) =>
   make().add("@", {
@@ -22,7 +20,7 @@ const twitter = (make: Make) =>
         self.re.twitter = new RegExp(`^([a-zA-Z0-9_]){1,15}(?!_)(?=$|${self.re.src_ZPCc})`);
       if (self.re.twitter.test(tail)) {
         if (pos >= 2 && tail[pos - 2] === "@") return false;
-        return tail.match(self.re.twitter)[0].length;
+        return tail.match(self.re.twitter)![0].length;
       }
       return 0;
     },
@@ -46,10 +44,7 @@ export const SETUPS: [string, (make: Make) => Linkify][] = [
     (make) =>
       make({ "git:": "http:", "My:": { validate: /^\/\/[a-z]+/ }, "skype:": { validate: /^\w+/ } }),
   ],
-  [
-    "disabled",
-    (make) => make().add("http:", null).add("mailto:", null).add("ftp:", "missing:"),
-  ],
+  ["disabled", (make) => make().add("http:", null).add("mailto:", null).add("ftp:", "missing:")],
   [
     "normalizer",
     (make) => {
@@ -66,7 +61,7 @@ export const SETUPS: [string, (make: Make) => Linkify][] = [
     (make) => {
       const l = make();
       l.onCompile = function (this: { re: Record<string, string> }) {
-        this.re.tpl_email_fuzzy = this.re.tpl_email_fuzzy.replace("@", "(?:@|\\[at\\])");
+        this.re.tpl_email_fuzzy = this.re.tpl_email_fuzzy!.replace("@", "(?:@|\\[at\\])");
       };
       return l.tlds("io", true);
     },
@@ -193,6 +188,13 @@ export const pieces = [
   "・",
   "︐",
   "，",
+  // Email names around the 64 characters linkify-it allows, which bound how
+  // far before an `@` tinylinkify starts the email scan.
+  "x".repeat(62),
+  `${"n".repeat(63)}@`,
+  `${"m".repeat(64)}@ex.com`,
+  `${"k".repeat(65)}@ex.com`,
+  "@mention",
   // Punctuation in the engine's Unicode that uc.micro's tables don't have.
   ...changed,
 ];
@@ -222,7 +224,8 @@ export function mutate(text: string): string {
 }
 
 // What a match result is, field by field, in key order.
-export const shape = (m: Record<string, unknown> | null) => (m ? JSON.stringify(Object.entries(m)) : null);
+export const shape = (m: Record<string, unknown> | null) =>
+  m ? JSON.stringify(Object.entries(m)) : null;
 export const SCHEMAS = ["http:", "HTTPS:", "//", "mailto:", "ftp:", "git:", "@", "bad:"];
 
 export function run(l: Linkify, text: string, schema: string, pos: number) {
@@ -234,4 +237,3 @@ export function run(l: Linkify, text: string, schema: string, pos: number) {
     attempt(() => l.testSchemaAt(text, schema, pos)),
   ];
 }
-

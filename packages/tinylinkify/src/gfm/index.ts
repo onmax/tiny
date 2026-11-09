@@ -57,7 +57,8 @@ interface LinkifyItConstructor {
 }
 
 const LinkifyIt = function LinkifyIt(this: any, schemas?: any, options?: Options) {
-  if (!(this instanceof LinkifyIt)) return new LinkifyIt(schemas, options);
+  // Cast, so `instanceof` doesn't narrow `this` to the bare function's `{}`.
+  if (!(this instanceof (LinkifyIt as any))) return new (LinkifyIt as any)(schemas, options);
   this.__opts__ = { fuzzyLink: true, fuzzyEmail: true, fuzzyIP: false };
   this.set(options || schemas || {});
 } as unknown as LinkifyItConstructor;

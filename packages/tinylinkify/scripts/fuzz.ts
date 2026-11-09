@@ -15,7 +15,18 @@
 // Usage: node scripts/fuzz.ts [iterations] [seed]
 import LinkifyIt from "../src/linkify-it/index.ts";
 import { changed, onEngine, published } from "./originals.ts";
-import { int, mutate, pick, rng, run, SCHEMAS, seeds, SETUPS, type Linkify, type Make } from "./inputs.ts";
+import {
+  int,
+  mutate,
+  pick,
+  rng,
+  run,
+  SCHEMAS,
+  seeds,
+  SETUPS,
+  type Linkify,
+  type Make,
+} from "./inputs.ts";
 import { attempt, count, seeded, show } from "./shared.ts";
 
 const iterations = count(2, 20000);
@@ -51,7 +62,7 @@ for (const [name, [ours, engine, theirs]] of instances) {
     report(`${name}: setup failed ${JSON.stringify([ours, engine, theirs])}`);
     continue;
   }
-  const [a, b, c] = [ours.value, engine.value, theirs.value].map(sources);
+  const [a, b, c] = [ours!, engine!, theirs!].map((l) => sources((l as { value: Linkify }).value));
   if (a !== b || a !== c) report(`${name}: re differs`);
 }
 

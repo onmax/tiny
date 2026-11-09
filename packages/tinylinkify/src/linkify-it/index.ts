@@ -28,11 +28,12 @@ export interface Options {
   fuzzyEmail?: boolean | undefined;
 }
 
-const toString = Object.prototype.toString;
-const isString = (obj: unknown) => toString.call(obj) === "[object String]";
-const isObject = (obj: unknown) => toString.call(obj) === "[object Object]";
-const isRegExp = (obj: unknown) => toString.call(obj) === "[object RegExp]";
-const isFunction = (obj: unknown) => toString.call(obj) === "[object Function]";
+// Read at each call, as linkify-it does.
+const kind = (obj: unknown) => Object.prototype.toString.call(obj);
+const isString = (obj: unknown) => kind(obj) === "[object String]";
+const isObject = (obj: unknown) => kind(obj) === "[object Object]";
+const isRegExp = (obj: unknown) => kind(obj) === "[object RegExp]";
+const isFunction = (obj: unknown) => kind(obj) === "[object Function]";
 
 function assign(obj: any, ...sources: any[]) {
   sources.forEach((source) => {
@@ -55,16 +56,30 @@ const isOptionsObj = (obj: any) =>
     false,
   );
 
+// The regular expressions the validators below made, which match once where
+// linkify-it tests and then matches: with no `g` or `y` flag, both give the
+// same. One put in `re` in their place gets linkify-it's two calls.
+const own = new WeakSet<RegExp>();
+
 // A validator that compiles its regular expression on first use, from the
 // instance's `re`, since the host parts change with the TLDs.
 const lazy =
-  (name: string, source: (re: Record<string, any>) => string, check?: (text: string, pos: number) => boolean) =>
+  (
+    name: string,
+    source: (re: Record<string, any>) => string,
+    check?: (text: string, pos: number) => boolean,
+  ) =>
   (text: string, pos: number, self: any) => {
     const tail = text.slice(pos);
-    if (!self.re[name]) self.re[name] = new RegExp(source(self.re), "i");
-    if (self.re[name].test(tail)) {
+    if (!self.re[name]) own.add((self.re[name] = new RegExp(source(self.re), "i")));
+    const re = self.re[name];
+    if (own.has(re)) {
+      const m = re.exec(tail);
+      return m && (!check || check(text, pos)) ? m[0].length : 0;
+    }
+    if (re.test(tail)) {
       if (check && !check(text, pos)) return 0;
-      return tail.match(self.re[name])[0].length;
+      return tail.match(re)![0].length;
     }
     return 0;
   };
@@ -154,7 +169,7 @@ function compile(self: any) {
   self.__compiled__ = {};
 
   const schemaError = (name: string, val: unknown) => {
-    throw new Error(`(LinkifyIt) Invalid schema "${name}": ${val}`);
+    throw new Error(`(LinkifyIt) Invalid schema "${name}": ${val as string}`);
   };
 
   Object.keys(self.__schemas__).forEach((name) => {
@@ -229,17 +244,17 @@ function compile(self: any) {
 /** A link `match` found. */
 class Match {
   /** Prefix (protocol) for matched string. */
-  schema: string;
+  declare schema: string;
   /** First position of matched string. */
-  index: number;
+  declare index: number;
   /** Next position after matched string. */
-  lastIndex: number;
+  declare lastIndex: number;
   /** Matched string. */
-  raw: string;
+  declare raw: string;
   /** Normalized text of matched string. */
-  text: string;
+  declare text: string;
   /** Normalized url of matched string. */
-  url: string;
+  declare url: string;
 
   constructor(text: string, schema: string, index: number, lastIndex: number) {
     const raw = text.slice(index, lastIndex);
@@ -320,7 +335,8 @@ interface LinkifyItConstructor {
 }
 
 const LinkifyIt = function LinkifyIt(this: any, schemas?: any, options?: any) {
-  if (!(this instanceof LinkifyIt)) return new LinkifyIt(schemas, options);
+  // Cast, so `instanceof` doesn't narrow `this` to the bare function's `{}`.
+  if (!(this instanceof (LinkifyIt as any))) return new (LinkifyIt as any)(schemas, options);
 
   if (!options) {
     if (isOptionsObj(schemas)) {
@@ -394,8 +410,19 @@ proto.testSchemaAt = function testSchemaAt(text: string, schema: string, pos: nu
   return this.__compiled__[schema.toLowerCase()].validate(text, pos, this);
 };
 
-// An email name ends in one of these, right before the `@`.
-const EMAIL_AT = /[-;:&=+$,".\w]@/;
+// The characters an email name has: `-;:&=+$,".`, letters, digits and `_`.
+const NAME = /[-;:&=+$,".\w]/;
+
+/**
+ * Where the default fuzzy email pattern can first match: up to 65 characters
+ * before the first `@` after a name character, the most a name and the
+ * character before it take. -1 when there's no such `@`.
+ */
+function emailStart(text: string): number {
+  for (let at = text.indexOf("@"); at >= 0; at = text.indexOf("@", at + 1))
+    if (at && NAME.test(text[at - 1]!)) return Math.max(0, at - 65);
+  return -1;
+}
 
 proto.match = function match(text: string) {
   const result: Match[] = [];
@@ -441,8 +468,9 @@ proto.match = function match(text: string) {
 
   if (this.__opts__.fuzzyEmail && this.__compiled__["mailto:"]) {
     re = this.re.email_fuzzy_global;
-    if (!(re === skip?.email && !EMAIL_AT.test(text))) {
-      re.lastIndex = 0;
+    const from = re === skip?.email && typeof text === "string" ? emailStart(text) : 0;
+    if (from >= 0) {
+      re.lastIndex = from;
       while ((m = re.exec(text)) !== null) {
         type_fuzzy_email.push({
           schema: "mailto:",

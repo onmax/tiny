@@ -19,9 +19,10 @@ for (let code = 0; code <= 0x10ffff; code++) {
   }
 }
 const P = new RegExp(
-  [`[${bmp.join("")}]`, ...[...astral].map(([high, lows]) => `${hex(high)}[${lows.join("")}]`)].join(
-    "|",
-  ),
+  [
+    `[${bmp.join("")}]`,
+    ...[...astral].map(([high, lows]) => `${hex(high)}[${lows.join("")}]`),
+  ].join("|"),
 );
 
 /** Code points whose punctuation class differs between uc.micro and the engine. */

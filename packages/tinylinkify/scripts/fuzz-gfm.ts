@@ -184,13 +184,17 @@ for (let i = 0; i < iterations; i++) {
   // matchAtStart from each http(s) link the root finds that micromark would
   // read, which is what markdown-exit asks for at `://`.
   const atStart = found.filter(
-    (link) => /^https?:$/.test(link.schema) && linkify.matchAtStart(text.slice(link.index))?.text !== link.text,
+    (link) =>
+      /^https?:$/.test(link.schema) &&
+      linkify.matchAtStart(text.slice(link.index))?.text !== link.text,
   );
   const textsOk = found.every((link) => text.slice(link.index, link.lastIndex) === link.text);
   if (got !== want || fromEntry !== want || !textsOk) {
     differences++;
     if (examples.length < Number(process.env.SHOW ?? 10))
-      examples.push(`${show(text)}\n  remark ${want}\n  ours   ${got}${fromEntry === got ? "" : `\n  /gfm   ${fromEntry}`}`);
+      examples.push(
+        `${show(text)}\n  remark ${want}\n  ours   ${got}${fromEntry === got ? "" : `\n  /gfm   ${fromEntry}`}`,
+      );
   } else if (atStart.length) {
     // A link micromark found at the start must come back from matchAtStart;
     // one only the mdast search found may not, as micromark doesn't link it.
@@ -201,7 +205,9 @@ for (let i = 0; i < iterations; i++) {
     if (missed.length) {
       differences++;
       if (examples.length < Number(process.env.SHOW ?? 10))
-        examples.push(`${show(text)}: matchAtStart differs at ${missed.map((l) => l.index).join(", ")}`);
+        examples.push(
+          `${show(text)}: matchAtStart differs at ${missed.map((l) => l.index).join(", ")}`,
+        );
     }
   }
 }
