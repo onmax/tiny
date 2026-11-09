@@ -142,7 +142,15 @@ export default {
         }
         // Another package's own API, from `roots`, against the library its users switch from.
         const own = data.roots?.find((r) => r.package === args.package);
-        if (own)
+        // tinylinkify's root finds GFM links, not linkify-it's, so it's the
+        // same work on the same text rather than the same result.
+        if (own?.package === "tinylinkify")
+          lines.push(
+            "",
+            `The root \`tinylinkify\` API, which finds GFM links, is ${kib(own.gzip.ours)} KiB against ${kib(own.gzip.theirs)} KiB for ${own.library}, ` +
+              `and finds them ${times(own.parse)} faster than linkify-it finds its own in the same text.`,
+          );
+        else if (own)
           lines.push(
             "",
             `The root \`${own.entry}\` API is ${kib(own.gzip.ours)} KiB against ${kib(own.gzip.theirs)} KiB for ${own.library}. ` +
@@ -158,6 +166,9 @@ export default {
               : "") +
             (rows.some((r) => r.library.startsWith("strip-json-comments"))
               ? " strip-json-comments only strips comments, so its time is the time to strip them."
+              : "") +
+            (rows.some((r) => r.library.startsWith("linkify-it"))
+              ? " linkify-it only finds links, so its time is `match` on 100 KB of text."
               : "") +
             ` Measured on ${machines(data, rows)}.`,
         );

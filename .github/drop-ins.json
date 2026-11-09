@@ -282,6 +282,20 @@
         "theirs": 6.977973875000316,
         "ours": 0.5743697890625299
       }
+    },
+    {
+      "package": "tinylinkify",
+      "library": "linkify-it 5.0.2",
+      "entry": "tinylinkify/linkify-it",
+      "gzip": {
+        "theirs": 4211,
+        "ours": 3859
+      },
+      "parse": {
+        "theirs": 5.740355187499972,
+        "ours": 5.49508956249997
+      },
+      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
     }
   ],
   "root": {
@@ -335,6 +349,20 @@
         "theirs": 1.5631965937500354,
         "ours": 0.44089388281247466
       }
+    },
+    {
+      "package": "tinylinkify",
+      "library": "linkify-it 5.0.2",
+      "entry": "tinylinkify",
+      "gzip": {
+        "theirs": 4211,
+        "ours": 1748
+      },
+      "parse": {
+        "theirs": 5.9029192500001955,
+        "ours": 2.1144412187500166
+      },
+      "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
     }
   ]
 }

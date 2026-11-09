@@ -1,6 +1,6 @@
 # tinyswap
 
-Moves a project to the [tinyaml](../tinyaml), [tinyjson5](../tinyjson5) and [tinyini](../tinyini) drop-ins. It finds which of the libraries they replace your package.json files depend on, picks the subpath for the version you have installed, rewrites the imports, and swaps the dependencies.
+Moves a project to the [tinyaml](../tinyaml), [tinyjson5](../tinyjson5), [tinyini](../tinyini) and [tinylinkify](../tinylinkify) drop-ins. It finds which of the libraries they replace your package.json files depend on, picks the subpath for the version you have installed, rewrites the imports, and swaps the dependencies.
 
 ```sh
 npx tinyswap [dir]
@@ -36,6 +36,7 @@ npx tinyswap [dir]
 | ini 4.1 to 7          | `tinyini/ini`                                              |
 | @one-ini/wasm 0.2     | `tinyini/one-ini`                                          |
 | @one-ini/wasm 0.1     | `tinyini/one-ini-v0.1`                                     |
+| linkify-it 4 and 5    | `tinylinkify/linkify-it`                                   |
 
 Each package's README lists the exact versions its drop-ins are tested against, and where they still differ.
 
@@ -72,7 +73,7 @@ In a workspace, an import takes the version of the nearest package.json above it
 
 Each library moved is removed, along with its `@types` package if there is one, and the tiny package is added to the same field. When one tiny package replaces libraries in different fields, it goes in the first of `dependencies`, `optionalDependencies` and `devDependencies`. If the tiny package is already there, its range stays. The file keeps its indentation and line endings, and a new key goes where it sorts if the keys were sorted.
 
-The range added is the version of tinyswap that ran, since tinyaml, tinyjson5, tinyini and tinyswap are released together at one version.
+The range added is the version of tinyswap that ran, since tinyaml, tinyjson5, tinyini, tinylinkify and tinyswap are released together at one version.
 
 ## Options
 
@@ -98,6 +99,7 @@ const changes = plan(project, ["js-yaml"], {
   tinyaml: "^1.0.0",
   tinyjson5: "^1.0.0",
   tinyini: "^1.0.0",
+  tinylinkify: "^1.0.0",
 });
 apply(".", changes); // writes changes.edits and changes.manifests
 ```

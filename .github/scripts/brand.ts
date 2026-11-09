@@ -76,7 +76,7 @@ ${b.stats
 </svg>
 `;
 
-const { dropIns, root } = readDropIns();
+const { dropIns, root, roots = [] } = readDropIns();
 const row = (library: string) => dropIns.find((r) => r.library === library)!;
 const count = (pkg: string) => String(dropIns.filter((r) => r.package === pkg).length);
 const dependencies = (pkg: string) =>
@@ -89,7 +89,7 @@ const banners: Banner[] = [
   {
     file: ".github/assets/banner.svg",
     name: "tiny",
-    title: "tiny: smaller, faster drop-ins for YAML, JSON5, JSONC and INI libraries",
+    title: "tiny: smaller, faster drop-ins for YAML, JSON5, JSONC and INI libraries, and linkify-it",
     tagline: "Smaller, faster parsers. Same API.",
     stats: [
       [String(dropIns.length), "drop-in replacements"],
@@ -129,6 +129,17 @@ const banners: Banner[] = [
       [times(row("ini 7.0.0").parse), "faster than ini"],
       [times(row("ini 7.0.0").stringify!), "faster stringify"],
       [dependencies("tinyini"), "dependencies"],
+    ],
+  },
+  {
+    file: "packages/tinylinkify/.github/banner.svg",
+    name: "tinylinkify",
+    title: "tinylinkify: GFM links in text, and a smaller, faster drop-in for linkify-it 5",
+    tagline: "GFM links in text, and a faster linkify-it.",
+    stats: [
+      [`${kib(roots.find((r) => r.entry === "tinylinkify")!.gzip.ours)} KiB`, "own API, gzipped"],
+      [times(roots.find((r) => r.entry === "tinylinkify")!.parse), "faster than linkify-it"],
+      [dependencies("tinylinkify"), "dependencies"],
     ],
   },
 ];

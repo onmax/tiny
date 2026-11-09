@@ -90,6 +90,10 @@ describe("pick", () => {
     ["ini", "8.0.0", undefined],
     ["@one-ini/wasm", "0.1.1", "tinyini/one-ini-v0.1"],
     ["@one-ini/wasm", "0.2.1", "tinyini/one-ini"],
+    ["linkify-it", "3.0.3", undefined],
+    ["linkify-it", "4.0.1", "tinylinkify/linkify-it"],
+    ["linkify-it", "5.0.2", "tinylinkify/linkify-it"],
+    ["linkify-it", "6.1.0", undefined],
   ])("%s %s → %s", (name, version, target) => {
     expect(pick(name, version)).toBe(target);
   });
@@ -119,6 +123,9 @@ describe("pickRange", () => {
     ["yamljs", "^0.3.0", "tinyaml/yamljs"],
     ["@one-ini/wasm", "^0.2.0", "tinyini/one-ini"],
     ["@std/yaml", "jsr:^1.0.5", "tinyaml/std"],
+    ["linkify-it", "^5.0.0", "tinylinkify/linkify-it"],
+    ["linkify-it", "^4.0.1 || ^5.0.0", "tinylinkify/linkify-it"],
+    ["linkify-it", ">=5", null],
   ])("%s %s → %s", (name, text, target) => {
     expect(range(name, text)).toBe(target);
   });

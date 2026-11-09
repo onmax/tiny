@@ -4,7 +4,11 @@
 
 <!-- automd:comark-badges name=tinyjson5 size=size -->
 
-<!-- ⚠️  (comark-badges) Expected property name or '}' in JSON at position 549 (line 26 column 1) -->
+[![release](https://comark-ui.onmax.me/badge.svg?source=npm-version&package=tinyjson5&label=release&icon=npm)](https://github.com/onmax/tiny/releases)
+[![size](https://comark-ui.onmax.me/badge.svg?label=size&value=3.4+KiB+gzip)](#size)
+[![dependencies](https://comark-ui.onmax.me/badge.svg?label=dependencies&value=0)](https://www.npmjs.com/package/tinyjson5?activeTab=dependencies)
+[![license: MIT](https://comark-ui.onmax.me/badge.svg?label=license&value=MIT)](./LICENSE)
+[![Release status](https://comark-ui.onmax.me/badge.svg?source=github-actions&repository=onmax%2Ftiny&workflow=release.yaml&icon=github)](https://github.com/onmax/tiny/actions/workflows/release.yaml)
 
 <!-- /automd -->
 
@@ -21,7 +25,20 @@ tinyjson5 ships drop-in replacements for json5 2 and 1, strip-json-comments 3, 2
 
 <!-- automd:drop-ins package=tinyjson5 -->
 
-<!-- ⚠️  (drop-ins) Expected property name or '}' in JSON at position 549 (line 26 column 1) -->
+| You use               | Switch to                          |      Size, gzip |      Parses | Stringifies |
+| --------------------- | ---------------------------------- | --------------: | ----------: | ----------: |
+| json5 2.2.3           | `tinyjson5/json5`                  |   7.5 → 3.2 KiB | 7.4× faster | 4.7× faster |
+| json5 1.0.2           | `tinyjson5/json5-v1`               |   8.3 → 3.3 KiB | 7.1× faster | 5.1× faster |
+| strip-json-comments 3 | `tinyjson5/strip-json-comments`    |   0.7 → 0.5 KiB | 3.8× faster |           — |
+| strip-json-comments 2 | `tinyjson5/strip-json-comments-v2` |   0.6 → 0.5 KiB | 4.2× faster |           — |
+| strip-json-comments 5 | `tinyjson5/strip-json-comments-v5` |   0.6 → 0.6 KiB | 3.6× faster |           — |
+| jsonc-parser 3.3.1    | `tinyjson5/jsonc-parser`           |   6.6 → 5.7 KiB | 1.2× faster |           — |
+| comment-json 4.6.2    | `tinyjson5/comment-json`           | 35.3 → 18.2 KiB | 1.8× faster | 1.3× faster |
+| jju 1.4.0             | `tinyjson5/jju`                    |   9.6 → 9.5 KiB | 1.1× faster | 1.6× faster |
+
+The root `tinyjson5` API is 3.4 KiB against 7.5 KiB for json5 2.2.3. It parses 6.3× faster than json5 2.2.3 and stringifies 4.3× faster.
+
+Size is the minified bundle, gzipped. Speed is the median time to parse and stringify the large benchmark file. strip-json-comments only strips comments, so its time is the time to strip them. Measured on Apple M4, Node 26.13.0.
 
 <!-- /automd -->
 
