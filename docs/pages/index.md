@@ -59,7 +59,7 @@ Each format is its own package, so you install only the ones you need.
 | ini 1.3.8             | `tinyini/ini-v1`                   |   1.4 → 1.4 KiB |  1.6× faster | 1.7× faster |
 | @one-ini/wasm 0.2.1   | `tinyini/one-ini`                  |  36.0 → 1.7 KiB | 12.4× faster |           — |
 | @one-ini/wasm 0.1.1   | `tinyini/one-ini-v0.1`             |  32.3 → 1.7 KiB | 12.1× faster |           — |
-| linkify-it 5.0.2      | `tinylinkify/linkify-it`           |   4.1 → 3.8 KiB |  1.0× faster |           — |
+| linkify-it 5.0.2      | `tinylinkify/linkify-it`           |   4.1 → 3.8 KiB |  1.1× faster |           — |
 
 For new code, the root `tinyaml` API is 7.7 KiB, 1.9× smaller than js-yaml 4 and 3.9× smaller than yaml 2. It parses 18.7× faster than yaml 2 and stringifies 12.9× faster.
 

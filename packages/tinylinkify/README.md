@@ -5,14 +5,14 @@
 <!-- automd:comark-badges name=tinylinkify size=size -->
 
 [![release](https://comark-ui.onmax.me/badge.svg?source=npm-version&package=tinylinkify&label=release&icon=npm)](https://github.com/onmax/tiny/releases)
-[![size](https://comark-ui.onmax.me/badge.svg?label=size&value=1.7+KiB+gzip)](#size)
+[![size](https://comark-ui.onmax.me/badge.svg?label=size&value=1.8+KiB+gzip)](#size)
 [![dependencies](https://comark-ui.onmax.me/badge.svg?label=dependencies&value=0)](https://www.npmjs.com/package/tinylinkify?activeTab=dependencies)
 [![license: MIT](https://comark-ui.onmax.me/badge.svg?label=license&value=MIT)](./LICENSE)
 [![Release status](https://comark-ui.onmax.me/badge.svg?source=github-actions&repository=onmax%2Ftiny&workflow=release.yaml&icon=github)](https://github.com/onmax/tiny/actions/workflows/release.yaml)
 
 <!-- /automd -->
 
-**Links in plain text, in 1.7 KiB.** No dependencies, GFM's autolink rules as remark-gfm and GitHub apply them, and up to 3 times faster than linkify-it.
+**Links in plain text, in 1.8 KiB.** No dependencies, GFM's autolink rules as remark-gfm and GitHub apply them, and up to 3 times faster than linkify-it.
 
 Already on linkify-it? Change one import and keep your code:
 
@@ -27,9 +27,9 @@ tinylinkify ships a drop-in replacement for linkify-it 5 (and 4), and `tinylinki
 
 | You use          | Switch to                |    Size, gzip |      Parses | Stringifies |
 | ---------------- | ------------------------ | ------------: | ----------: | ----------: |
-| linkify-it 5.0.2 | `tinylinkify/linkify-it` | 4.1 → 3.8 KiB | 1.0× faster |           — |
+| linkify-it 5.0.2 | `tinylinkify/linkify-it` | 4.1 → 3.8 KiB | 1.1× faster |           — |
 
-The root `tinylinkify` API, which finds GFM links, is 1.7 KiB against 4.1 KiB for linkify-it 5.0.2, and finds them 2.8× faster than linkify-it finds its own in the same text.
+The root `tinylinkify` API, which finds GFM links, is 1.8 KiB against 4.1 KiB for linkify-it 5.0.2, and finds them 3.0× faster than linkify-it finds its own in the same text.
 
 Size is the minified bundle, gzipped. Speed is the median time to parse and stringify the large benchmark file. linkify-it only finds links, so its time is `match` on 100 KB of text. Measured on AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0.
 
@@ -85,6 +85,8 @@ md.render("see www.example.com, thanks @alice");
 
 It isn't a drop-in for linkify-it, since the links differ. It has `test`, `pretest`, `match` and `matchAtStart`, whose matches have linkify-it's fields, and `set`, which reads `fuzzyLink` (`www.` links) and `fuzzyEmail` (emails without `mailto:`). `tlds` and `add` take their arguments and do nothing, since GFM has no TLD list or custom schemas, and `fuzzyIP` is ignored: GFM links an IP address only after `http://` or `https://`. `pretest` is a quick check that never says no to text with a link: `www.`, `://`, or an address character before an `@`, so chat full of `@mentions` skips `match`.
 
+markdown-it 14 and markdown-exit 1 call `pretest` and then `match`; markdown-it 15 and markdown-exit 2 call `test` and then `match`, and import linkify-it 6's named `LinkifyIt`, which `tinylinkify/gfm` exports too. Its `test` stops at the first link, so a paragraph tested before its text costs little, and `match` keeps the links it found for a `test` of the same text; with markdown-exit 2 it renders 52 chat messages 1.2 times faster than linkify-it 6.1.0 does.
+
 markdown-exit with it links the same as remark-gfm on 98 of 98 chat messages, where linkify-it gets 83 (URLs compared after decoding). The parsers still differ around the linkifier, and tinylinkify/gfm can't change that from inside linkify-it's interface:
 
 - **After an unclosed `[`.** remark-gfm's parser reads no autolink literal after a `[` that hasn't closed yet, and its second search links them by its own rules: it keeps `*`, `_`, `~` and `<` in the link and leaves out `>`, `}` and `&`, needs a dot in the host, and links `mailto:foo@bar.com` with its prefix. markdown-exit asks the linkifier from inside its parser, where the `[` doesn't show, so `[www.commonmark.org/he<lp` links `www.commonmark.org/he<lp` in remark-gfm and `www.commonmark.org/he` in markdown-exit.
@@ -134,47 +136,51 @@ Each entry as npm ships it in `dist/`, bundled with esbuild, minified ESM, then 
 
 | Entry                    | Minified  | Gzip     |
 | ------------------------ | --------- | -------- |
-| `tinylinkify`            | 3.37 KiB  | 1.71 KiB |
-| `tinylinkify/gfm`        | 4.14 KiB  | 2.02 KiB |
+| `tinylinkify`            | 3.55 KiB  | 1.79 KiB |
+| `tinylinkify/gfm`        | 4.65 KiB  | 2.22 KiB |
 | `tinylinkify/linkify-it` | 9.94 KiB  | 3.77 KiB |
 | linkify-it 5.0.2         | 11.25 KiB | 4.11 KiB |
+| linkify-it 6.1.0         | 13.30 KiB | 4.40 KiB |
 
-Most of linkify-it is its patterns, which the drop-in keeps, so it saves what uc.micro's punctuation table weighed, less the code that builds the class and the shortcuts. The GFM entries share one search; `tinylinkify/gfm` adds the interface around it. `scripts/size.ts` fails if an entry outgrows its budget or linkify-it, if one entry bundles another's code, if a package specifier such as `tinylinkify/gfm` loads the wrong entry, or if the root stops being the smallest.
+Most of linkify-it is its patterns, which the drop-in keeps, so it saves what uc.micro's punctuation table weighed, less the code that builds the class and the shortcuts. The GFM entries share one search; `tinylinkify/gfm` adds the interface around it, and is half the size of linkify-it 6.1.0, which markdown-it 15 and markdown-exit 2 use. `scripts/size.ts` fails if an entry outgrows its budget or linkify-it, if one entry bundles another's code, if a package specifier such as `tinylinkify/gfm` loads the wrong entry, or if the root stops being the smallest.
 
 ## Speed
 
-Median time per call over seven rounds, from [`bench/index.ts`](./bench/index.ts), on the built `dist/` (AMD Ryzen 7 255, Node 24.21.0, on a machine other jobs share). The two sides' rounds interleave, and which runs first alternates. The inputs are linkify-it's five benchmark samples, 52 chat messages full of `@mentions`, and about 100 KB of all of them; the call is the one markdown-it makes, `match` after a `pretest` that passes. The GFM entries find GFM's links, not linkify-it's, so theirs is the same work on the same text, not the same result. The last rows are markdown-exit rendering the chat messages with each linkifier.
+Median time per call over seven rounds, from [`bench/index.ts`](./bench/index.ts), on the built `dist/` (AMD Ryzen 7 255, Node 24.21.0, on a machine other jobs share). The two sides' rounds interleave, and which runs first alternates. The inputs are linkify-it's five benchmark samples, 52 chat messages full of `@mentions`, and about 100 KB of all of them; the call is the one markdown-it makes, `match` after a `pretest` that passes. The GFM entries find GFM's links, not linkify-it's, so theirs is the same work on the same text, not the same result. linkify-it 6.1.0 has no `pretest`, so its rows are `test` and then `match`, as markdown-it 15 and markdown-exit 2 call it, each on a new `tinylinkify/gfm`, since it keeps the links of the last text it matched, which a benchmark repeating one text would reuse. linkify-it 6 links no fuzzy domains by default, so on linkify-it's samples, which are mostly those, it does a fraction of the work and is 4 to 8 times faster than `tinylinkify/gfm`; on 100 KB it's 1.3 times faster. The last rows are markdown-exit rendering the chat messages with each linkifier, markdown-exit 2 on its core, where you set the linkifier.
 
-| Library                                     | Operation         |  Library | tinylinkify | Speedup |
-| ------------------------------------------- | ----------------- | -------: | ----------: | ------: |
-| linkify-it 5.0.2 → `tinylinkify/linkify-it` | match chat        | 200.9 µs |    158.4 µs |    1.3x |
-|                                             | match email_fuzzy |  82.5 µs |     68.0 µs |    1.2x |
-|                                             | match link_fuzzy  |  88.8 µs |     70.1 µs |    1.3x |
-|                                             | match link_normal |  97.7 µs |     85.8 µs |    1.1x |
-|                                             | match many        |  73.0 µs |     64.2 µs |    1.1x |
-|                                             | match many_fast   |  72.7 µs |     63.7 µs |    1.1x |
-|                                             | match large       |  6.30 ms |     5.69 ms |    1.1x |
-| linkify-it 5.0.2 → `tinylinkify/gfm`        | match chat        | 217.1 µs |     64.8 µs |    3.3x |
-|                                             | match email_fuzzy |  84.1 µs |     62.9 µs |    1.3x |
-|                                             | match link_fuzzy  |  88.1 µs |     70.7 µs |    1.2x |
-|                                             | match link_normal | 101.1 µs |     46.6 µs |    2.2x |
-|                                             | match many        |  74.6 µs |     70.1 µs |    1.1x |
-|                                             | match many_fast   |  74.3 µs |     73.0 µs |    1.0x |
-|                                             | match large       |  6.33 ms |     2.25 ms |    2.8x |
-| linkify-it 5.0.2 → `tinylinkify`            | match chat        | 226.9 µs |     72.3 µs |    3.1x |
-|                                             | match large       |  5.84 ms |     2.12 ms |    2.8x |
-| markdown-exit 1.3.0, linkify-it → drop-in   | render chat       | 392.5 µs |    281.0 µs |    1.4x |
-| markdown-exit 1.3.0, linkify-it → `/gfm`    | render chat       | 359.7 µs |    239.3 µs |    1.5x |
+| Library                                         | Operation         |  Library | tinylinkify | Speedup |
+| ----------------------------------------------- | ----------------- | -------: | ----------: | ------: |
+| linkify-it 5.0.2 → `tinylinkify/linkify-it`     | match chat        | 202.2 µs |    157.5 µs |    1.3x |
+|                                                 | match email_fuzzy |  80.7 µs |     67.1 µs |    1.2x |
+|                                                 | match link_fuzzy  |  80.7 µs |     66.9 µs |    1.2x |
+|                                                 | match link_normal |  86.3 µs |     71.6 µs |    1.2x |
+|                                                 | match many        |  70.4 µs |     61.5 µs |    1.1x |
+|                                                 | match many_fast   |  69.4 µs |     59.9 µs |    1.2x |
+|                                                 | match large       |  5.65 ms |     5.55 ms |    1.0x |
+| linkify-it 5.0.2 → `tinylinkify/gfm`            | match chat        | 203.8 µs |     61.8 µs |    3.3x |
+|                                                 | match email_fuzzy |  82.5 µs |     62.6 µs |    1.3x |
+|                                                 | match link_fuzzy  |  80.6 µs |     61.2 µs |    1.3x |
+|                                                 | match link_normal |  86.8 µs |     29.7 µs |    2.9x |
+|                                                 | match many        |  69.8 µs |     64.9 µs |    1.1x |
+|                                                 | match many_fast   |  69.2 µs |     66.0 µs |    1.0x |
+|                                                 | match large       |  5.76 ms |     2.03 ms |    2.8x |
+| linkify-it 5.0.2 → `tinylinkify`                | match chat        | 198.6 µs |     61.9 µs |    3.2x |
+|                                                 | match large       |  5.99 ms |     2.17 ms |    2.8x |
+| linkify-it 6.1.0 → `tinylinkify/gfm`            | test, match chat  |  75.9 µs |     63.8 µs |    1.2x |
+|                                                 | test, match large |  1.52 ms |     1.99 ms |    0.8x |
+| markdown-exit 1.3.0, linkify-it 5.0.2 → drop-in | render chat       | 343.1 µs |    246.8 µs |    1.4x |
+| markdown-exit 1.3.0, linkify-it 5.0.2 → `/gfm`  | render chat       | 345.9 µs |    199.4 µs |    1.7x |
+| markdown-exit 2.1.0, linkify-it 6.1.0 → `/gfm`  | render chat       | 230.2 µs |    197.6 µs |    1.2x |
 
-`node bench/index.ts` prints every row, the root's on each sample included.
+`node bench/index.ts` prints every row, the root's and linkify-it 6's on each sample included.
 
 ## How it's checked
 
 The drop-in is checked against linkify-it 5.0.2, and the GFM entries against remark-gfm, each installed next to it as a development dependency:
 
 - linkify-it 5.0.2's own tests, copied unchanged into [`test/suites`](./test/suites) and run with tinylinkify in its place: 172 fixture and API tests, 3 pathological inputs that must not hang, and the CommonJS `require()` test, 176 of 176, as linkify-it passes them.
-- 200,000 fuzzed inputs, made by editing linkify-it's fixtures, its benchmark samples and chat with the pieces its patterns care about, through `pretest`, `test`, `match`, `matchAtStart` and `testSchemaAt` on 14 setups: each option, `---`, replaced and added TLDs, added, aliased and disabled schemas, a replaced normalizer and an `onCompile` that changes a template. Arguments of the wrong type, bad schema definitions and odd options are compared too, errors by class and message, and every `re` source after construction. The reference that must match on every input is linkify-it with uc.micro's punctuation swapped for the engine's, built one code point at a time apart from tinylinkify's code: 6,001,500 calls, 0 differences. Against linkify-it as published, the inputs that differ are those with one of the 14 code points above, about 2.4% of them, since the fuzzer adds them on purpose.
-- The GFM entries against remark-gfm's autolink step on plain text: micromark with the autolink literal extension and every other construct turned off, then mdast-util-gfm-autolink-literal, so the text is one run as tinylinkify sees it. 70,000 fuzzed lines from the micromark and mdast fixtures, the benchmark samples and chat, with 45,000 links: 0 differences in offsets or URLs, for the root, for `tinylinkify/gfm`'s `match`, and for its `matchAtStart` on each `http(s)://` link.
+- 200,000 fuzzed inputs, made by editing linkify-it's fixtures, its benchmark samples and chat with the pieces its patterns care about, through `pretest`, `test`, `match`, `matchAtStart` and `testSchemaAt` on 14 setups: each option, `---`, replaced and added TLDs, added, aliased and disabled schemas, a replaced normalizer and an `onCompile` that changes a template. Arguments of the wrong type, bad schema definitions and odd options are compared too, errors by class and message, and every `re` source after construction. The reference that must match on every input is linkify-it with uc.micro's punctuation swapped for the engine's, built one code point at a time apart from tinylinkify's code: 6,001,500 calls, 0 differences. Against linkify-it as published, the inputs that differ are those with one of the 14 code points above, about 2.3% of them, since the fuzzer adds them on purpose.
+- The GFM entries against remark-gfm's autolink step on plain text: micromark with the autolink literal extension and every other construct turned off, then mdast-util-gfm-autolink-literal, so the text is one run as tinylinkify sees it. 69,935 fuzzed lines from the micromark and mdast fixtures, the benchmark samples and chat, with 45,348 links: 0 differences in offsets or URLs, for the root, for `tinylinkify/gfm`'s `match`, and for its `matchAtStart` on each `http(s)://` link, and `test` agrees with whether there's a link.
 - The GFM spec 0.29's 11 autolink examples and the fixtures of micromark-extension-gfm-autolink-literal (22) and mdast-util-gfm-autolink-literal (30), whose HTML is what github.com renders, through markdown-exit with tinylinkify/gfm, link for link: it matches remark-gfm on 11, 14 and 15 of them, and GitHub on 10, 3 and 15, where linkify-it matches GitHub on 6, 0 and 1. The fixtures it doesn't match are the markdown cases listed above, mostly `[` before every line; the spec example is `ftp://`.
 - Every fuzzer and suite runner exits with an error on a difference or a failed test, and when a suite runs no tests.
 
