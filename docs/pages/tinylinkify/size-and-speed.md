@@ -9,7 +9,7 @@ Each entry as npm ships it in `dist/`, bundled with esbuild, minified ESM, then 
 | ------------------------ | --------- | -------- |
 | `tinylinkify`            | 3.55 KiB  | 1.79 KiB |
 | `tinylinkify/gfm`        | 4.65 KiB  | 2.22 KiB |
-| `tinylinkify/linkify-it` | 9.94 KiB  | 3.77 KiB |
+| `tinylinkify/linkify-it` | 10.32 KiB | 3.90 KiB |
 | linkify-it 5.0.2         | 11.25 KiB | 4.11 KiB |
 | linkify-it 6.1.0         | 13.30 KiB | 4.40 KiB |
 

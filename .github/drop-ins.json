@@ -289,11 +289,11 @@
       "entry": "tinylinkify/linkify-it",
       "gzip": {
         "theirs": 4211,
-        "ours": 3859
+        "ours": 3998
       },
       "parse": {
-        "theirs": 5.910256125000046,
-        "ours": 5.440992750000078
+        "theirs": 5.928683062499999,
+        "ours": 5.55748618749999
       },
       "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
     }
@@ -359,8 +359,8 @@
         "ours": 1836
       },
       "parse": {
-        "theirs": 6.417403374999594,
-        "ours": 2.14209918749998
+        "theirs": 5.666320437499962,
+        "ours": 2.022400906250141
       },
       "machine": "AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0"
     }
