@@ -27,9 +27,9 @@ tinylinkify ships a drop-in replacement for linkify-it 5 (and 4), and `tinylinki
 
 | You use          | Switch to                |    Size, gzip |      Parses | Stringifies |
 | ---------------- | ------------------------ | ------------: | ----------: | ----------: |
-| linkify-it 5.0.2 | `tinylinkify/linkify-it` | 4.1 → 3.8 KiB | 1.1× faster |           — |
+| linkify-it 5.0.2 | `tinylinkify/linkify-it` | 4.1 → 3.9 KiB | 1.1× faster |           — |
 
-The root `tinylinkify` API, which finds GFM links, is 1.8 KiB against 4.1 KiB for linkify-it 5.0.2, and finds them 3.0× faster than linkify-it finds its own in the same text.
+The root `tinylinkify` API, which finds GFM links, is 1.8 KiB against 4.1 KiB for linkify-it 5.0.2, and finds them 2.8× faster than linkify-it finds its own in the same text.
 
 Size is the minified bundle, gzipped. Speed is the median time to parse and stringify the large benchmark file. linkify-it only finds links, so its time is `match` on 100 KB of text. Measured on AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0.
 
@@ -104,7 +104,7 @@ Coming from remark-gfm on its own, the root differs in two places: tinylinkify r
 
 | Library               | Change the import to       | Size, gzip      | Its own tests on tinylinkify |
 | --------------------- | -------------------------- | --------------- | ---------------------------- |
-| linkify-it 4.0.1, 5.x | `"tinylinkify/linkify-it"` | 4.11 → 3.77 KiB | 176 of 176 pass              |
+| linkify-it 4.0.1, 5.x | `"tinylinkify/linkify-it"` | 4.11 → 3.90 KiB | 176 of 176 pass              |
 
 ```ts
 // before
@@ -123,10 +123,11 @@ It follows linkify-it 5.0.2. [`scripts/versions.ts`](./scripts/versions.ts) fuzz
 - Unicode punctuation. linkify-it reads it from uc.micro 2.1.0, which has Unicode 15.1; tinylinkify reads the engine's `\p{P}`. On Node 24, which has Unicode 17, 14 more code points are punctuation, so a fuzzy link ends at them where linkify-it reads them as letters: U+1B4E, U+1B4F, U+1B7F, U+10D6E, U+10ED0, U+113D4, U+113D5, U+113D7, U+113D8, U+11BE1, U+16D6D to U+16D6F and U+1E5FF. On another engine, the set is that engine's.
 - `re.src_P` holds the same class as uc.micro's `P` for that Unicode version, written with the characters themselves rather than escapes, so the patterns built from it stay well under the 20,480 characters above which V8 stops optimizing a regular expression. linkify-it's fuzzy link pattern is 19,243 characters; tinylinkify's is 11,731. Every other `re` source is linkify-it's, character for character, and they work without the `u` flag as linkify-it's do.
 - Start-up. tinylinkify builds that class the first time you construct a linkifier, once per process. On the machine below, importing, constructing and matching once takes 14.2 ms, against 12.4 ms for linkify-it.
+- Replaced built-ins. The shortcuts below use `RegExp.prototype.exec` and `String.prototype.indexOf` as they were when tinylinkify loaded, so a program that replaces them afterwards sees them called where linkify-it would call the replacement.
 - Packaging. ESM only, with a `"module.exports"` export, so `require("tinylinkify/linkify-it")` returns the constructor on Node 22.12 and later, as `require("linkify-it")` does. linkify-it's other files, such as `linkify-it/lib/re.mjs`, have no equivalent, and tinyswap leaves imports of them alone. The types are the signatures of `@types/linkify-it` 5.0.0.
 - linkify-it 4.0.1 and 5.0.0. Since 5.0.1, linkify-it searches each pattern on from where its last match ended, so in `<a@b.co:c@d.com>` it finds `a@b.co` and no longer `:c@d.com` too, and since 5.0.2 an email name after `mailto:` is at most 64 characters. linkify-it 4 reads punctuation from uc.micro 1.0.6, which has Unicode 11, 56 code points fewer than 2.1.0.
 
-`match` gets there faster without changing what it finds. It skips the fuzzy link search when the text has no `.` followed by a TLD, which every fuzzy link has; starts the fuzzy email search at most 65 characters before the first `@` that follows a character an email name can end in, since a name is at most 64; and runs each built-in schema's pattern once where linkify-it runs it twice. Each shortcut holds only for the patterns tinylinkify built: one you replace in `re`, or change in `onCompile`, gets linkify-it's way.
+`match` gets there faster without changing what it finds. It skips the fuzzy link search when the text has no `.` followed by a TLD, which every fuzzy link has; starts the fuzzy email search at most 65 characters before the first `@` that follows a character an email name can end in, since a name is at most 64; and runs each built-in schema's pattern once where linkify-it runs it twice. Each shortcut holds only while the pattern is the one tinylinkify built, with the same source, flags and built-in methods, and for text that is a string: a pattern you replace in `re`, recompile, give methods of its own, or change in `onCompile` gets linkify-it's way. A skipped search still resets the pattern's `lastIndex`, as linkify-it's does.
 
 </details>
 
@@ -138,7 +139,7 @@ Each entry as npm ships it in `dist/`, bundled with esbuild, minified ESM, then 
 | ------------------------ | --------- | -------- |
 | `tinylinkify`            | 3.55 KiB  | 1.79 KiB |
 | `tinylinkify/gfm`        | 4.65 KiB  | 2.22 KiB |
-| `tinylinkify/linkify-it` | 9.94 KiB  | 3.77 KiB |
+| `tinylinkify/linkify-it` | 10.32 KiB | 3.90 KiB |
 | linkify-it 5.0.2         | 11.25 KiB | 4.11 KiB |
 | linkify-it 6.1.0         | 13.30 KiB | 4.40 KiB |
 
@@ -179,7 +180,7 @@ Median time per call over seven rounds, from [`bench/index.ts`](./bench/index.ts
 The drop-in is checked against linkify-it 5.0.2, and the GFM entries against remark-gfm, each installed next to it as a development dependency:
 
 - linkify-it 5.0.2's own tests, copied unchanged into [`test/suites`](./test/suites) and run with tinylinkify in its place: 172 fixture and API tests, 3 pathological inputs that must not hang, and the CommonJS `require()` test, 176 of 176, as linkify-it passes them.
-- 200,000 fuzzed inputs, made by editing linkify-it's fixtures, its benchmark samples and chat with the pieces its patterns care about, through `pretest`, `test`, `match`, `matchAtStart` and `testSchemaAt` on 14 setups: each option, `---`, replaced and added TLDs, added, aliased and disabled schemas, a replaced normalizer and an `onCompile` that changes a template. Arguments of the wrong type, bad schema definitions and odd options are compared too, errors by class and message, and every `re` source after construction. The reference that must match on every input is linkify-it with uc.micro's punctuation swapped for the engine's, built one code point at a time apart from tinylinkify's code: 6,001,500 calls, 0 differences. Against linkify-it as published, the inputs that differ are those with one of the 14 code points above, about 2.3% of them, since the fuzzer adds them on purpose.
+- 200,000 fuzzed inputs, made by editing linkify-it's fixtures, its benchmark samples and chat with the pieces its patterns care about, through `pretest`, `test`, `match`, `matchAtStart` and `testSchemaAt` on 14 setups: each option, `---`, replaced and added TLDs, added, aliased and disabled schemas, a replaced normalizer and an `onCompile` that changes a template. Arguments of the wrong type, bad schema definitions, odd options, and patterns in `re` changed in place (recompiled, given their own `exec`, `test` or `Symbol.match`, frozen, or left with a `lastIndex`) are compared too, errors by class and message, and every `re` source after construction. The reference that must match on every input is linkify-it with uc.micro's punctuation swapped for the engine's, built one code point at a time apart from tinylinkify's code: 6,002,040 calls, 0 differences. Against linkify-it as published, the inputs that differ are those with one of the 14 code points above, about 2.3% of them, since the fuzzer adds them on purpose.
 - The GFM entries against remark-gfm's autolink step on plain text: micromark with the autolink literal extension and every other construct turned off, then mdast-util-gfm-autolink-literal, so the text is one run as tinylinkify sees it. 69,935 fuzzed lines from the micromark and mdast fixtures, the benchmark samples and chat, with 45,348 links: 0 differences in offsets or URLs, for the root, for `tinylinkify/gfm`'s `match`, and for its `matchAtStart` on each `http(s)://` link, and `test` agrees with whether there's a link.
 - The GFM spec 0.29's 11 autolink examples and the fixtures of micromark-extension-gfm-autolink-literal (22) and mdast-util-gfm-autolink-literal (30), whose HTML is what github.com renders, through markdown-exit with tinylinkify/gfm, link for link: it matches remark-gfm on 11, 14 and 15 of them, and GitHub on 10, 3 and 15, where linkify-it matches GitHub on 6, 0 and 1. The fixtures it doesn't match are the markdown cases listed above, mostly `[` before every line; the spec example is `ftp://`.
 - Every fuzzer and suite runner exits with an error on a difference or a failed test, and when a suite runs no tests.

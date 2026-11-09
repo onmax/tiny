@@ -90,7 +90,7 @@ Each package matches its original on that library's own tests and on tens of tho
 | ini 1.3.8             | `tinyini/ini-v1`                   |   1.4 → 1.4 KiB |  1.6× faster | 1.7× faster |
 | @one-ini/wasm 0.2.1   | `tinyini/one-ini`                  |  36.0 → 1.7 KiB | 12.4× faster |           — |
 | @one-ini/wasm 0.1.1   | `tinyini/one-ini-v0.1`             |  32.3 → 1.7 KiB | 12.1× faster |           — |
-| linkify-it 5.0.2      | `tinylinkify/linkify-it`           |   4.1 → 3.8 KiB |  1.1× faster |           — |
+| linkify-it 5.0.2      | `tinylinkify/linkify-it`           |   4.1 → 3.9 KiB |  1.1× faster |           — |
 
 For new code, the root `tinyaml` API is 7.7 KiB, 1.9× smaller than js-yaml 4 and 3.9× smaller than yaml 2. It parses 18.7× faster than yaml 2 and stringifies 12.9× faster.
 
@@ -98,7 +98,7 @@ Size is the minified bundle, gzipped. Speed is the median time to parse and stri
 
 <!-- /automd -->
 
-ini is already small, so the tinyini entries that replace it save little and win on speed. Most of linkify-it is the patterns its drop-in keeps, so `tinylinkify/linkify-it` saves 8% and wins most where markdown-it calls it on chat, 1.4× faster; `tinylinkify/gfm` is half its size and up to 3× faster, with GFM's links rather than linkify-it's. Each package's README has the full results and the inputs they come from.
+ini is already small, so the tinyini entries that replace it save little and win on speed. Most of linkify-it is the patterns its drop-in keeps, so `tinylinkify/linkify-it` saves 5% and wins most where markdown-it calls it on chat, 1.4× faster; `tinylinkify/gfm` is half its size and up to 3× faster, with GFM's links rather than linkify-it's. Each package's README has the full results and the inputs they come from.
 
 ## Develop
 

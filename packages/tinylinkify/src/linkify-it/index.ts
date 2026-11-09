@@ -56,9 +56,19 @@ const isOptionsObj = (obj: any) =>
     false,
   );
 
+// The built-ins the shortcuts below rely on, as they were when this loaded,
+// so a shortcut runs no code of yours and stops when a pattern's methods change.
+/* oxlint-disable unbound-method */
+const EXEC = RegExp.prototype.exec;
+const TEST = RegExp.prototype.test;
+const MATCH = RegExp.prototype[Symbol.match];
+const INDEX_OF = String.prototype.indexOf;
+/* oxlint-enable unbound-method */
+
 // The regular expressions the validators below made, which match once where
-// linkify-it tests and then matches: with no `g` or `y` flag, both give the
-// same. One put in `re` in their place gets linkify-it's two calls.
+// linkify-it tests and then matches: with no `g` or `y` flag and the built-in
+// methods, both give the same. One replaced in `re`, recompiled with another
+// flag, or given its own methods gets linkify-it's two calls.
 const own = new WeakSet<RegExp>();
 
 // A validator that compiles its regular expression on first use, from the
@@ -73,7 +83,13 @@ const lazy =
     const tail = text.slice(pos);
     if (!self.re[name]) own.add((self.re[name] = new RegExp(source(self.re), "i")));
     const re = self.re[name];
-    if (own.has(re)) {
+    if (
+      own.has(re) &&
+      re.flags === "i" &&
+      re.exec === EXEC &&
+      re.test === TEST &&
+      re[Symbol.match] === MATCH
+    ) {
       const m = re.exec(tail);
       return m && (!check || check(text, pos)) ? m[0].length : 0;
     }
@@ -137,9 +153,17 @@ function createNormalizer() {
 // regular expressions were, gets no shortcuts.
 interface Shortcuts {
   link: RegExp;
+  linkSource: string;
   email: RegExp;
+  emailSource: string;
   tld?: RegExp;
 }
+
+// Whether a pattern is still the one compile made: the same object, source
+// and flags, with the built-in `exec`, so `compile()` or an `exec` of its own
+// turns the shortcut off.
+const unchanged = (re: RegExp, made: RegExp, source: string) =>
+  re === made && re.source === source && re.flags === "gi" && re.exec === EXEC;
 const shortcuts = new WeakMap<object, Shortcuts>();
 
 function compile(self: any) {
@@ -236,7 +260,9 @@ function compile(self: any) {
       : undefined;
   shortcuts.set(re, {
     link: re.link_no_ip_fuzzy_global,
+    linkSource: re.link_no_ip_fuzzy_global.source,
     email: re.tpl_email_fuzzy === tpl_email_fuzzy ? re.email_fuzzy_global : /(?:)/,
+    emailSource: re.email_fuzzy_global.source,
     tld,
   });
 }
@@ -419,8 +445,8 @@ const NAME = /[-;:&=+$,".\w]/;
  * character before it take. -1 when there's no such `@`.
  */
 function emailStart(text: string): number {
-  for (let at = text.indexOf("@"); at >= 0; at = text.indexOf("@", at + 1))
-    if (at && NAME.test(text[at - 1]!)) return Math.max(0, at - 65);
+  for (let at = INDEX_OF.call(text, "@"); at >= 0; at = INDEX_OF.call(text, "@", at + 1))
+    if (at && EXEC.call(NAME, text[at - 1]!)) return Math.max(0, at - 65);
   return -1;
 }
 
@@ -454,8 +480,15 @@ proto.match = function match(text: string) {
 
   if (this.__opts__.fuzzyLink && this.__compiled__["http:"]) {
     re = this.__opts__.fuzzyIP ? this.re.link_fuzzy_global : this.re.link_no_ip_fuzzy_global;
-    if (!(skip?.tld && re === skip.link && !skip.tld.test(text))) {
-      re.lastIndex = 0;
+    re.lastIndex = 0;
+    if (
+      !(
+        skip?.tld &&
+        typeof text === "string" &&
+        unchanged(re, skip.link, skip.linkSource) &&
+        EXEC.call(skip.tld, text) === null
+      )
+    ) {
       while ((m = re.exec(text)) !== null) {
         type_fuzzy_link.push({
           schema: "",
@@ -468,7 +501,11 @@ proto.match = function match(text: string) {
 
   if (this.__opts__.fuzzyEmail && this.__compiled__["mailto:"]) {
     re = this.re.email_fuzzy_global;
-    const from = re === skip?.email && typeof text === "string" ? emailStart(text) : 0;
+    re.lastIndex = 0;
+    const from =
+      skip && typeof text === "string" && unchanged(re, skip.email, skip.emailSource)
+        ? emailStart(text)
+        : 0;
     if (from >= 0) {
       re.lastIndex = from;
       while ((m = re.exec(text)) !== null) {

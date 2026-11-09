@@ -30,7 +30,7 @@ const entries: [string, string, string?][] = [
 const BUDGET: Record<string, number> = {
   tinylinkify: 1870,
   "tinylinkify/gfm": 2300,
-  "tinylinkify/linkify-it": 3890,
+  "tinylinkify/linkify-it": 4030,
 };
 
 // Code each entry must hold, as it reads once minified, and code it must

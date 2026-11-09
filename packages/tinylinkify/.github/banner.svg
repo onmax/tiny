@@ -9,7 +9,7 @@
 <text x="80" y="206" fill="#b1aa9d" font-size="28">GFM links in text, and a faster linkify-it.</text>
 <text x="80" y="306" fill="#f8f5ec" font-size="56" font-weight="700" letter-spacing="-2">1.8 KiB</text>
 <text x="80" y="342" fill="#868073" font-size="20">own API, gzipped</text>
-<text x="320" y="306" fill="#f8f5ec" font-size="56" font-weight="700" letter-spacing="-2">3.0<tspan fill="#ffca28">×</tspan></text>
+<text x="320" y="306" fill="#f8f5ec" font-size="56" font-weight="700" letter-spacing="-2">2.8<tspan fill="#ffca28">×</tspan></text>
 <text x="320" y="342" fill="#868073" font-size="20">faster than linkify-it</text>
 <text x="560" y="306" fill="#f8f5ec" font-size="56" font-weight="700" letter-spacing="-2">0</text>
 <text x="560" y="342" fill="#868073" font-size="20">dependencies</text>

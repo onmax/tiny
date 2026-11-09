@@ -117,6 +117,54 @@ const ODD: [string, (l: Linkify, make: Make) => unknown][] = [
   ["schemas only", (_, make) => Object.keys(make({ "x:": "http:" }).__schemas__)],
   ["options proto", (_, make) => make(JSON.parse('{"__proto__": {"fuzzyIP": true}}')).__opts__],
   ["shared compiled", (l) => Object.keys(l.__compiled__)],
+  // Patterns changed in place, which must turn tinylinkify's shortcuts off.
+  ...(["link_no_ip_fuzzy_global", "email_fuzzy_global"] as const).flatMap(
+    (key) =>
+      [
+        [`${key}.compile`, (l: Linkify) => (l.re[key].compile(/(^)(foo)/g), l.match("foo"))],
+        [`${key}.exec`, (l: Linkify) => ((l.re[key].exec = () => null), l.match("a.com b@c.co"))],
+        [
+          `${key}.lastIndex`,
+          (l: Linkify) => ((l.re[key].lastIndex = 123), l.match("nothing"), l.re[key].lastIndex),
+        ],
+        [`${key} frozen`, (l: Linkify) => (Object.freeze(l.re[key]), l.match("nothing"))],
+      ] as [string, (l: Linkify) => unknown][],
+  ),
+  ...(["http", "no_http", "mailto"] as const).flatMap((key) => {
+    const [text, schema, pos] =
+      key === "mailto"
+        ? ["mailto:a@b.co", "mailto:", 7]
+        : key === "http"
+          ? ["http://a.com", "http:", 5]
+          : ["//a.com", "//", 2];
+    const prime = (l: Linkify) => l.testSchemaAt(` ${text}`, schema, pos + 1);
+    return [
+      [
+        `re.${key}.test`,
+        (l: Linkify) => (prime(l), (l.re[key].test = () => false), l.match(` ${text}`)),
+      ],
+      [
+        `re.${key}.compile y`,
+        (l: Linkify) => (prime(l), l.re[key].compile("^a", "y"), l.testSchemaAt("a", schema, 0)),
+      ],
+      [
+        `re.${key}[Symbol.match]`,
+        (l: Linkify) => (prime(l), (l.re[key][Symbol.match] = () => ["xx"]), l.match(` ${text}`)),
+      ],
+    ] as [string, (l: Linkify) => unknown][];
+  }),
+  [
+    "text that converts differently each time",
+    (_, make) => {
+      let calls = 0;
+      const text = {
+        length: 5,
+        toString: () => (++calls === 2 ? "a.com" : ""),
+        slice: (a: number, b: number) => "a.com".slice(a, b),
+      };
+      return make({ fuzzyEmail: false }).match(text);
+    },
+  ],
   ["instance keys", (l) => Object.keys(l)],
 ];
 for (const [name, fn] of ODD) {
