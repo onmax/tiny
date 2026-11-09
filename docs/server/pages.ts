@@ -55,6 +55,13 @@ const sections: Section[] = [
       "Replaces ini 7, 2 and 1.3.8 and @one-ini/wasm, one subpath each. 2.4× faster and 19% smaller than ini.",
     lists: [{ slugs: ["getting-started", "compatibility", "size-and-speed", "develop"] }],
   },
+  {
+    slug: "tinylinkify",
+    icon: "link",
+    blurb:
+      "Finds GFM links in text, as remark-gfm does, and replaces linkify-it 5 and 4. Half linkify-it's size and up to 3× faster for markdown-it.",
+    lists: [{ slugs: ["getting-started", "compatibility", "size-and-speed", "develop"] }],
+  },
 ];
 const siteIcons = await createIcons({ collections: { lucide }, fetch: false }).resolve(
   [...sections.map((section) => section.icon), "arrow-left", "arrow-right", "search"].map(

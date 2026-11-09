@@ -3,7 +3,12 @@ import { scan } from "../src/detect.ts";
 import { apply, plan } from "../src/migrate.ts";
 import { installed, project, read } from "./fixture.ts";
 
-const RANGES = { tinyaml: "^1.2.0", tinyjson5: "^1.2.0", tinyini: "^1.2.0" };
+const RANGES = {
+  tinyaml: "^1.2.0",
+  tinyjson5: "^1.2.0",
+  tinyini: "^1.2.0",
+  tinylinkify: "^1.2.0",
+};
 
 const migrate = (root: string, names: string[]) => {
   const result = plan(scan(root), names, RANGES);
@@ -159,6 +164,34 @@ const config: {| name: string |} = { name: "app" };`,
         specifier: "strip-json-comments",
         reason:
           "require() of tinyjson5/strip-json-comments gives { default }, so the function is under .default",
+      },
+    ]);
+  });
+
+  it("moves a require() of linkify-it, whose drop-in require() returns the constructor too", () => {
+    const root = project({
+      "package.json": { dependencies: { "linkify-it": "^5.0.0", "@types/linkify-it": "^5.0.0" } },
+      ...installed("linkify-it", "5.0.2"),
+      "a.cjs": `const LinkifyIt = require("linkify-it");
+const { match } = require("linkify-it");
+`,
+      "b.mjs": `import LinkifyIt from "linkify-it";
+`,
+    });
+    const result = migrate(root, ["linkify-it"]);
+    expect(read(root, "a.cjs")).toBe(
+      `const LinkifyIt = require("tinylinkify/linkify-it");
+const { match } = require("linkify-it");
+`,
+    );
+    expect(read(root, "b.mjs")).toBe(`import LinkifyIt from "tinylinkify/linkify-it";
+`);
+    expect(result.skipped).toEqual([
+      {
+        file: "a.cjs",
+        line: 2,
+        specifier: "linkify-it",
+        reason: "tinylinkify/linkify-it doesn't export match",
       },
     ]);
   });

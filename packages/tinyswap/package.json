@@ -1,15 +1,17 @@
 {
   "name": "tinyswap",
   "version": "0.1.1",
-  "description": "Moves a project from js-yaml, yaml, json5, ini and the other libraries tinyaml, tinyjson5 and tinyini replace, by rewriting its imports and package.json",
+  "description": "Moves a project from js-yaml, yaml, json5, ini, linkify-it and the other libraries tinyaml, tinyjson5, tinyini and tinylinkify replace, by rewriting its imports and package.json",
   "keywords": [
     "codemod",
     "ini",
     "json5",
+    "linkify-it",
     "migrate",
     "tinyaml",
     "tinyini",
     "tinyjson5",
+    "tinylinkify",
     "yaml"
   ],
   "homepage": "https://github.com/onmax/tiny/tree/main/packages/tinyswap#readme",
