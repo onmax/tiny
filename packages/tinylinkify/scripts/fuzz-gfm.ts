@@ -3,13 +3,14 @@
 // micromark and mdast fixtures, the benchmark samples and some chat, each
 // edited a few times with the pieces the GFM rules care about. Both must find
 // the same links, at the same offsets, with the same URLs; the root, the
-// /gfm entry's match, and its matchAtStart on each link with a schema too.
+// /gfm entry's match, and its matchAtStart on each link with a schema too,
+// and `test` of both must say whether there's a link.
 // Inputs are single lines with nothing to trim at the ends, which is what a
 // run of text is, and no U+0000, which micromark reads as U+FFFD.
 // Usage: node scripts/fuzz-gfm.ts [iterations] [seed]
 import { readdirSync, readFileSync } from "node:fs";
 import LinkifyIt from "../src/gfm/index.ts";
-import { find } from "../src/index.ts";
+import { find, test } from "../src/index.ts";
 import { autolinks } from "./remark.ts";
 import { benchSamples, count, seeded, show } from "./shared.ts";
 
@@ -188,7 +189,12 @@ for (let i = 0; i < iterations; i++) {
       /^https?:$/.test(link.schema) &&
       linkify.matchAtStart(text.slice(link.index))?.text !== link.text,
   );
-  const textsOk = found.every((link) => text.slice(link.index, link.lastIndex) === link.text);
+  // test stops at the first link, so it must agree with whether find has one,
+  // on a fresh instance too, with nothing kept from the text before.
+  const textsOk =
+    found.every((link) => text.slice(link.index, link.lastIndex) === link.text) &&
+    test(text) === found.length > 0 &&
+    new LinkifyIt().test(text) === found.length > 0;
   if (got !== want || fromEntry !== want || !textsOk) {
     differences++;
     if (examples.length < Number(process.env.SHOW ?? 10))

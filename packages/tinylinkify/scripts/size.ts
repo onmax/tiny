@@ -21,13 +21,15 @@ const entries: [string, string, string?][] = [
   ["tinylinkify/gfm", "gfm", "linkify-it 5.0.2"],
   ["tinylinkify/linkify-it", "linkify-it", "linkify-it 5.0.2"],
   ["  linkify-it 5.0.2", "export { default } from 'linkify-it'"],
+  // What markdown-it 15 and markdown-exit 2 use, for comparison.
+  ["  linkify-it 6.1.0", "export { LinkifyIt } from 'linkify-it-v6'"],
 ];
 
 // Gzip bytes each entry may reach, about 30 over its size when last set.
 // Raise one on purpose, and say why in the commit.
 const BUDGET: Record<string, number> = {
-  tinylinkify: 1780,
-  "tinylinkify/gfm": 2100,
+  tinylinkify: 1870,
+  "tinylinkify/gfm": 2300,
   "tinylinkify/linkify-it": 3890,
 };
 

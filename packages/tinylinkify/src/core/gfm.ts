@@ -154,9 +154,10 @@ function trim(url: string): string {
 
 /**
  * Every GFM autolink literal in `value`, in order. `www` and `email` set
- * whether `www.` links and emails without `mailto:` count.
+ * whether `www.` links and emails without `mailto:` count. With `first`, it
+ * stops at the first link it finds, which says whether there is one.
  */
-export function find(value: string, www = true, email = true): Link[] {
+export function find(value: string, www = true, email = true, first = false): Link[] {
   text = value;
   n = value.length;
   const links: Link[] = [];
@@ -164,12 +165,18 @@ export function find(value: string, www = true, email = true): Link[] {
     const raw = value.slice(index, lastIndex);
     links.push({ schema, index, lastIndex, text: raw, url: prefix + raw });
   };
+  // What each kind of link needs somewhere in the text, so text without it
+  // isn't searched for that kind.
+  const hasAt = value.includes("@");
+  const hasScheme = value.includes("://");
+  const hasWww = www && /www\./i.test(value);
+  email &&= hasAt;
 
   // micromark's step, at every position: an email that starts with a
   // letter, digit, `+`, `-`, `.` or `_` after none of those or `/`, then
   // `http(s)://` at an `h` not after a letter, or `www.` at a `w` at the
   // start or after whitespace, `(`, `*`, `_`, `[`, `]` or `~`.
-  for (let i = 0; i < n;) {
+  for (let i = 0; (email || hasScheme || hasWww) && i < n;) {
     const c = at(i);
     const previous = i ? at(i - 1) : -1;
     let stop = -1;
@@ -187,13 +194,13 @@ export function find(value: string, www = true, email = true): Link[] {
         if (data && dot && alpha(at(j - 1))) add("mailto:", i, (stop = j), "mailto:");
       }
     }
-    if (stop < 0 && (c | 32) === 104 && !alpha(previous)) {
+    if (stop < 0 && hasScheme && (c | 32) === 104 && !alpha(previous)) {
       const found = protocol(i);
       if (found) add(found[0], i, (stop = found[1]));
     }
     if (
       stop < 0 &&
-      www &&
+      hasWww &&
       (c | 32) === 119 &&
       (at(i + 1) | 32) === 119 &&
       (at(i + 2) | 32) === 119 &&
@@ -204,6 +211,7 @@ export function find(value: string, www = true, email = true): Link[] {
       const host = domain(i);
       if (host >= 0) add("", i, (stop = path(host)), "http://");
     }
+    if (first && stop >= 0) return links;
     i = stop < 0 ? i + 1 : stop;
   }
 
@@ -211,9 +219,10 @@ export function find(value: string, www = true, email = true): Link[] {
   // URLs, then xmpp:, mailto: and emails, each through the text the one
   // before left. A match it turns down, it searches again from the next
   // character.
-  for (const search of SEARCHES) {
-    // Every URL has a dot, and every address an @.
-    if (value.indexOf(search === URL ? "." : "@") < 0) continue;
+  const needs = [hasScheme || hasWww, value.includes("xmpp:"), value.includes("mailto:"), hasAt];
+  for (let s = 0; s < 4; s++) {
+    const search = SEARCHES[s]!;
+    if (!needs[s]) continue;
     links.sort((a, b) => a.index - b.index);
     const gaps: number[] = [];
     let from = 0;
@@ -262,6 +271,7 @@ export function find(value: string, www = true, email = true): Link[] {
           if (ok) add("mailto:", index, index + whole.length);
         } else if ((ok &&= email)) add("mailto:", index, index + whole.length, "mailto:");
         if (!ok) search.lastIndex = m.index + 1;
+        else if (first) return links;
       }
     }
   }

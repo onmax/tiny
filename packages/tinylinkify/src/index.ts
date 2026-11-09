@@ -8,4 +8,4 @@ export type { Link };
 export const find = (text: string): Link[] => findAll(text);
 
 /** Whether `text` has a link. */
-export const test = (text: string): boolean => findAll(text).length > 0;
+export const test = (text: string): boolean => findAll(text, true, true, true).length > 0;
