@@ -71,7 +71,7 @@ Characters are UTF-16 code units, as micromark reads them, so a host can be `例
 
 ## GFM links in markdown-it and markdown-exit
 
-markdown-it and markdown-exit find links with linkify-it, which doesn't link `www.example.com` and links fuzzy domains and emails remark-gfm doesn't. `tinylinkify/gfm` is the root's rules behind the methods they call, so their `linkify` option links what GitHub does:
+markdown-it and markdown-exit find links with linkify-it, whose rules aren't GFM's. linkify-it 5 links bare domains such as `example.com`, which remark-gfm doesn't, but only with a TLD on its list, so not `example.dev`; linkify-it 6, which markdown-it 15 and markdown-exit 2 use, links no bare domain by default, `www.example.com` included. `tinylinkify/gfm` is the root's rules behind the methods they call, so their `linkify` option links what GitHub does:
 
 ```ts
 import MarkdownExit from "markdown-exit";
