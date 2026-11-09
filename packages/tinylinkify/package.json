@@ -1,0 +1,92 @@
+{
+  "name": "tinylinkify",
+  "version": "0.1.1",
+  "description": "Tiny, fast link finder for plain text, with GFM autolink literals and a drop-in replacement for linkify-it",
+  "keywords": [
+    "autolink",
+    "gfm",
+    "linkify",
+    "linkify-it",
+    "markdown-it",
+    "url"
+  ],
+  "homepage": "https://github.com/onmax/tiny/tree/main/packages/tinylinkify#readme",
+  "bugs": "https://github.com/onmax/tiny/issues",
+  "license": "MIT",
+  "author": "onmax",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onmax/tiny.git",
+    "directory": "packages/tinylinkify"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "typesVersions": {
+    "*": {
+      "package.json": [
+        "./package.json"
+      ],
+      "linkify-it": [
+        "./dist/linkify-it.d.mts"
+      ],
+      "gfm": [
+        "./dist/gfm.d.mts"
+      ],
+      "*": [
+        "./dist/index.d.mts"
+      ]
+    }
+  },
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./linkify-it": "./dist/linkify-it.mjs",
+    "./gfm": "./dist/gfm.mjs",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "vp pack",
+    "lint": "vp lint",
+    "fmt": "vp fmt",
+    "typecheck": "tsrs --noEmit",
+    "test": "vp test",
+    "test:dist": "vp test run --config test/dist.config.ts",
+    "check": "vp check && pnpm typecheck",
+    "ready": "vp fmt && pnpm build && pnpm check && pnpm test",
+    "prepare": "vp config",
+    "linkify-it-tests": "node scripts/linkify-it-tests.ts",
+    "fuzz": "node scripts/fuzz.ts",
+    "versions": "node scripts/versions.ts",
+    "gfm-fixtures": "node scripts/gfm-fixtures.ts",
+    "fuzz:gfm": "node scripts/fuzz-gfm.ts",
+    "size": "node scripts/size.ts",
+    "bench": "node bench/index.ts"
+  },
+  "devDependencies": {
+    "@types/linkify-it": "5.0.0",
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
+    "linkify-it": "5.0.2",
+    "markdown-exit": "1.3.0",
+    "mdast-util-from-markdown": "2.1.0",
+    "mdast-util-gfm-autolink-literal": "2.1.0",
+    "micromark-extension-gfm-autolink-literal": "2.1.0",
+    "publint": "^0.3.25",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "tsrs": "0.20.1-ts7.1.0-beta",
+    "typescript": "^7.0.2",
+    "uc.micro": "2.1.0",
+    "unified": "11.0.5",
+    "vite-plus": "^1.4.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
