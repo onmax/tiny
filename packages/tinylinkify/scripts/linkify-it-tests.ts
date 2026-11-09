@@ -13,10 +13,16 @@ const DIR = "test/suites/linkify-it-5.0.2";
 const href = (path: string) => pathToFileURL(realpathSync(path)).href;
 // Each target: a label, the module the tests import, and the one `require` gets.
 const TARGETS: [string, string, string][] = [
-  ["linkify-it 5.0.2", "node_modules/linkify-it/index.mjs", "node_modules/linkify-it/build/index.cjs.js"],
+  [
+    "linkify-it 5.0.2",
+    "node_modules/linkify-it/index.mjs",
+    "node_modules/linkify-it/build/index.cjs.js",
+  ],
   ["tinylinkify/linkify-it", "src/linkify-it/index.ts", "src/linkify-it/index.ts"],
 ];
-const files = readdirSync(DIR).filter((file) => file.endsWith(".test.mjs")).sort();
+const files = readdirSync(DIR)
+  .filter((file) => file.endsWith(".test.mjs"))
+  .sort();
 
 let failed = 0;
 for (const [label, target, required] of TARGETS) {
@@ -29,7 +35,8 @@ for (const [label, target, required] of TARGETS) {
         env: { ...process.env, REDIRECT_TARGET: href(target), REDIRECT_REQUIRE: href(required) },
       },
     );
-    const count = (key: string) => Number(run.stdout.match(new RegExp(`^# ${key} (\\d+)$`, "m"))?.[1]);
+    const count = (key: string) =>
+      Number(run.stdout.match(new RegExp(`^# ${key} (\\d+)$`, "m"))?.[1]);
     // A failing suite reports failureType 'subtestsFailed'; only its tests count.
     const fails = [
       ...run.stdout.matchAll(

@@ -44,8 +44,7 @@ export interface Found {
 }
 
 type Node = { type: string; value?: string; url?: string; children?: Node[] };
-const textOf = (node: Node): string =>
-  node.value ?? (node.children ?? []).map(textOf).join("");
+const textOf = (node: Node): string => node.value ?? (node.children ?? []).map(textOf).join("");
 
 /**
  * The links in `text`, a single line with no whitespace at either end, as
@@ -67,7 +66,8 @@ export function autolinks(text: string): Found[] {
     offset += value.length;
   }
   const whole = children.map(textOf).join("");
-  if (whole !== text) throw new Error(`remark read ${JSON.stringify(text)} as ${JSON.stringify(whole)}`);
+  if (whole !== text)
+    throw new Error(`remark read ${JSON.stringify(text)} as ${JSON.stringify(whole)}`);
   return found;
 }
 
@@ -89,7 +89,12 @@ export function remarkLinks(markdown: string): MarkdownLink[] {
   return links;
 }
 
-type Token = { type: string; children: Token[] | null; content: string; attrGet(name: string): string | null };
+type Token = {
+  type: string;
+  children: Token[] | null;
+  content: string;
+  attrGet(name: string): string | null;
+};
 
 /** markdown-exit with `linkify` on and the given linkifier. */
 export function markdownExit(LinkifyIt: new () => unknown) {
@@ -97,6 +102,7 @@ export function markdownExit(LinkifyIt: new () => unknown) {
     linkify: unknown;
     parse(src: string, env: object): Token[];
     normalizeLink(url: string): string;
+    normalizeLinkText(url: string): string;
   };
   md.linkify = new LinkifyIt();
   return {
@@ -106,9 +112,13 @@ export function markdownExit(LinkifyIt: new () => unknown) {
       const walk = (tokens: Token[]) => {
         let open: MarkdownLink | undefined;
         for (const token of tokens) {
-          if (token.type === "link_open") links.push((open = { url: token.attrGet("href")!, text: "" }));
+          if (token.type === "link_open")
+            links.push((open = { url: token.attrGet("href")!, text: "" }));
           else if (token.type === "link_close") open = undefined;
-          else if (open && (token.type === "text" || token.type === "code_inline" || token.type === "text_special"))
+          else if (
+            open &&
+            (token.type === "text" || token.type === "code_inline" || token.type === "text_special")
+          )
             open.text += token.content;
           if (token.children) walk(token.children);
         }
@@ -117,5 +127,6 @@ export function markdownExit(LinkifyIt: new () => unknown) {
       return links;
     },
     normalizeLink: (url: string) => md.normalizeLink(url),
+    normalizeLinkText: (url: string) => md.normalizeLinkText(url),
   };
 }

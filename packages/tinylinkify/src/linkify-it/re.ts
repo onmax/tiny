@@ -11,7 +11,15 @@ const ANY =
 const CC = "[\\0-\\x1F\\x7F-\\x9F]";
 const Z = "[ \\xA0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]";
 
-const hex = (code: number) => `\\u${(code + 65536).toString(16).slice(1)}`;
+// A code unit as a class writes it: escaped when it's a surrogate or means
+// something in a class, and as itself otherwise, which keeps the patterns
+// short. V8 stops optimizing a pattern longer than 20 KiB, and linkify-it's
+// fuzzy link pattern, which holds this class nine times, is 19 KiB with
+// uc.micro's.
+const unit = (code: number) =>
+  code >= 0xd800 && code < 0xe000
+    ? `\\u${code.toString(16)}`
+    : `${"\\]^-[".includes(String.fromCharCode(code)) ? "\\" : ""}${String.fromCharCode(code)}`;
 
 let punctuation: string | undefined;
 
@@ -36,23 +44,23 @@ function P(): string {
   let from = -1;
   let to = -2;
   const flush = () => {
-    if (from >= 0) out += hex(from) + (to > from ? `-${hex(to)}` : "");
+    if (from >= 0) out += unit(from) + (to > from + 1 ? "-" : "") + (to > from ? unit(to) : "");
     from = -1;
   };
   for (const m of all.matchAll(/\p{P}/gu)) {
-    let unit = m.index;
+    let code = m.index;
     let lead = 0;
-    if (unit >= 0x10000) {
-      lead = all.charCodeAt(unit);
-      unit = all.charCodeAt(unit + 1);
+    if (code >= 0x10000) {
+      lead = all.charCodeAt(code);
+      code = all.charCodeAt(code + 1);
     }
     if (lead !== high) {
       flush();
-      out += `]|${hex((high = lead))}[`;
+      out += `]|${unit((high = lead))}[`;
     }
-    if (unit !== to + 1) flush();
-    if (from < 0) from = unit;
-    to = unit;
+    if (code !== to + 1) flush();
+    if (from < 0) from = code;
+    to = code;
   }
   flush();
   return (punctuation = `${out}]`);
@@ -79,8 +87,7 @@ export default function reFactory(opts: any): Record<string, any> {
 
   re.src_auth = `(?:(?:(?!${re.src_ZCc}|[@/\\[\\]()]).){1,50}@)?`;
 
-  re.src_port =
-    "(?::(?:6(?:[0-4]\\d{3}|5(?:[0-4]\\d{2}|5(?:[0-2]\\d|3[0-5])))|[1-5]?\\d{1,4}))?";
+  re.src_port = "(?::(?:6(?:[0-4]\\d{3}|5(?:[0-4]\\d{2}|5(?:[0-2]\\d|3[0-5])))|[1-5]?\\d{1,4}))?";
 
   re.src_host_terminator =
     `(?=$|${text_separators}|${re.src_ZPCc})` +

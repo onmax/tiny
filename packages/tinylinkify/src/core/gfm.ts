@@ -113,7 +113,12 @@ function protocol(i: number): [string, number] | undefined {
   let j = i;
   while (alpha(at(j)) && j - i < 5) j++;
   const scheme = text.slice(i, j).toLowerCase();
-  if ((scheme !== "http" && scheme !== "https") || at(j) !== 58 || at(j + 1) !== 47 || at(j + 2) !== 47)
+  if (
+    (scheme !== "http" && scheme !== "https") ||
+    at(j) !== 58 ||
+    at(j + 1) !== 47 ||
+    at(j + 2) !== 47
+  )
     return;
   const c = at((j += 3));
   const host = c < 32 || c === 127 || space(c) || whitespace(c) || punctuation(c) ? -1 : domain(j);
@@ -122,7 +127,8 @@ function protocol(i: number): [string, number] | undefined {
 
 // mdast-util-gfm-autolink-literal's searches, in its order.
 const URL = /(?<![\da-z])(https?:\/\/|www(?=\.))([\w-]*\.[\w\-.]*)([^\t\n\r ]*)/gi;
-const XMPP = /(?<![\w+\-.@])xmpp:([\w+\-.]+)@([\w-]+(?:\.[\w-]+)+)(\/(?:[\w\-/]|\.(?=[\dA-Za-z]))*)?/g;
+const XMPP =
+  /(?<![\w+\-.@])xmpp:([\w+\-.]+)@([\w-]+(?:\.[\w-]+)+)(\/(?:[\w\-/]|\.(?=[\dA-Za-z]))*)?/g;
 const MAILTO = /(?<![\w+\-.@])mailto:([\w+\-.]+)@([\w-]+(?:\.[\w-]+)+)/g;
 const EMAIL = /(?<![\w+\-.]|(?:^|[^\d@A-Za-z])(?:mailto|xmpp):)([\w+\-.]+)@([\w-]+(?:\.[\w-]+)+)/g;
 const SEARCHES = [URL, XMPP, MAILTO, EMAIL];
@@ -163,7 +169,7 @@ export function find(value: string, www = true, email = true): Link[] {
   // letter, digit, `+`, `-`, `.` or `_` after none of those or `/`, then
   // `http(s)://` at an `h` not after a letter, or `www.` at a `w` at the
   // start or after whitespace, `(`, `*`, `_`, `[`, `]` or `~`.
-  for (let i = 0; i < n; ) {
+  for (let i = 0; i < n;) {
     const c = at(i);
     const previous = i ? at(i - 1) : -1;
     let stop = -1;
@@ -220,7 +226,7 @@ export function find(value: string, www = true, email = true): Link[] {
       const start = gaps[g]!;
       const run = value.slice(start, gaps[g + 1]);
       search.lastIndex = 0;
-      for (let m; (m = search.exec(run)); ) {
+      for (let m; (m = search.exec(run));) {
         const index = start + m.index;
         const [whole, a = "", b = "", rest] = m;
         let ok = !/[\d\-_]$/.test(b);

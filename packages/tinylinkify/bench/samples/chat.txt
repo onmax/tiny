@@ -1,0 +1,52 @@
+@alice can you take a look at https://github.com/vercel/chat/pull/1 when you get a chance?
+@bob @carol standup in 5, notes are in the usual doc
+lgtm 🚀 merging now
+the preview is up at https://chat-git-feat-comark-vercel.vercel.app/ (password is in 1password)
+@dave_99 did you see the error from last night? stack trace in #incidents
+docs: www.example.com/docs/getting-started, see the "Adapters" section
+email me at alex.smith+chat@example.co.uk if Slack is down
+thanks @erin! 🙏
+@frank I pushed a fix, can you re-run CI? https://github.com/vercel/chat/actions/runs/123456789
+does anyone know why `pnpm install` hangs on node 22? @grace mentioned it last week
+re: the outage — status page is https://www.vercel-status.com and the postmortem is in Notion
+@heidi @ivan @judy reminder that the retro is tomorrow at 10:00
+I think it's fine, but let's ask @mallory before shipping
+https://vercel.com/docs/functions/runtimes#node.js-version (see the table)
+can someone review #482? it's small, mostly renames
+@oscar the link is www.google.com/search?q=markdown+(spec) btw
+the bug only shows up with emoji in the thread title 😅 repro: create a thread named "🔥 hotfix"
+@peggy did the deploy go out? I don't see it on prod yet
+yes, deployed at 14:32 UTC, commit a1b2c3d
+@trent great, closing the ticket
+FYI the API returns 429 if you send more than 1 msg/sec per channel
+@victor can you share the Figma? I only have the old link
+here: https://www.figma.com/file/AbCdEf/Chat-SDK?node-id=12%3A34
+meeting notes → notion.so/vercel/Chat-SDK-sync-2024 (ask @walter for access)
+ping @alice @bob @carol @dave @erin @frank — please fill in the survey by Friday
+"https://example.com/quoted" is how it shows up in the export, with the quotes
+looks like (https://example.com/a_(b)) breaks the old parser
+@zoe no worries, I'll pick it up tomorrow
+anyone else seeing timeouts from the Teams adapter? started around 9am
+@alice: ✅ done, see https://github.com/vercel/chat/commit/0f1e2d3c4b5a69788776655443322110ffeeddcc
+it's in packages/adapter-slack/src/index.ts, around line 200
+@bob the regex should be /^@(\w+)/ not /@(\w+)/g
+cc @security for the token rotation, details at https://vercel.com/security.
+we should move to https://comark.dev — smaller bundle and it supports GFM tables
+@carol I'll be offline next week, @dave is covering
+reply in thread pls 🧵
+@erin here's the doc: https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/edit#heading=h.abc123
+haha yes 😂
+@frank which version? `chat@4.2.0` or the canary?
+the canary, 4.3.0-canary.12
+ok, upgrading. thanks!
+mailto:support@example.com works too if you want to forward the logs
+@grace @heidi I opened https://github.com/vercel/chat/issues/77 to track it
+not sure, maybe ask in #help? or email help@vercel.com
+@ivan can you rotate the webhook secret? the old one leaked in a screenshot
+done, new one is in the vault
+@judy 👍
+the RFC is at www.rfc-editor.org/rfc/rfc3986.txt, section 2.2 for reserved chars
+@mallory sounds good, let's sync after lunch
+I tried http://localhost:3000/api/webhooks/slack and got a 401, is the signing secret set?
+@oscar yes, it's SLACK_SIGNING_SECRET in .env.local
+@peggy the slides are here: https://www.canva.com/design/DAF123/view?utm_content=DAF123&utm_campaign=designshare
