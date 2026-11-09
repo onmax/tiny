@@ -2,7 +2,8 @@
 // and tinylinkify/gfm against linkify-it 5.0.2, on linkify-it's own benchmark
 // samples, 52 chat messages, and about 100 KB of all of them, on the call
 // markdown-it makes, `match` after a `pretest` that passes; and markdown-exit
-// rendering the chat messages with each linkifier. The GFM entries find GFM's
+// rendering the chat messages with each linkifier, and tinylinkify/gfm against
+// linkify-it 6.1.0, which markdown-it 15 and markdown-exit 2 call with `test`. The GFM entries find GFM's
 // links, not linkify-it's, so theirs is the same work on the same text, not
 // the same result.
 // It measures the built dist/, what npm ships, building it first if it's
@@ -11,7 +12,9 @@
 // round to round, so neither gains from going first.
 // Usage: node bench/index.ts [--json] [--source]
 import LinkifyIt from "linkify-it";
+import { LinkifyIt as LinkifyIt6 } from "linkify-it-v6";
 import MarkdownExit from "markdown-exit";
+import { createMarkdownExit } from "markdown-exit-v2/core";
 import { build } from "../scripts/dist.ts";
 import { benchSamples } from "../scripts/shared.ts";
 
@@ -35,6 +38,26 @@ const linkify =
   (l: { pretest(t: string): boolean; match(t: string): unknown }): Find =>
   (text) =>
     l.pretest(text) && l.match(text);
+// linkify-it 6 has no pretest; markdown-exit 2 calls test, then match.
+const tested =
+  (l: { test(t: string): boolean; match(t: string): unknown }): Find =>
+  (text) =>
+    l.test(text) && l.match(text);
+// tinylinkify/gfm keeps the links of the last text for the match after a
+// test, so each call gets a new one, as each text in a document is new.
+const fresh =
+  (call: (l: never) => Find): Find =>
+  (text) =>
+    call(new gfm() as never)(text);
+// markdown-exit 2's core, which leaves the linkifier to you.
+const render2 = (Linkify: new () => unknown): Find => {
+  const md = createMarkdownExit({ linkify: true }) as unknown as {
+    linkify: unknown;
+    render(s: string): string;
+  };
+  md.linkify = new Linkify();
+  return (text) => md.render(text);
+};
 const render = (Linkify: new () => unknown): Find => {
   const md = MarkdownExit({ linkify: true }) as unknown as {
     linkify: unknown;
@@ -46,14 +69,9 @@ const render = (Linkify: new () => unknown): Find => {
 
 const pairs: [string, string, Record<string, string>, Find, Find][] = [
   ["linkify-it 5.0.2", "match", inputs, linkify(new LinkifyIt()), linkify(new dropIn())],
-  [
-    "linkify-it 5.0.2 (tinylinkify/gfm)",
-    "match",
-    inputs,
-    linkify(new LinkifyIt()),
-    linkify(new gfm()),
-  ],
+  ["linkify-it 5.0.2 (tinylinkify/gfm)", "match", inputs, linkify(new LinkifyIt()), fresh(linkify)],
   ["linkify-it 5.0.2 (tinylinkify root)", "match", inputs, linkify(new LinkifyIt()), root.find],
+  ["linkify-it 6.1.0 (tinylinkify/gfm)", "match", inputs, tested(new LinkifyIt6()), fresh(tested)],
   [
     "markdown-exit 1.3.0 (tinylinkify/linkify-it)",
     "render",
@@ -67,6 +85,13 @@ const pairs: [string, string, Record<string, string>, Find, Find][] = [
     { chat: samples.chat! },
     render(LinkifyIt as never),
     render(gfm as never),
+  ],
+  [
+    "markdown-exit 2.1.0, linkify-it 6.1.0 (tinylinkify/gfm)",
+    "render",
+    { chat: samples.chat! },
+    render2(LinkifyIt6),
+    render2(gfm as never),
   ],
 ];
 

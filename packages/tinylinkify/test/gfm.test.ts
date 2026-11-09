@@ -2,6 +2,7 @@
 // markdown-it and markdown-exit call.
 import { readFileSync } from "node:fs";
 import MarkdownExit from "markdown-exit";
+import { createMarkdownExit } from "markdown-exit-v2/core";
 import { describe, expect, it } from "vite-plus/test";
 import LinkifyIt from "../src/gfm/index.ts";
 import { benchSamples } from "../scripts/shared.ts";
@@ -82,6 +83,20 @@ describe("tinylinkify/gfm", () => {
     expect(linkify.test("a.onion git://a.com")).toBe(false);
   });
 
+  it("keeps the links of the text it tested for the match that follows", () => {
+    const linkify = new LinkifyIt();
+    expect(linkify.test("see www.a.com")).toBe(true);
+    const [first] = linkify.match("see www.a.com")!;
+    first!.url = "changed";
+    expect(linkify.match("see www.a.com")![0]!.url).toBe("http://www.a.com");
+    expect(linkify.set({ fuzzyLink: false }).match("see www.a.com")).toBeNull();
+  });
+
+  it("exports the constructor by name too, as linkify-it 6 does", async () => {
+    const mod = await import("../src/gfm/index.ts");
+    expect(mod.LinkifyIt).toBe(LinkifyIt);
+  });
+
   it("is markdown-exit's linkifier", () => {
     const md = MarkdownExit({ linkify: true }) as unknown as {
       linkify: unknown;
@@ -96,6 +111,20 @@ describe("tinylinkify/gfm", () => {
     );
     expect(md.render("mail a.b@example.com.")).toBe(
       '<p>mail <a href="mailto:a.b@example.com">a.b@example.com</a>.</p>\n',
+    );
+  });
+
+  it("is markdown-exit 2's linkifier, on its core without linkify-it", () => {
+    const md = createMarkdownExit({ linkify: true }) as unknown as {
+      linkify: unknown;
+      render(src: string): string;
+    };
+    md.linkify = new LinkifyIt();
+    expect(md.render("see www.example.com, thanks @alice")).toBe(
+      '<p>see <a href="http://www.example.com">www.example.com</a>, thanks @alice</p>\n',
+    );
+    expect(md.render("https://a.com/foo_bar_baz and _em_")).toBe(
+      '<p><a href="https://a.com/foo_bar_baz">https://a.com/foo_bar_baz</a> and <em>em</em></p>\n',
     );
   });
 });
