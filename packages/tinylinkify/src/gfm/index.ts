@@ -111,5 +111,20 @@ proto.tlds = proto.add = function (this: LinkifyIt) {
   return this;
 };
 
+/**
+ * A markdown-it or markdown-exit plugin: turns on `linkify` with GFM's links.
+ *
+ * ```ts
+ * const md = createMarkdownExit().use(linkifyGfm);
+ * ```
+ */
+export function linkifyGfm(
+  md: { linkify: unknown; set(options: { linkify: boolean }): unknown },
+  options?: Options,
+): void {
+  md.linkify = new LinkifyIt(options);
+  md.set({ linkify: true });
+}
+
 export { LinkifyIt };
 export default LinkifyIt;

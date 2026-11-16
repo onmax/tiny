@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import MarkdownExit from "markdown-exit";
 import { createMarkdownExit } from "markdown-exit-v2/core";
 import { describe, expect, it } from "vite-plus/test";
-import LinkifyIt from "../src/gfm/index.ts";
+import LinkifyIt, { linkifyGfm } from "../src/gfm/index.ts";
 import { benchSamples } from "../scripts/shared.ts";
 
 describe("tinylinkify/gfm", () => {
@@ -125,6 +125,13 @@ describe("tinylinkify/gfm", () => {
     );
     expect(md.render("https://a.com/foo_bar_baz and _em_")).toBe(
       '<p><a href="https://a.com/foo_bar_baz">https://a.com/foo_bar_baz</a> and <em>em</em></p>\n',
+    );
+  });
+
+  it("is a plugin that turns linkify on, with its options", () => {
+    const md = createMarkdownExit().use(linkifyGfm, { fuzzyEmail: false });
+    expect(md.render("see www.example.com, mail a.b@example.com")).toBe(
+      '<p>see <a href="http://www.example.com">www.example.com</a>, mail a.b@example.com</p>\n',
     );
   });
 });

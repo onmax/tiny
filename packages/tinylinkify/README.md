@@ -75,13 +75,14 @@ markdown-it and markdown-exit find links with linkify-it, whose rules aren't GFM
 
 ```ts
 import MarkdownExit from "markdown-exit";
-import LinkifyIt from "tinylinkify/gfm";
+import { linkifyGfm } from "tinylinkify/gfm";
 
-const md = MarkdownExit({ linkify: true });
-md.linkify = new LinkifyIt();
+const md = MarkdownExit().use(linkifyGfm);
 md.render("see www.example.com, thanks @alice");
 // '<p>see <a href="http://www.example.com">www.example.com</a>, thanks @alice</p>\n'
 ```
+
+The plugin turns `linkify` on and sets `md.linkify` to a `LinkifyIt` from `tinylinkify/gfm`, with the options you pass it. With markdown-exit 2's `markdown-exit/core`, which leaves linkify-it out, write `createMarkdownExit().use(linkifyGfm)`.
 
 It isn't a drop-in for linkify-it, since the links differ. It has `test`, `pretest`, `match` and `matchAtStart`, whose matches have linkify-it's fields, and `set`, which reads `fuzzyLink` (`www.` links) and `fuzzyEmail` (emails without `mailto:`). `tlds` and `add` take their arguments and do nothing, since GFM has no TLD list or custom schemas, and `fuzzyIP` is ignored: GFM links an IP address only after `http://` or `https://`. `pretest` is a quick check that never says no to text with a link: `www.`, `://`, or an address character before an `@`, so chat full of `@mentions` skips `match`.
 
