@@ -140,6 +140,8 @@ function protocol(i: number): [string, number] | undefined {
 // ends with `([^\t\n\r ]*)`, which `REST` reads here only for a match it
 // keeps, so a match it turns down doesn't read to the next space.
 const URL = /(?<![\da-z])(https?:\/\/|www(?=\.))([\w-]*\.[\w\-.]*)/gi;
+// Without `www.` links: a `www` match it would turn down anyway.
+const HTTP = /(?<![\da-z])(https?:\/\/)([\w-]*\.[\w\-.]*)/gi;
 const REST = /[^\t\n\r ]*/y;
 const XMPP =
   /(?<![\w+\-.@])xmpp:([\w+\-.]+)@([\w-]+(?:\.[\w-]+)+)(\/(?:[\w\-/]|\.(?=[\dA-Za-z]))*)?/g;
@@ -240,7 +242,7 @@ export function find(value: string, www = true, email = true, first = false): Li
   // character.
   const needs = [hasScheme || hasWww, value.includes("xmpp:"), value.includes("mailto:"), hasAt];
   for (let s = 0; s < 4; s++) {
-    const search = SEARCHES[s]!;
+    const search = s ? SEARCHES[s]! : www ? URL : HTTP;
     if (!needs[s]) continue;
     links.sort((a, b) => a.index - b.index);
     const gaps: number[] = [];
@@ -259,7 +261,7 @@ export function find(value: string, www = true, email = true, first = false): Li
         const [whole, a = "", b = "", rest] = m;
         let ok = !/[\d\-_]$/.test(b);
         let next = m.index + 1;
-        if (search === URL) {
+        if (!s) {
           const c = run.charCodeAt(m.index - 1);
           let host = b;
           let scheme = a;
@@ -272,7 +274,6 @@ export function find(value: string, www = true, email = true, first = false): Li
           const labels = host.split(".");
           ok =
             (!m.index || whitespace(c) || punctuation(c)) &&
-            (www || !prefix) &&
             !punctuation(host.charCodeAt(0)) &&
             labels.length > 1 &&
             !badLabel(labels.at(-1)) &&
