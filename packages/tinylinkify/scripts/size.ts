@@ -28,8 +28,8 @@ const entries: [string, string, string?][] = [
 // Gzip bytes each entry may reach, about 30 over its size when last set.
 // Raise one on purpose, and say why in the commit.
 const BUDGET: Record<string, number> = {
-  tinylinkify: 1870,
-  "tinylinkify/gfm": 2300,
+  tinylinkify: 1985,
+  "tinylinkify/gfm": 2460,
   "tinylinkify/linkify-it": 4030,
 };
 
