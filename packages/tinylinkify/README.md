@@ -5,14 +5,14 @@
 <!-- automd:comark-badges name=tinylinkify size=size -->
 
 [![release](https://comark-ui.onmax.me/badge.svg?source=npm-version&package=tinylinkify&label=release&icon=npm)](https://github.com/onmax/tiny/releases)
-[![size](https://comark-ui.onmax.me/badge.svg?label=size&value=1.8+KiB+gzip)](#size)
+[![size](https://comark-ui.onmax.me/badge.svg?label=size&value=1.9+KiB+gzip)](#size)
 [![dependencies](https://comark-ui.onmax.me/badge.svg?label=dependencies&value=0)](https://www.npmjs.com/package/tinylinkify?activeTab=dependencies)
 [![license: MIT](https://comark-ui.onmax.me/badge.svg?label=license&value=MIT)](./LICENSE)
 [![Release status](https://comark-ui.onmax.me/badge.svg?source=github-actions&repository=onmax%2Ftiny&workflow=release.yaml&icon=github)](https://github.com/onmax/tiny/actions/workflows/release.yaml)
 
 <!-- /automd -->
 
-**Links in plain text, in 1.8 KiB.** No dependencies, GFM's autolink rules as remark-gfm and GitHub apply them, and up to 3 times faster than linkify-it.
+**Links in plain text, in 1.9 KiB.** No dependencies, GFM's autolink rules as remark-gfm and GitHub apply them, and up to 3 times faster than linkify-it.
 
 Already on linkify-it? Change one import and keep your code:
 
@@ -29,7 +29,7 @@ tinylinkify ships a drop-in replacement for linkify-it 5 (and 4), and `tinylinki
 | ---------------- | ------------------------ | ------------: | ----------: | ----------: |
 | linkify-it 5.0.2 | `tinylinkify/linkify-it` | 4.1 → 3.9 KiB | 1.1× faster |           — |
 
-The root `tinylinkify` API, which finds GFM links, is 1.8 KiB against 4.1 KiB for linkify-it 5.0.2, and finds them 2.8× faster than linkify-it finds its own in the same text.
+The root `tinylinkify` API, which finds GFM links, is 1.9 KiB against 4.1 KiB for linkify-it 5.0.2, and finds them 2.8× faster than linkify-it finds its own in the same text.
 
 Size is the minified bundle, gzipped. Speed is the median time to parse and stringify the large benchmark file. linkify-it only finds links, so its time is `match` on 100 KB of text. Measured on AMD Ryzen 7 255 w/ Radeon 780M Graphics, Node 24.21.0.
 
@@ -138,8 +138,8 @@ Each entry as npm ships it in `dist/`, bundled with esbuild, minified ESM, then 
 
 | Entry                    | Minified  | Gzip     |
 | ------------------------ | --------- | -------- |
-| `tinylinkify`            | 3.55 KiB  | 1.79 KiB |
-| `tinylinkify/gfm`        | 4.65 KiB  | 2.22 KiB |
+| `tinylinkify`            | 3.87 KiB  | 1.91 KiB |
+| `tinylinkify/gfm`        | 5.04 KiB  | 2.37 KiB |
 | `tinylinkify/linkify-it` | 10.32 KiB | 3.90 KiB |
 | linkify-it 5.0.2         | 11.25 KiB | 4.11 KiB |
 | linkify-it 6.1.0         | 13.30 KiB | 4.40 KiB |

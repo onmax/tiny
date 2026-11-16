@@ -131,6 +131,9 @@ function protocol(i: number): [string, number] | undefined {
 
 // mdast-util-gfm-autolink-literal's searches, in its order.
 const URL = /(?<![\da-z])(https?:\/\/|www(?=\.))([\w-]*\.[\w\-.]*)/gi;
+// Without `www.` links: a `www` match it would turn down anyway, after
+// reading the rest of its host.
+const HTTP = /(?<![\da-z])(https?:\/\/)([\w-]*\.[\w\-.]*)/gi;
 const XMPP =
   /(?<![\w+\-.@])xmpp:([\w+\-.]+)@([\w-]+(?:\.[\w-]+)+)(\/(?:[\w\-/]|\.(?=[\dA-Za-z]))*)?/g;
 const MAILTO = /(?<![\w+\-.@])mailto:([\w+\-.]+)@([\w-]+(?:\.[\w-]+)+)/g;
@@ -226,7 +229,7 @@ export function find(value: string, www = true, email = true, first = false): Li
   // character.
   const needs = [hasScheme || hasWww, value.includes("xmpp:"), value.includes("mailto:"), hasAt];
   for (let s = 0; s < 4; s++) {
-    const search = SEARCHES[s]!;
+    const search = s ? SEARCHES[s]! : www ? URL : HTTP;
     if (!needs[s]) continue;
     links.sort((a, b) => a.index - b.index);
     const gaps: number[] = [];
@@ -245,7 +248,7 @@ export function find(value: string, www = true, email = true, first = false): Li
         const [whole, a = "", b = "", rest] = m;
         let retry = m.index + 1;
         let ok = !/[\d\-_]$/.test(b);
-        if (search === URL) {
+        if (!s) {
           const c = run.charCodeAt(m.index - 1);
           let host = b;
           let scheme = a;
@@ -258,7 +261,6 @@ export function find(value: string, www = true, email = true, first = false): Li
           const labels = host.split(".");
           ok =
             (!m.index || whitespace(c) || punctuation(c)) &&
-            (www || !prefix) &&
             !punctuation(host.charCodeAt(0)) &&
             labels.length > 1 &&
             !badLabel(labels.at(-1)) &&

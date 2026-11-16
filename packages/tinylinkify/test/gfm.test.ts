@@ -136,6 +136,15 @@ describe("tinylinkify/gfm", () => {
     expect(performance.now() - start).toBeLessThan(1000);
   });
 
+  it("doesn't read the rest of a domain at each www with fuzzyLink off", () => {
+    const text = `:// ${"www._".repeat(16_000)}.a.b https://example.com`;
+    const start = performance.now();
+    expect(new LinkifyIt({ fuzzyLink: false }).match(text)?.at(-1)?.url).toBe(
+      "https://example.com",
+    );
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+
   it("is a plugin that turns linkify on, with its options", () => {
     const md = createMarkdownExit().use(linkifyGfm, { fuzzyEmail: false });
     expect(md.render("see www.example.com, mail a.b@example.com")).toBe(
