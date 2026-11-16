@@ -13,9 +13,10 @@ import { apply, plan, type Plan } from "./migrate.ts";
 const USAGE = `Usage: tinyswap [dir] [options]
 
 Moves a project from js-yaml, yaml, yamljs, @std/yaml, json5,
-strip-json-comments, jsonc-parser, comment-json, jju, ini and @one-ini/wasm
-to the tinyaml, tinyjson5 and tinyini drop-ins: it rewrites their imports and
-swaps the dependencies in package.json. dir defaults to the current directory.
+strip-json-comments, jsonc-parser, comment-json, jju, ini, @one-ini/wasm and
+linkify-it to the tinyaml, tinyjson5, tinyini and tinylinkify drop-ins: it
+rewrites their imports and swaps the dependencies in package.json. dir
+defaults to the current directory.
 
 Options:
   --yes            Migrate everything found without asking
@@ -252,7 +253,7 @@ function ranges(): Record<Tiny, string> {
     version: string;
   };
   const range = version === "0.0.0" ? "latest" : `^${version}`;
-  return { tinyaml: range, tinyjson5: range, tinyini: range };
+  return { tinyaml: range, tinyjson5: range, tinyini: range, tinylinkify: range };
 }
 
 function count(n: number, noun: string) {

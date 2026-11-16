@@ -1,8 +1,8 @@
-// The libraries tinyaml, tinyjson5 and tinyini replace, and which subpath
+// The libraries tinyaml, tinyjson5, tinyini and tinylinkify replace, and which subpath
 // replaces each version. The ranges are the ones each package's README lists
 // under Switching: a version outside them has no drop-in, and stays.
 
-export type Tiny = "tinyaml" | "tinyjson5" | "tinyini";
+export type Tiny = "tinyaml" | "tinyjson5" | "tinyini" | "tinylinkify";
 
 export interface Version {
   major: number;
@@ -130,6 +130,15 @@ export const LIBRARIES: Library[] = [
             ? "tinyini/one-ini-v0.1"
             : undefined,
   },
+  {
+    name: "linkify-it",
+    tiny: "tinylinkify",
+    covers: "4 and 5",
+    // tinylinkify/linkify-it follows 5.0.2. 4.0.1 and 5.0.0 behave the same,
+    // and differ from it only where 5.0.1 reworked the search for its DoS fix.
+    pick: ({ major }) => (major === 4 || major === 5 ? "tinylinkify/linkify-it" : undefined),
+    types: "@types/linkify-it",
+  },
 ];
 
 export const byName = new Map(LIBRARIES.map((library) => [library.name, library]));
@@ -183,6 +192,8 @@ export const EXPORTS: Record<string, string[]> = {
   "tinyini/ini-v1": names("decode default encode parse safe stringify unsafe"),
   "tinyini/one-ini": names("TokenTypes default parse_to_json parse_to_uint32array version"),
   "tinyini/one-ini-v0.1": names("TokenTypes default parse_to_json parse_to_uint32array version"),
+  // `module.exports` makes require() return the constructor, as linkify-it's does.
+  "tinylinkify/linkify-it": names("default module.exports"),
 };
 
 /** The library a module specifier imports, and the subpath after its name. */
