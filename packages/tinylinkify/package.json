@@ -1,6 +1,6 @@
 {
   "name": "tinylinkify",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Tiny, fast link finder for plain text, with GFM autolink literals and a drop-in replacement for linkify-it",
   "keywords": [
     "autolink",
