@@ -47,8 +47,6 @@ const at = (i: number) => (i < n ? text.charCodeAt(i) : -1);
 // Where the last trail that wasn't one stopped: a trail checked from before
 // it, in the same domain or path, stops there too.
 let failed = -1;
-// Starts before this underscore share an invalid final domain label.
-let rejectedDomain = -1;
 
 /** Whether the punctuation at `i`, and what follows, is a trail before an end. */
 function trail(i: number): boolean {
@@ -71,28 +69,37 @@ function trail(i: number): boolean {
   return false;
 }
 
+// When `domain` turns a domain down for an underscore, the dot before the
+// label that has it: a domain from that dot or before ends where this one
+// does, with the same last two labels, so it's turned down too.
+let badDot = -1;
+
 /**
  * A domain from `i`: where it ends, or -1. The last two labels can't have an
  * underscore, and it needs one character.
  */
 function domain(i: number): number {
-  if (i < rejectedDomain) return -1;
-  let last = -1;
-  let before = -1;
+  let last = false;
+  let before = false;
   let seen = false;
+  let dot = -1;
+  let previousDot = -1;
   failed = -1;
   for (;;) {
     const c = at(i);
     if (c === 46 || c === 95) {
       if (trail(i)) break;
-      if (c === 95) last = i;
-      else [before, last] = [last, -1];
+      if (c === 95) last = true;
+      else {
+        [before, last] = [last, false];
+        [previousDot, dot] = [dot, i];
+      }
     } else if (end(c) || (c !== 45 && punctuation(c))) break;
     else seen = true;
     i++;
   }
-  rejectedDomain = Math.max(before, last) + 1;
-  return before >= 0 || last >= 0 || !seen ? -1 : i;
+  badDot = last ? dot : before ? previousDot : -1;
+  return before || last || !seen ? -1 : i;
 }
 
 /** A path from `i`, to its end. A closing parenthesis stays while it closes one opened in it. */
@@ -129,8 +136,11 @@ function protocol(i: number): [string, number] | undefined {
   return host < 0 ? undefined : [`${scheme}:`, path(host)];
 }
 
-// mdast-util-gfm-autolink-literal's searches, in its order.
+// mdast-util-gfm-autolink-literal's searches, in its order. Its URL search
+// ends with `([^\t\n\r ]*)`, which `REST` reads here only for a match it
+// keeps, so a match it turns down doesn't read to the next space.
 const URL = /(?<![\da-z])(https?:\/\/|www(?=\.))([\w-]*\.[\w\-.]*)/gi;
+const REST = /[^\t\n\r ]*/y;
 const XMPP =
   /(?<![\w+\-.@])xmpp:([\w+\-.]+)@([\w-]+(?:\.[\w-]+)+)(\/(?:[\w\-/]|\.(?=[\dA-Za-z]))*)?/g;
 const MAILTO = /(?<![\w+\-.@])mailto:([\w+\-.]+)@([\w-]+(?:\.[\w-]+)+)/g;
@@ -164,7 +174,6 @@ function trim(url: string): string {
 export function find(value: string, www = true, email = true, first = false): Link[] {
   text = value;
   n = value.length;
-  rejectedDomain = -1;
   const links: Link[] = [];
   const add = (schema: string, index: number, lastIndex: number, prefix = "") => {
     const raw = value.slice(index, lastIndex);
@@ -181,6 +190,9 @@ export function find(value: string, www = true, email = true, first = false): Li
   // letter, digit, `+`, `-`, `.` or `_` after none of those or `/`, then
   // `http(s)://` at an `h` not after a letter, or `www.` at a `w` at the
   // start or after whitespace, `(`, `*`, `_`, `[`, `]` or `~`.
+  // A `www.` whose dot is at or before this is in a domain already turned
+  // down for an underscore, and would be turned down again.
+  let wwwBad = -1;
   for (let i = 0; (email || hasScheme || hasWww) && i < n;) {
     const c = at(i);
     const previous = i ? at(i - 1) : -1;
@@ -211,10 +223,12 @@ export function find(value: string, www = true, email = true, first = false): Li
       (at(i + 2) | 32) === 119 &&
       at(i + 3) === 46 &&
       i + 4 < n &&
+      i + 3 > wwwBad &&
       (previous < 0 || space(previous) || [40, 42, 95, 91, 93, 126].includes(previous))
     ) {
       const host = domain(i);
       if (host >= 0) add("", i, (stop = path(host)), "http://");
+      else wwwBad = badDot;
     }
     if (first && stop >= 0) return links;
     i = stop < 0 ? i + 1 : stop;
@@ -243,8 +257,8 @@ export function find(value: string, www = true, email = true, first = false): Li
       for (let m; (m = search.exec(run));) {
         const index = start + m.index;
         const [whole, a = "", b = "", rest] = m;
-        let retry = m.index + 1;
         let ok = !/[\d\-_]$/.test(b);
+        let next = m.index + 1;
         if (search === URL) {
           const c = run.charCodeAt(m.index - 1);
           let host = b;
@@ -263,25 +277,24 @@ export function find(value: string, www = true, email = true, first = false): Li
             labels.length > 1 &&
             !badLabel(labels.at(-1)) &&
             !badLabel(labels.at(-2));
-          if (!ok) {
-            // Candidates before the last underscore share invalid final labels.
-            // Leave punctuation after the host available for later valid URLs.
-            const tail = labels.slice(-2).join(".");
-            if (tail.includes("_")) retry = m.index + whole.lastIndexOf("_") + 1;
-            else if (badLabel(labels.at(-1)) || badLabel(labels.at(-2)))
-              retry = m.index + whole.length;
-          }
           if (ok) {
-            let end = search.lastIndex;
-            while (end < run.length && !"\t\n\r ".includes(run[end]!)) end++;
-            const suffix = run.slice(search.lastIndex, end);
-            search.lastIndex = end;
+            REST.lastIndex = m.index + whole.length;
+            const rest = REST.exec(run)![0];
             add(
               scheme.slice(0, -2).toLowerCase(),
               index,
-              index + scheme.length + trim(host + suffix).length,
+              index + scheme.length + trim(host + rest).length,
               prefix,
             );
+            search.lastIndex = REST.lastIndex;
+          } else {
+            // A `www` match from the dot before a bad label or earlier, in
+            // this host, ends where this one does with that label whole, so
+            // it's turned down too.
+            const dot = whole.lastIndexOf(".");
+            if (badLabel(labels.at(-1))) next = m.index + dot;
+            else if (badLabel(labels.at(-2)))
+              next = Math.max(next, m.index + whole.lastIndexOf(".", dot - 1));
           }
         } else if (search === XMPP) {
           ok &&= !(rest && (!/[A-Za-z]$/.test(rest) || run[m.index + whole.length] === "@"));
@@ -289,7 +302,7 @@ export function find(value: string, www = true, email = true, first = false): Li
         } else if (search === MAILTO) {
           if (ok) add("mailto:", index, index + whole.length);
         } else if ((ok &&= email)) add("mailto:", index, index + whole.length, "mailto:");
-        if (!ok) search.lastIndex = retry;
+        if (!ok) search.lastIndex = next;
         else if (first) return links;
       }
     }
@@ -301,7 +314,6 @@ export function find(value: string, www = true, email = true, first = false): Li
 export function findAtStart(value: string): Link | undefined {
   text = value;
   n = value.length;
-  rejectedDomain = -1;
   if ((at(0) | 32) !== 104) return;
   const found = protocol(0);
   if (!found) return;

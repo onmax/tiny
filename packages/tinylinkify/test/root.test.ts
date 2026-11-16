@@ -158,3 +158,15 @@ describe("test", () => {
     expect(test("@alice see you at 10")).toBe(false);
   });
 });
+
+describe("links it turns down", () => {
+  // Each `www` here is in a domain turned down for its underscore, and reading
+  // the rest of it again at each one took 11 seconds for 80 KB.
+  it("reads a domain it turned down once", () => {
+    const text = `${"www._".repeat(16_000)} www.example.com`;
+    const start = performance.now();
+    expect(urls(text).at(-1)).toBe("http://www.example.com");
+    expect(test(text)).toBe(true);
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+});

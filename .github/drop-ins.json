@@ -356,7 +356,7 @@
       "entry": "tinylinkify",
       "gzip": {
         "theirs": 4211,
-        "ours": 1836
+        "ours": 1954
       },
       "parse": {
         "theirs": 5.666320437499962,

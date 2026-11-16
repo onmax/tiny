@@ -24,7 +24,7 @@ Smaller, faster, dependency-free parsers and linkifiers you can drop in for the 
 | [tinyaml](./packages/tinyaml)         | YAML             | [7.7 KiB](./packages/tinyaml#size-and-speed) | js-yaml 4 and 5, yaml 2, yamljs, @std/yaml                     |
 | [tinyjson5](./packages/tinyjson5)     | JSON5            |         [3.4 KiB](./packages/tinyjson5#size) | json5 2.2.3                                                    |
 | [tinyini](./packages/tinyini)         | INI              |           [1.3 KiB](./packages/tinyini#size) | ini 1.3.8, 2 to 4.0 and 4.1.3 to 7, @one-ini/wasm 0.1.1 to 0.2 |
-| [tinylinkify](./packages/tinylinkify) | Links in text    |       [1.8 KiB](./packages/tinylinkify#size) | linkify-it 4 and 5                                             |
+| [tinylinkify](./packages/tinylinkify) | Links in text    |       [1.9 KiB](./packages/tinylinkify#size) | linkify-it 4 and 5                                             |
 
 Bundle sizes include every export of each package's root API, minified and gzipped. See [Size and speed](#size-and-speed) for the drop-in replacements.
 
