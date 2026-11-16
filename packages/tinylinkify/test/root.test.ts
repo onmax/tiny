@@ -116,6 +116,35 @@ describe("find", () => {
     expect(texts("www.a.com/😀!")).toEqual(["www.a.com/😀"]);
   });
 
+  it("bounds rejected candidate scanning as input grows", () => {
+    for (const size of [4000, 8000, 16000]) {
+      const input = "www._".repeat(size) + "a_";
+      const start = performance.now();
+      expect(find(input)).toEqual([]);
+      expect(test(input)).toBe(false);
+      expect(performance.now() - start).toBeLessThan(1000);
+    }
+  });
+
+  it("preserves links and offsets after rejected hosts", () => {
+    for (const separator of [" ", "\n", "!", "/"]) {
+      for (const url of ["www.example.com", "https://example.com"]) {
+        const prefix = "www._".repeat(100) + "a_" + separator;
+        expect(find(prefix + url)).toEqual([
+          {
+            schema: url.startsWith("https:") ? "https:" : "",
+            index: prefix.length,
+            lastIndex: prefix.length + url.length,
+            text: url,
+            url: url.startsWith("https:") ? url : "http://" + url,
+          },
+        ]);
+      }
+    }
+    expect(texts("www._www.com")).toEqual(["www.com"]);
+    expect(texts('"www._"www.example.com')).toEqual(["www.example.com"]);
+  });
+
   it("runs in linear time on long runs of trailing punctuation", () => {
     const start = performance.now();
     find(`www.a.com/${".".repeat(200_000)}x ${"(".repeat(100_000)}`);

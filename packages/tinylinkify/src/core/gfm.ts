@@ -47,6 +47,8 @@ const at = (i: number) => (i < n ? text.charCodeAt(i) : -1);
 // Where the last trail that wasn't one stopped: a trail checked from before
 // it, in the same domain or path, stops there too.
 let failed = -1;
+// Starts before this underscore share an invalid final domain label.
+let rejectedDomain = -1;
 
 /** Whether the punctuation at `i`, and what follows, is a trail before an end. */
 function trail(i: number): boolean {
@@ -74,21 +76,23 @@ function trail(i: number): boolean {
  * underscore, and it needs one character.
  */
 function domain(i: number): number {
-  let last = false;
-  let before = false;
+  if (i < rejectedDomain) return -1;
+  let last = -1;
+  let before = -1;
   let seen = false;
   failed = -1;
   for (;;) {
     const c = at(i);
     if (c === 46 || c === 95) {
       if (trail(i)) break;
-      if (c === 95) last = true;
-      else [before, last] = [last, false];
+      if (c === 95) last = i;
+      else [before, last] = [last, -1];
     } else if (end(c) || (c !== 45 && punctuation(c))) break;
     else seen = true;
     i++;
   }
-  return before || last || !seen ? -1 : i;
+  rejectedDomain = Math.max(before, last) + 1;
+  return before >= 0 || last >= 0 || !seen ? -1 : i;
 }
 
 /** A path from `i`, to its end. A closing parenthesis stays while it closes one opened in it. */
@@ -126,7 +130,7 @@ function protocol(i: number): [string, number] | undefined {
 }
 
 // mdast-util-gfm-autolink-literal's searches, in its order.
-const URL = /(?<![\da-z])(https?:\/\/|www(?=\.))([\w-]*\.[\w\-.]*)([^\t\n\r ]*)/gi;
+const URL = /(?<![\da-z])(https?:\/\/|www(?=\.))([\w-]*\.[\w\-.]*)/gi;
 const XMPP =
   /(?<![\w+\-.@])xmpp:([\w+\-.]+)@([\w-]+(?:\.[\w-]+)+)(\/(?:[\w\-/]|\.(?=[\dA-Za-z]))*)?/g;
 const MAILTO = /(?<![\w+\-.@])mailto:([\w+\-.]+)@([\w-]+(?:\.[\w-]+)+)/g;
@@ -160,6 +164,7 @@ function trim(url: string): string {
 export function find(value: string, www = true, email = true, first = false): Link[] {
   text = value;
   n = value.length;
+  rejectedDomain = -1;
   const links: Link[] = [];
   const add = (schema: string, index: number, lastIndex: number, prefix = "") => {
     const raw = value.slice(index, lastIndex);
@@ -238,6 +243,7 @@ export function find(value: string, www = true, email = true, first = false): Li
       for (let m; (m = search.exec(run));) {
         const index = start + m.index;
         const [whole, a = "", b = "", rest] = m;
+        let retry = m.index + 1;
         let ok = !/[\d\-_]$/.test(b);
         if (search === URL) {
           const c = run.charCodeAt(m.index - 1);
@@ -257,20 +263,33 @@ export function find(value: string, www = true, email = true, first = false): Li
             labels.length > 1 &&
             !badLabel(labels.at(-1)) &&
             !badLabel(labels.at(-2));
-          if (ok)
+          if (!ok) {
+            // Candidates before the last underscore share invalid final labels.
+            // Leave punctuation after the host available for later valid URLs.
+            const tail = labels.slice(-2).join(".");
+            if (tail.includes("_")) retry = m.index + whole.lastIndexOf("_") + 1;
+            else if (badLabel(labels.at(-1)) || badLabel(labels.at(-2)))
+              retry = m.index + whole.length;
+          }
+          if (ok) {
+            let end = search.lastIndex;
+            while (end < run.length && !"\t\n\r ".includes(run[end]!)) end++;
+            const suffix = run.slice(search.lastIndex, end);
+            search.lastIndex = end;
             add(
               scheme.slice(0, -2).toLowerCase(),
               index,
-              index + scheme.length + trim(host + rest).length,
+              index + scheme.length + trim(host + suffix).length,
               prefix,
             );
+          }
         } else if (search === XMPP) {
           ok &&= !(rest && (!/[A-Za-z]$/.test(rest) || run[m.index + whole.length] === "@"));
           if (ok) add("xmpp:", index, index + whole.length);
         } else if (search === MAILTO) {
           if (ok) add("mailto:", index, index + whole.length);
         } else if ((ok &&= email)) add("mailto:", index, index + whole.length, "mailto:");
-        if (!ok) search.lastIndex = m.index + 1;
+        if (!ok) search.lastIndex = retry;
         else if (first) return links;
       }
     }
@@ -282,6 +301,7 @@ export function find(value: string, www = true, email = true, first = false): Li
 export function findAtStart(value: string): Link | undefined {
   text = value;
   n = value.length;
+  rejectedDomain = -1;
   if ((at(0) | 32) !== 104) return;
   const found = protocol(0);
   if (!found) return;

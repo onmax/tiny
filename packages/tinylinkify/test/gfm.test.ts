@@ -128,6 +128,14 @@ describe("tinylinkify/gfm", () => {
     );
   });
 
+  it("renders long rejected URL runs without repeated suffix scans", () => {
+    const md = createMarkdownExit().use(linkifyGfm);
+    const input = "www._".repeat(16000) + "a_";
+    const start = performance.now();
+    expect(md.render(input)).not.toContain("<a ");
+    expect(performance.now() - start).toBeLessThan(1000);
+  });
+
   it("is a plugin that turns linkify on, with its options", () => {
     const md = createMarkdownExit().use(linkifyGfm, { fuzzyEmail: false });
     expect(md.render("see www.example.com, mail a.b@example.com")).toBe(
