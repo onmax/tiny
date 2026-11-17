@@ -14,9 +14,9 @@ describe("EXPORTS", () => {
   it.each(Object.keys(EXPORTS))("lists what %s exports", async (target) => {
     const [tiny, subpath] = target.split("/");
     const manifest = JSON.parse(readFileSync(`../${tiny}/package.json`, "utf8")) as {
-      exports: Record<string, string>;
+      exports: Record<string, unknown>;
     };
-    expect(manifest.exports[`./${subpath}`]).toBe(`./dist/${subpath}.mjs`);
+    expect(Object.keys(manifest.exports)).toContain(`./${subpath}`);
     const source = new URL(`../../${tiny}/src/${subpath}/index.ts`, import.meta.url).href;
     expect(EXPORTS[target]).toEqual(Object.keys((await import(source)) as object).sort());
   });

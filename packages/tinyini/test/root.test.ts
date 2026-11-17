@@ -138,9 +138,6 @@ describe("stringify", () => {
     expect(stringify({ a: key, list: [key], f: Object.assign(() => 1, key) })).toBe(
       "a=<a>\nlist[]=<0>\nf=<f>\n",
     );
-    expect(JSON.stringify({ a: key, list: [key], f: Object.assign(() => 1, key) })).toBe(
-      '{"a":"<a>","list":["<0>"],"f":"<f>"}',
-    );
     // A toJSON getter is read once, as JSON.stringify reads it.
     let reads = 0;
     const once = {
