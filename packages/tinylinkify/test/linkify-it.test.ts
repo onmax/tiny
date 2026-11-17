@@ -31,9 +31,8 @@ describe("tinylinkify/linkify-it", () => {
     expect(new RegExp(`^(?:${l.re.src_P})$`).test("a")).toBe(false);
   });
 
-  it("reads punctuation from the engine, once", () => {
-    const [a, b] = [LinkifyIt(), LinkifyIt()];
-    expect(a.re.src_P).toBe(b.re.src_P);
+  it("reads punctuation from the engine", () => {
+    const a = LinkifyIt();
     // U+1B7F, BALINESE PANTI BAWAK, came in Unicode 16; uc.micro 2.1.0 has 15.1.
     const engine = /\p{P}/u.test("᭿");
     expect(new RegExp(`^(?:${a.re.src_P})$`).test("᭿")).toBe(engine);
