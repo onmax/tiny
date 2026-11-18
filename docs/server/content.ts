@@ -26,10 +26,11 @@ const plugins = [
   ...preset.plugins.slice(code),
 ];
 
-// docs/pages/<slug>.md is the page at /<slug>/, and docs/pages/index.md the home page. A page that fails to parse fails
-// the build instead of prerendering empty.
+// docs/pages/<slug>.md is the page at /<slug>/, and docs/pages/index.md the home page. `preset: false` keeps Content's
+// own Comark UI preset out, so only the plugins above parse the pages. A page that fails to parse fails the build
+// instead of prerendering empty.
 export const content = defineContent({
   source: fs(useRuntimeConfig().pagesDir),
-  markdown: { plugins },
+  markdown: { preset: false, plugins },
   onError: "throw",
 });
