@@ -7,16 +7,16 @@
     "generate": "nuxi build"
   },
   "dependencies": {
-    "@comark/html": "^0.8.1",
+    "@comark/html": "^0.9.0",
     "@iconify-json/lucide": "^1.2.100",
-    "@vite-hub/content": "^0.1.0",
-    "comark": "^0.8.1",
-    "comark-content": "^0.4.1",
-    "comark-icon": "^0.8.0",
-    "comark-ui": "^0.8.0",
+    "@vite-hub/content": "https://pkg.pr.new/vite-hub/vitehub/@vite-hub/content@db9f307cc3cba91ad15f23be149e3e240fdab7bd",
+    "comark": "^0.9.0",
+    "comark-content": "0.5.1",
+    "comark-icon": "^0.12.0",
+    "comark-ui": "^0.12.0",
     "geist": "^1.9.0",
     "nuxt": "npm:nuxt-nightly@5x",
-    "shiki": "^4.5.0",
+    "shiki": "^4.6.0",
     "vue": "^3.5.44"
   }
 }
