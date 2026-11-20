@@ -3,9 +3,6 @@ packages:
   # The website, private so the release skips it.
   - docs
 
-# @vite-hub/content comes from a pkg.pr.new build of ViteHub main, whose ViteHub dependencies are tarball URLs too.
-blockExoticSubdeps: false
-
 allowBuilds:
   # esbuild's binary comes from its platform package; the postinstall only checks it.
   esbuild: false
