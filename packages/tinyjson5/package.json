@@ -1,6 +1,6 @@
 {
   "name": "tinyjson5",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Tiny, fast JSON5 parser and stringifier, a drop-in replacement for json5 2.2.3",
   "keywords": [
     "config",
