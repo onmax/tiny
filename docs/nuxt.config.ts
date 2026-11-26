@@ -81,7 +81,15 @@ export default defineNuxtConfig({
           crossorigin: "",
         },
       ],
-      script: [{ type: "module", src: "https://console.vitehub.dev/hosted-comments.js", "data-vitehub-comments": "721d2fc5-4d1c-4a07-8f2a-a27b580da358", "data-vitehub-repo": "onmax/tiny" }],
+      script: [
+        {
+          type: "module",
+          async: true,
+          src: "https://console.vitehub.dev/hosted-comments.js",
+          "data-vitehub-comments": "721d2fc5-4d1c-4a07-8f2a-a27b580da358",
+          "data-vitehub-repo": "onmax/tiny",
+        },
+      ],
     },
   },
   modules: [
